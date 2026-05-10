@@ -1,0 +1,156 @@
+/* PromptExport — matches Figma ComponentSet layout */
+
+/* ── Ready state ── */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-xl);
+  background: rgba(27, 196, 125, 0.08);
+  border: 1px solid var(--dr-success);
+  border-radius: var(--dr-radius-lg);
+}
+
+.headerCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-md);
+  overflow: hidden;
+}
+
+.title {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+  color: var(--dr-success);
+  flex-shrink: 0;
+}
+
+.statSep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--figma-color-text-tertiary, #666);
+  flex-shrink: 0;
+}
+
+.tokenCount {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.description {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+  margin: 0;
+}
+
+.descriptionLight {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--figma-color-text-inverse, #fff);
+  margin: 0;
+}
+
+.tokenEstimate {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-bold);
+  line-height: 150%;
+  color: var(--figma-color-text-inverse, #fff);
+  margin: 0;
+}
+
+.copyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dr-space-md) var(--dr-space-lg);
+  background: var(--dr-success);
+  border: none;
+  border-radius: var(--dr-radius-md);
+  cursor: pointer;
+  font-size: var(--dr-text-lg);
+  font-weight: var(--dr-weight-bold);
+  line-height: 100%;
+  color: var(--figma-color-text-inverse, #fff);
+  font-family: inherit;
+}
+
+.copyBtn:hover {
+  background: var(--dr-success-hover);
+}
+
+.toggle {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--dr-brand);
+  text-align: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.toggle:hover {
+  text-decoration: underline;
+}
+
+.preview {
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--figma-color-bg, #2c2c2c);
+  border-radius: var(--dr-radius-sm);
+  padding: var(--dr-space-md);
+}
+
+.preview pre {
+  font-family: var(--dr-font-mono);
+  font-size: var(--dr-text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+/* ── Locked state ── */
+.locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dr-space-md);
+  padding: var(--dr-space-lg);
+  background: var(--figma-color-bg-secondary, #383838);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-md);
+  /* Match ready variant height */
+  min-height: 265px;
+  text-align: center;
+}
+
+.lockedText {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.lockedCurrent {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+  color: var(--dr-warning);
+}

@@ -1,0 +1,148 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-xl);
+  background: var(--figma-color-bg, #2c2c2c);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-lg);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+}
+
+.header {
+}
+
+.title {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.description {
+  font-size: var(--dr-text-md);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+  margin: 0;
+}
+
+.actionBtn {
+  width: 100%;
+  padding: var(--dr-space-md) var(--dr-space-lg);
+  font-size: var(--dr-text-lg);
+}
+
+.success {
+  font-size: var(--dr-text-md);
+  line-height: 150%;
+  color: var(--dr-score-green, #7ee787);
+  padding: var(--dr-space-md);
+  background: rgba(126, 231, 135, 0.06);
+  border-radius: var(--dr-radius-sm);
+  text-align: center;
+}
+
+.empty {
+  font-size: var(--dr-text-md);
+  line-height: 150%;
+  color: var(--figma-color-text-tertiary, #666);
+  text-align: center;
+}
+
+.candidatesSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+}
+
+.candidatesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--dr-text-md);
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xs);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-lg);
+  background: var(--figma-color-bg-secondary, #383838);
+  border-radius: var(--dr-radius-sm);
+  cursor: pointer;
+  font-size: var(--dr-text-md);
+}
+
+.item:hover {
+  background: var(--figma-color-bg, #333);
+}
+
+.item input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.itemName {
+  font-weight: var(--dr-weight-bold);
+  color: var(--figma-color-text, #e0e0e0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.skipped {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+}
+
+.skippedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xs);
+  margin: 0;
+}
+
+.skippedItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xs);
+  padding: var(--dr-space-sm);
+}
+
+.skippedName {
+  font-size: var(--dr-text-md);
+  color: var(--figma-color-text, #e0e0e0);
+  font-weight: var(--dr-weight-bold);
+}
+
+.skippedReason {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  color: var(--figma-color-text-secondary, #999);
+}

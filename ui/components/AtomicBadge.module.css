@@ -1,0 +1,256 @@
+/* AtomicBadge v5 — Two-column layout (480px full width) */
+
+.root {
+  display: flex;
+  flex-direction: row;
+  gap: var(--dr-space-xl);
+  padding: var(--dr-space-xl);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-lg);
+  background: var(--figma-color-bg, #2c2c2c);
+}
+
+.rootUnclassified {
+  gap: var(--dr-space-lg);
+}
+
+/* Left column: "This component" */
+.compCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xl);
+  flex: 1;
+  min-width: 0;
+}
+
+.headerCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+}
+
+.title {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-lg);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dr-space-sm);
+  flex-shrink: 0;
+}
+
+.badgeLabel {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+}
+
+.variantHint {
+  font-size: var(--dr-text-xs);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  color: var(--figma-color-text-tertiary, #666);
+  margin-top: calc(-1 * var(--dr-space-sm));
+}
+
+.description {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+  margin: 0;
+}
+
+.statsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-md);
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  color: var(--figma-color-text-secondary, #999);
+  line-height: 130%;
+}
+
+.statSep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--figma-color-text-tertiary, #666);
+  flex-shrink: 0;
+}
+
+/* Structure (dep tree) */
+.depTree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+}
+
+.treeLabel {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.depNodeTree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-sm);
+}
+
+.depRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-sm);
+}
+
+.connector {
+  flex-shrink: 0;
+}
+
+.depName {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+}
+
+.depLevel {
+  font-size: var(--dr-text-xs);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 120%;
+  color: var(--figma-color-text-tertiary, #666);
+}
+
+/* Vertical divider between columns */
+.verticalDivider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--figma-color-border, #444);
+  flex-shrink: 0;
+}
+
+/* Right column: "Your export plan" */
+.archSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.archList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xs);
+}
+
+.archRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-sm);
+  padding: var(--dr-space-xs) var(--dr-space-sm);
+  border-radius: var(--dr-radius-sm);
+  transition: background var(--dr-transition);
+}
+
+.archRow[role="button"] {
+  cursor: pointer;
+}
+
+.archRow[role="button"]:hover {
+  background: var(--figma-color-bg-secondary, #383838);
+}
+
+.archRowCurrent {
+  opacity: 0.6;
+}
+
+.stepCircle {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--figma-color-bg, #2c2c2c);
+  border: 1px solid var(--figma-color-border, #444);
+  flex-shrink: 0;
+}
+
+.stepNumber {
+  font-size: var(--dr-text-xs);
+  font-weight: var(--dr-weight-bold);
+  line-height: 120%;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.archName {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+}
+
+.archScan {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--dr-transition);
+  color: var(--figma-color-text-tertiary, #666);
+  flex-shrink: 0;
+}
+
+.archRow[role="button"]:hover .archScan {
+  opacity: 1;
+}
+
+.archCurrentTag {
+  margin-left: auto;
+  font-size: var(--dr-text-xs);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 120%;
+  color: var(--figma-color-text-secondary, #999);
+  flex-shrink: 0;
+}
+
+.archToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--dr-text-md);
+  color: var(--dr-brand);
+  padding: 0;
+  text-align: center;
+}
+
+.archToggle:hover {
+  text-decoration: underline;
+}
+
+/* Unclassified: "Create a Component" card */
+.createCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-xl);
+  background: rgba(24, 160, 251, 0.08);
+  border: 1px solid var(--dr-brand);
+  border-radius: var(--dr-radius-lg);
+}
+
+.createTitle {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+  color: var(--dr-brand);
+}

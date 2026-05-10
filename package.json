@@ -1,0 +1,81 @@
+{
+  "name": "designready-ai",
+  "version": "1.1.5",
+  "description": "Score Figma designs for AI-readiness, fix issues, and generate code prompts. Each prompt trains a reusable skill for your design system.",
+  "author": "Stefan Holzheu <design@stefan-holzheu.de>",
+  "license": "MIT",
+  "homepage": "https://github.com/designready-ai/designready-ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/designready-ai/designready-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/designready-ai/designready-ai/issues"
+  },
+  "keywords": [
+    "figma",
+    "figma-plugin",
+    "design-systems",
+    "ai",
+    "code-generation",
+    "react",
+    "typescript"
+  ],
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n ui,plugin -c blue,yellow \"npm run dev:ui\" \"npm run dev:plugin\"",
+    "web:dev": "vite --config vite.web.config.ts --host 127.0.0.1 --port 5174",
+    "web:build": "vite build --config vite.web.config.ts",
+    "dev:ui": "vite build --watch",
+    "dev:plugin": "esbuild plugin/code.ts --bundle --outfile=dist/code.js --watch --target=es6",
+    "build": "npm run build:ui && npm run build:plugin",
+    "build:ui": "vite build",
+    "build:plugin": "esbuild plugin/code.ts --bundle --outfile=dist/code.js --target=es6",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "package": "npm run build && rm -rf release && mkdir release && cp manifest.json release/ && cp -r dist release/",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "^5.0.2",
+    "@figma/plugin-typings": "^1.104.0",
+    "@storybook/addon-a11y": "^10.3.3",
+    "@storybook/addon-docs": "^10.3.3",
+    "@storybook/addon-onboarding": "^10.3.3",
+    "@storybook/addon-vitest": "^10.3.3",
+    "@storybook/react-vite": "^10.3.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/browser-playwright": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.1",
+    "concurrently": "^9.1.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-storybook": "^10.3.3",
+    "playwright": "^1.58.2",
+    "prettier": "^3.8.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "storybook": "^10.3.3",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.0.0",
+    "vitest": "^4.1.1"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

@@ -1,0 +1,125 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-xl);
+  background: var(--figma-color-bg, #2c2c2c);
+  border-radius: var(--dr-radius-lg);
+  border: 1px solid var(--figma-color-border, #444);
+    color-scheme: light dark;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+}
+
+.description {
+  font-size: var(--dr-text-md);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+  margin: 0;
+}
+
+.ratio {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  color: var(--dr-warning);
+}
+
+.ratioAllMapped {
+  color: var(--dr-success);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xs);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-md);
+  padding: var(--dr-space-sm);
+  border-radius: var(--dr-radius-sm);
+}
+
+.rowMapped {
+}
+
+.rowUnknown {
+  background: rgba(245, 166, 35, 0.06);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--dr-radius-xs, 2px);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hex {
+  font-size: var(--dr-text-sm);
+  line-height: 140%;
+  color: var(--figma-color-text-secondary, #999);
+  min-width: 62px;
+}
+
+.arrow {
+  color: var(--figma-color-text-tertiary, #666);
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: var(--dr-text-sm);
+  line-height: 140%;
+  color: var(--dr-success);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameUnknown {
+  color: var(--dr-warning);
+}
+
+.count {
+  font-size: var(--dr-text-xs);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 120%;
+  color: var(--figma-color-text-tertiary, #666);
+  flex-shrink: 0;
+}
+
+.toggle {
+  text-align: center;
+  padding: var(--dr-space-xs) 0;
+  font-size: var(--dr-text-sm);
+}
+
+.hint {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  line-height: 130%;
+  color: var(--dr-warning);
+}
+@media (prefers-color-scheme: dark) {
+    .root {
+        --bg: #1f1f1f;
+        --text: #e5e5e5;
+        --border: #333;
+    }
+}

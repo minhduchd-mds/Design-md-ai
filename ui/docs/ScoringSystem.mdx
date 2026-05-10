@@ -1,0 +1,39 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Overview/Scoring System" />
+
+# Scoring System
+
+DesignReady.ai scores Figma components across 6 weighted dimensions. The composite score determines whether a prompt can be generated (threshold: **75+**).
+
+## Dimensions
+
+| Dimension | Weight | What it checks |
+|-----------|:------:|----------------|
+| **Naming** | 18% | Are layer names semantic? ("hero-title" vs "Frame 47") |
+| **Structure** | 22% | Auto Layout usage, reasonable nesting depth, layout grids |
+| **Tokens** | 18% | Colors bound to Variables, palette consistency, spacing on grid |
+| **Meta** | 12% | No hidden layers, no empty frames, appropriate sizing |
+| **Completeness** | 15% | Component states present (hover, active, disabled), variant properties defined |
+| **Variants** | 15% | Size variants, state coverage, consistent property naming |
+
+## Score Ranges
+
+| Range | Color | What it means |
+|:-----:|:-----:|---------|
+| 75–100 | Green | Prompt ready — generates accurate code |
+| 50–74 | Yellow | Needs improvement — prompt is locked |
+| 0–49 | Red | Significant issues — fix before scanning |
+
+## AI Tolerance
+
+The gap between the weighted sum and 100% is shown as "AI Tolerance" in the donut chart. This represents the margin where AI can compensate for imperfect design structure. A well-structured component has low tolerance (the colored segments fill the ring).
+
+## How scoring works
+
+1. You select a component in Figma and click "Scan"
+2. The plugin extracts 56 properties from the selection (colors, layout, naming, etc.)
+3. Each dimension scores the component independently (0–100)
+4. The weighted composite score is calculated
+5. Score 75 or higher — the AI prompt is generated and ready to copy
+6. Score below 75 — issues are listed so you know what to fix

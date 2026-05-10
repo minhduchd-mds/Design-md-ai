@@ -1,0 +1,97 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-xl);
+  padding: var(--dr-space-xl);
+  background: var(--figma-color-bg, #2c2c2c);
+  border-radius: var(--dr-radius-lg);
+  border: 1px solid var(--figma-color-border, #444);
+}
+
+.header {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+}
+
+.sectionLabel {
+  font-size: var(--dr-text-md);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-sm);
+}
+
+.fieldLabel {
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.hint {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.input {
+  padding: var(--dr-space-md);
+  background: var(--figma-color-bg, #2c2c2c);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-sm);
+  color: var(--figma-color-text, #e0e0e0);
+  font-size: var(--dr-text-md);
+  font-family: inherit;
+  line-height: 150%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--dr-brand);
+}
+
+.textarea {
+  padding: var(--dr-space-md);
+  background: var(--figma-color-bg, #2c2c2c);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-sm);
+  color: var(--figma-color-text, #e0e0e0);
+  font-size: var(--dr-text-md);
+  font-family: inherit;
+  line-height: 150%;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.textarea:focus {
+  border-color: var(--dr-brand);
+}
+
+.count {
+  margin-left: var(--dr-space-sm);
+  font-size: var(--dr-text-xs);
+  font-weight: var(--dr-weight-bold);
+  line-height: 120%;
+  color: var(--dr-brand);
+}
+
+.saveBtn {
+  width: 100%;
+  padding: var(--dr-space-md) var(--dr-space-lg);
+  font-size: var(--dr-text-lg);
+}
+
+.cancelLink {
+  text-align: center;
+  display: block;
+  width: 100%;
+}

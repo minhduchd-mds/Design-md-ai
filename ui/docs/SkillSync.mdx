@@ -1,0 +1,59 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Overview/Skill Sync" />
+
+# Skill Sync
+
+Skill Sync is the cumulative learning mechanism of DesignReady.ai. Every prompt includes instructions for Claude to maintain a growing skill file for your design system.
+
+## How it Works
+
+When a Design System Profile is active, the compact prompt appends a `## skill-sync` block:
+
+```
+## skill-sync
+target: .claude/skills/my-design-system-design2code.md
+rules:
+- if skill file missing → ask to create from profile context above
+- if skill exists → compare tokens + components, list additions, ask before updating
+- skill stays under 150 lines — tokens in my-design-system-design2code/tokens.md
+- each component gets own file: my-design-system-design2code/components/{name}.md
+- be cautious: token changes can be breaking — review carefully before approving
+- after confirmation → update skill, then generate code
+```
+
+## File Structure
+
+```
+.claude/skills/
+  my-design-system-design2code.md           ← Main skill (<150 lines)
+  my-design-system-design2code/
+    tokens.md                                ← All design tokens
+    components/
+      button.md                              ← Props, states, tokens, behavior
+      product-card.md
+      header.md
+```
+
+## The Feedback Loop
+
+```
+Scan Component #1 → Prompt → Claude → Code + Skill Created
+Scan Component #2 → Prompt → Claude → Code + Skill Updated (new component added)
+Scan Component #3 → Prompt → Claude → Code + Skill Updated (new tokens found)
+...
+Scan Component #50 → Prompt → Claude → Perfect Code (skill knows everything)
+```
+
+Each scan can contribute:
+- **New components** with their props, states, and tokens
+- **New design tokens** discovered in the Figma file
+- **Conventions** inferred from naming patterns and structure
+
+## Cost
+
+The Skill Sync block adds ~100 tokens to the prompt. Claude reading the skill file adds ~150–300 tokens. Total overhead: **~$0.005 per scan** (Sonnet). The investment pays back through fewer correction rounds.
+
+## No Profile = No Skill Sync
+
+The `## skill-sync` block only appears when a Design System Profile is active in the Setup tab. Without a profile, prompts are standalone — still useful, but without cumulative learning.

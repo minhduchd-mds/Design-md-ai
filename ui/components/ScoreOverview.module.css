@@ -1,0 +1,95 @@
+/* ScoreOverview — matches Figma ComponentSet layout */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-xl);
+  background: var(--figma-color-bg, #2c2c2c);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-lg);
+}
+
+.title {
+  font-size: var(--dr-text-xl);
+  font-weight: var(--dr-weight-bold);
+  line-height: 130%;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.description {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-regular);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+  margin: 0;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--figma-color-border, #444);
+  margin: 0;
+}
+
+.sectionLabel {
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-bold);
+  line-height: 150%;
+  color: var(--figma-color-text, #e0e0e0);
+}
+
+.donutLayout {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-xl);
+  overflow: hidden;
+}
+
+.donutSvg {
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-md);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  flex: 1;
+  font-size: var(--dr-text-md);
+  font-weight: var(--dr-weight-medium);
+  line-height: 150%;
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.legendValue {
+  font-size: var(--dr-text-lg);
+  font-weight: var(--dr-weight-bold);
+  line-height: 100%;
+  flex-shrink: 0;
+}
+
+.toleranceDivider {
+  border: none;
+  border-top: 1px solid var(--figma-color-border, #444);
+  margin: 0;
+}

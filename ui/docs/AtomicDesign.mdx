@@ -1,0 +1,73 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Overview/Atomic Design" />
+
+# Atomic Design Classification
+
+DesignReady.ai uses [Brad Frost's Atomic Design](https://bradfrost.com/blog/post/atomic-web-design/) methodology to classify components and determine the optimal build order. Classification is based on **component nesting depth**, not the total number of children.
+
+## Levels
+
+| Level          | Name         | Description                                                              | How to Recognize                                      | Examples                              |
+|----------------|--------------|--------------------------------------------------------------------------|-------------------------------------------------------|---------------------------------------|
+| **Atom**       | Atom         | The smallest building block. Contains no other components.               | Only uses basic elements (text, shapes, icons, vectors) | Button, Icon, Badge, Input, Avatar    |
+| **Molecule**   | Molecule     | A simple group of atoms working together as a functional unit.           | All direct children are **Atoms**                     | SearchBar (Input + Button + Icon), FormField |
+| **Organism**   | Organism     | A more complex, reusable section. Contains at least one molecule.        | Contains **Molecules** and/or multiple Atoms          | Header (Logo + Nav + SearchBar), ProductCard, Footer |
+| **Unclassified** | Unclassified | Not a true component — just a raw frame or layout helper.               | Frame that has not been converted to a Component      | Page wrappers, layout containers      |
+
+## Key Insight
+
+> **It's about nesting, not counting.**
+
+- A `ProductCard` with 5 children (Image, Title, Price, Badge, Button) is a **Molecule** — because all children are Atoms.
+- A `Header` with 3 children (Logo, Navigation, SearchBar) is an **Organism** — because `SearchBar` itself is a Molecule.
+
+## Build Order
+
+Batch Scan automatically sorts components based on Atomic Design levels to respect dependencies:
+
+| Order | Component      | Level      | Quality Score |
+|-------|----------------|------------|---------------|
+| 1     | Icon           | Atom       | 92            |
+| 2     | Badge          | Atom       | 85            |
+| 3     | Button         | Atom       | 88            |
+| 4     | SearchBar      | Molecule   | 81            |
+| 5     | ProductCard    | Molecule   | 79            |
+| 6     | Header         | Organism   | 76            |
+
+**Logic**: Atoms are built first → then Molecules → then Organisms. This prevents missing dependencies.
+
+## Page Structure — What to Scan
+
+A typical Figma page contains **5–8 main Organisms**.
+
+**Recommended Scanning Strategy:**
+
+| Content                | Level        | Recommendation                          |
+|------------------------|--------------|-----------------------------------------|
+| Header                 | Organism     | Scan individually or in small batches   |
+| Hero Section           | Organism     | Scan individually                       |
+| Product Grid / Card List | Organism   | Scan individually                       |
+| Footer                 | Organism     | Scan individually                       |
+| Full Page              | —            | **Do not scan** entire page             |
+| Layout Wrappers        | Unclassified | Skip or convert to proper components    |
+
+**Pro Tip**: Scan one Organism at a time or group 2–3 related Organisms. This gives the AI better context and produces higher-quality, more consistent code.
+
+## Benefits of Using Atomic Design in DesignReady.ai
+
+- Intelligent build order with correct dependencies
+- Higher component reusability
+- Cleaner, more maintainable code
+- Faster iteration and easier design system scaling
+- Reduced errors from missing or broken components
+
+---
+
+Would you like me to add any of the following sections?
+- Naming conventions for Atomic Design
+- Templates & Pages level
+- Best practices for organizing Figma files
+- More detailed examples with screenshots (descriptions)
+
+Just let me know!

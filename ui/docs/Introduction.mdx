@@ -1,0 +1,43 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Overview/Introduction" />
+
+# DesignReady.ai Component Library
+
+UI components for the DesignReady.ai Figma Plugin — an AI-readiness scanner and prompt generator for design-to-code workflows.
+
+## What this plugin does
+
+1. **Scans** Figma components across 6 quality dimensions
+2. **Scores** them (0–100) to surface what needs fixing
+3. **Generates** a compact, token-optimized prompt for Claude/ChatGPT
+4. **Syncs** design system knowledge via Skill Sync (cumulative learning)
+
+## Components
+
+| Component | Purpose |
+|-----------|---------|
+| **ScoreOverview** | Donut chart showing the AI-Readiness score across 6 dimensions |
+| **AutoLayoutFix** | One-click Auto Layout conversion for frames |
+| **FixPanel** | Rename layers, convert dividers, delete hidden elements |
+| **AtomicBadge** | Atom / Molecule / Organism classification |
+| **PromptExport** | Copy the generated prompt with token estimate |
+| **TokenMap** | Click-to-locate color token coverage |
+| **BatchPanel** | Multi-component scan with atomic build order |
+| **ProfileManager** | Design System Profiles (tokens, stack, guidelines) |
+
+## Design Tokens
+
+Components use Figma-native CSS variables with dark theme fallbacks. See the **Design Tokens** page for the full palette.
+
+| Role | Color |
+|------|-------|
+| Background | `#2c2c2c` |
+| Cards, panels | `#383838` |
+| Primary text | `#e0e0e0` |
+| Secondary text | `#999` |
+| Borders | `#444` |
+| Brand accent | `#0d99ff` |
+| Success / green | `#1bc47d` |
+| Warning / yellow | `#f5a623` |
+| Error / red | `#f24822` |

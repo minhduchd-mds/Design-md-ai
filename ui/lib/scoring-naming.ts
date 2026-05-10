@@ -1,0 +1,118 @@
+import type { SerializedNode, ScanIssue } from "../../shared/types";
+import { buildPath } from "./utils";
+
+const GENERIC_PATTERNS = [
+  /^Frame\s*\d*$/i,
+  /^Group\s*\d*$/i,
+  /^Rectangle\s*\d*$/i,
+  /^Ellipse\s*\d*$/i,
+  /^Line\s*\d*$/i,
+  /^Vector\s*\d*$/i,
+  /^Star\s*\d*$/i,
+  /^Polygon\s*\d*$/i,
+  /^Image\s*\d*$/i,
+  /^Text\s*\d*$/i,
+  /^Slice\s*\d*$/i,
+  /^Component\s*\d*$/i,
+  /^Boolean\s*\d*$/i,
+  /^Union\s*\d*$/i,
+  /^Subtract\s*\d*$/i,
+  /^Intersect\s*\d*$/i,
+  /^Exclude\s*\d*$/i,
+];
+
+interface NamingResult {
+  score: number;
+  issues: ScanIssue[];
+  stats: { total: number; generic: number; semantic: number };
+}
+
+function isGenericName(name: string): boolean {
+  const trimmed = name.trim();
+  // Single character or very short non-semantic names
+  if (trimmed.length <= 2 && !/^(ok|no|go|hr)$/i.test(trimmed)) return true;
+  // Figma default patterns
+  return GENERIC_PATTERNS.some((p) => p.test(trimmed));
+}
+
+function suggestName(node: SerializedNode): string | undefined {
+  if (node.type === "TEXT" && node.characters) {
+    const words = node.characters.trim().split(/\s+/).slice(0, 3).join("-").toLowerCase();
+    return words.length > 30 ? words.slice(0, 30) : words;
+  }
+  if (node.isInstance && node.componentName) {
+    return node.componentName.toLowerCase().replace(/\s+/g, "-");
+  }
+  if (node.children && node.children.length > 0) {
+    const hasText = node.children.some((c) => c.type === "TEXT");
+    const hasImage = node.children.some((c) => c.type === "RECTANGLE" && c.fills?.some((f) => f.type === "IMAGE"));
+    if (node.layoutMode === "HORIZONTAL") {
+      if (hasText && hasImage) return "media-row";
+      return "h-stack";
+    }
+    if (node.layoutMode === "VERTICAL") {
+      if (hasText) return "content-block";
+      return "v-stack";
+    }
+  }
+  if (node.type === "RECTANGLE" && node.fills?.some((f) => f.type === "IMAGE")) {
+    return "image";
+  }
+  if (node.type === "RECTANGLE") {
+    if (node.width && node.height) {
+      if (node.height <= 2 || node.width <= 2) return "divider";
+    }
+    return "shape";
+  }
+  return undefined;
+}
+
+function walkTree(
+  node: SerializedNode,
+  ancestors: string[],
+  issues: ScanIssue[],
+  stats: { total: number; generic: number; semantic: number },
+) {
+  stats.total++;
+  if (isGenericName(node.name)) {
+    stats.generic++;
+    const suggestion = suggestName(node);
+    issues.push({
+      id: `naming-generic-${node.id}`,
+      category: "naming",
+      severity: "warning",
+      message: node.name.trim().length <= 2
+        ? `"${node.name}" is too short to be meaningful. AI cannot infer the purpose of this layer.`
+        : `"${node.name}" is a generic Figma default name. AI cannot infer the purpose of this layer.`,
+      path: buildPath(ancestors, node.name),
+      suggestion: suggestion
+        ? `Rename to "${suggestion}"`
+        : "Give this layer a descriptive, semantic name (e.g. hero-cta-button, profile-avatar)",
+      nodeId: node.id,
+    });
+  } else {
+    stats.semantic++;
+  }
+  if (node.children) {
+    for (const child of node.children) {
+      walkTree(child, [...ancestors, node.name], issues, stats);
+    }
+  }
+}
+
+export function scoreNaming(node: SerializedNode): NamingResult {
+  const issues: ScanIssue[] = [];
+  const stats = { total: 0, generic: 0, semantic: 0 };
+  walkTree(node, [], issues, stats);
+  if (stats.total === 0) return { score: 100, issues, stats };
+  const semanticRatio = stats.semantic / stats.total;
+  let score = Math.round(semanticRatio * 100);
+  if (semanticRatio < 0.5) {
+    const criticalCount = Math.min(3, issues.length);
+    for (let i = 0; i < criticalCount; i++) {
+      issues[i].severity = "critical";
+      issues[i].message = issues[i].message.replace("AI cannot infer", "AI will not be able to infer");
+    }
+  }
+  return { score, issues, stats };
+}
