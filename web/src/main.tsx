@@ -8,13 +8,15 @@ import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
 import "./styles.css";
 
-type PreviewMode = "prompt" | "preview";
+type PreviewMode = "prompt" | "preview" | "edit";
+type PreviewTheme = "light" | "dark";
 
 const USER_STORE_KEY = "ai-design-agent.users.v1";
 const SESSION_STORE_KEY = "ai-design-agent.session.v1";
 const AUTH_ATTEMPT_PREFIX = "ai-design-agent.auth-attempt.v1";
 const PROJECT_HISTORY_KEY = "ai-design-agent.project-history.v1";
 const CHAT_HISTORY_PREFIX = "ai-design-agent.chat-history.v1";
+const DESIGN_MD_EDIT_PREFIX = "design-md-ai.design-md-edit.v1";
 const CHAT_HISTORY_LIMIT = 40;
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const MAX_AUTH_ATTEMPTS = 5;
@@ -530,6 +532,24 @@ function createMessage(role: ChatMessage["role"], content: string, title?: strin
   };
 }
 
+function stableHash(value: string): string {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function getDesignMdEditKey(request: ProjectRequest): string {
+  return `${DESIGN_MD_EDIT_PREFIX}.${stableHash([
+    request.projectName,
+    request.category,
+    request.openDesign,
+    request.target,
+    request.prompt,
+  ].join("|"))}`;
+}
+
 function App() {
   const [user, setUser] = useState<SessionUser | null>(() => getSessionUser());
   const [view, setView] = useState<AppView>(() => (getSessionUser() ? "workspace" : "landing"));
@@ -549,6 +569,10 @@ function App() {
   const [chatHistoryReady, setChatHistoryReady] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [loadedTemplatePresets, setLoadedTemplatePresets] = useState<Record<string, OpenDesignDefinition>>({});
+  const [previewTheme, setPreviewTheme] = useState<PreviewTheme>("light");
+  const [savedDesignMd, setSavedDesignMd] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editSavedAt, setEditSavedAt] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
@@ -559,10 +583,12 @@ function App() {
     () => ({ ...OPEN_DESIGN_PRESETS_META, ...loadedTemplatePresets }),
     [loadedTemplatePresets],
   );
-  const designMd = useMemo(
+  const generatedDesignMd = useMemo(
     () => buildDesignMd(outputRequest, user?.plan ?? "free", openDesignPresets, COMPETITOR_BENCHMARKS),
     [openDesignPresets, outputRequest, user?.plan],
   );
+  const designMdEditKey = useMemo(() => getDesignMdEditKey(outputRequest), [outputRequest]);
+  const designMd = savedDesignMd ?? generatedDesignMd;
   const previewItems = useMemo(() => buildPreviewText(outputRequest, openDesignPresets), [openDesignPresets, outputRequest]);
   const selectedPreset = getOpenDesignPreset(request.openDesign, loadedTemplatePresets);
   const outputPreset = getOpenDesignPreset(outputRequest.openDesign, loadedTemplatePresets);
@@ -620,6 +646,13 @@ function App() {
   useEffect(() => {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [hasGenerated, isGenerating, messages]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(designMdEditKey);
+    setSavedDesignMd(saved);
+    setEditDraft(saved ?? generatedDesignMd);
+    setEditSavedAt(null);
+  }, [designMdEditKey, generatedDesignMd]);
 
   useEffect(() => {
     const ids = [request.openDesign, outputRequest.openDesign].filter(hasDesignMdTemplate);
@@ -726,9 +759,32 @@ function App() {
   }
 
   async function copyOutput() {
-    await navigator.clipboard.writeText(previewMode === "prompt" ? designMd : buildPreviewText(outputRequest, openDesignPresets).join("\n"));
+    const value =
+      previewMode === "edit"
+        ? editDraft
+        : previewMode === "prompt"
+          ? designMd
+          : buildPreviewText(outputRequest, openDesignPresets).join("\n");
+    await navigator.clipboard.writeText(value);
     setCopiedOutput(true);
     window.setTimeout(() => setCopiedOutput(false), 1400);
+  }
+
+  function saveDesignMdEdit() {
+    localStorage.setItem(designMdEditKey, editDraft);
+    setSavedDesignMd(editDraft);
+    setEditSavedAt(new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
+    setMessages((current) => [
+      ...current,
+      createMessage("assistant", "Saved the edited Design.md for this project in local storage.", "Design.md saved"),
+    ]);
+  }
+
+  function resetDesignMdEdit() {
+    localStorage.removeItem(designMdEditKey);
+    setSavedDesignMd(null);
+    setEditDraft(generatedDesignMd);
+    setEditSavedAt(null);
   }
 
   function showComingSoon(label: string) {
@@ -1047,6 +1103,13 @@ function App() {
                         >
                           Preview
                         </button>
+                        <button
+                          className={previewMode === "edit" ? "active" : ""}
+                          type="button"
+                          onClick={() => setPreviewMode("edit")}
+                        >
+                          Edit
+                        </button>
                         <span className="live-badge">Live</span>
                       </div>
                       <nav>
@@ -1057,96 +1120,131 @@ function App() {
                     <div className="output-panel">
                       {previewMode === "prompt" ? (
                         <pre>{designMd}</pre>
-                      ) : (
-                        <div className="web-preview">
-                          <div className="browser-bar">
-                            <span />
-                            <span />
-                            <span />
-                          </div>
-                          <section className="preview-hero">
-                            <p>{PRODUCT_NAME}</p>
-                            <h2>{outputRequest.projectName}</h2>
-                            <span>{activeDesign.label}</span>
-                            <button>Prepare handoff</button>
-                          </section>
-                          <section className="design-catalog">
-                            <div className="catalog-header">
-                              <span>{importedDesign ? "Imported Design.md catalog" : "Open Design catalog"}</span>
-                              <strong>{activeDesign.label}</strong>
-                            </div>
-                            <div className="palette-strip">
-                              {activeDesign.palette.map((color) => (
-                                <div key={color} style={{ background: color }}>
-                                  <span>{color}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="catalog-grid">
-                              <div className="type-sample">
-                                <span>Typography</span>
-                                <h3>Readable AI interface</h3>
-                                <p>{activeDesign.typography}</p>
-                              </div>
-                              <div className="component-sample">
-                                <span>Components</span>
-                                <div className="sample-controls">
-                                  <button>Primary action</button>
-                                  <button>Secondary</button>
-                                  <label>
-                                    Prompt field
-                                    <input value="Generate a SaaS dashboard" readOnly />
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="catalog-columns">
-                              <div>
-                                <span>Layout</span>
-                                {activeDesign.layout.map((item) => (
-                                  <p key={item}>{item}</p>
-                                ))}
-                              </div>
-                              <div>
-                                <span>Do</span>
-                                {activeDesign.rules.map((item) => (
-                                  <p key={item}>{item}</p>
-                                ))}
-                              </div>
-                              <div>
-                                <span>Do not</span>
-                                {activeDesign.donts.map((item) => (
-                                  <p key={item}>{item}</p>
-                                ))}
-                              </div>
-                            </div>
-                          </section>
-                          <section className="benchmark-panel">
+                      ) : previewMode === "edit" ? (
+                        <div className="design-md-editor">
+                          <div className="editor-header">
                             <div>
-                              <span>Competitive benchmark</span>
-                              <strong>
-                                {Math.round(
-                                  COMPETITOR_BENCHMARKS.reduce((sum, item) => sum + item.score, 0) /
-                                    COMPETITOR_BENCHMARKS.length,
-                                )}
-                                /100
-                              </strong>
+                              <span>Edit file</span>
+                              <strong>DESIGN.md</strong>
                             </div>
-                            {COMPETITOR_BENCHMARKS.slice(0, 3).map((item) => (
-                              <div key={item.name} className="benchmark-row">
-                                <span>{item.name}</span>
-                                <div>
-                                  <i style={{ width: `${item.score}%` }} />
-                                </div>
-                                <b>{item.score}</b>
-                              </div>
-                            ))}
-                          </section>
-                          <div className="preview-grid">
-                            {previewItems.map((item) => (
-                              <div key={item}>{item}</div>
-                            ))}
+                            <nav>
+                              {editSavedAt && <span className="save-status">Saved {editSavedAt}</span>}
+                              {savedDesignMd && <button type="button" onClick={resetDesignMdEdit}>Reset</button>}
+                              <button type="button" className="save-button" onClick={saveDesignMdEdit}>Save changes</button>
+                            </nav>
                           </div>
+                          <textarea
+                            value={editDraft}
+                            onChange={(event) => {
+                              setEditDraft(event.target.value);
+                              setEditSavedAt(null);
+                            }}
+                            spellCheck={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className={`web-preview design-md-site-preview ${previewTheme}`}>
+                          <section className="design-md-detail-hero">
+                            <span className="preview-kicker">{PRODUCT_NAME}</span>
+                            <h2>Design System inspired by {activeDesign.label}</h2>
+                            <p>{activeDesign.direction}</p>
+                            <div className="usage-card">
+                              <span>Usage</span>
+                              <code>npx getdesign@latest add {outputRequest.openDesign}/design-md</code>
+                            </div>
+                            <p className="preview-disclaimer">
+                              This preview is generated from Design.md context and is not affiliated with the referenced brand.
+                            </p>
+                          </section>
+
+                          <section className="design-md-preview-section">
+                            <div className="preview-section-toolbar">
+                              <div>
+                                <span>Preview</span>
+                                <strong>DESIGN.md</strong>
+                              </div>
+                              <div className="theme-toggle" aria-label="Preview theme">
+                                <button
+                                  type="button"
+                                  className={previewTheme === "light" ? "active" : ""}
+                                  onClick={() => setPreviewTheme("light")}
+                                >
+                                  Light
+                                </button>
+                                <button
+                                  type="button"
+                                  className={previewTheme === "dark" ? "active" : ""}
+                                  onClick={() => setPreviewTheme("dark")}
+                                >
+                                  Dark
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="design-md-preview-frame">
+                              <aside>
+                                <strong>{activeDesign.label}</strong>
+                                {["Overview", "Colors", "Typography", "Components", "Layout", "Rules"].map((item) => (
+                                  <span key={item}>{item}</span>
+                                ))}
+                              </aside>
+                              <main>
+                                <div className="preview-frame-topbar">
+                                  <span />
+                                  <span />
+                                  <span />
+                                  <b>{outputRequest.projectName}</b>
+                                </div>
+                                <section className="preview-frame-content">
+                                  <p className="preview-label">{importedDesign ? "Imported Design.md" : "Open Design template"}</p>
+                                  <h3>{outputRequest.projectName}</h3>
+                                  <p>{activeDesign.direction}</p>
+                                  <div className="palette-strip">
+                                    {activeDesign.palette.map((color) => (
+                                      <div key={color} style={{ background: color }}>
+                                        <span>{color}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="catalog-grid">
+                                    <div className="type-sample">
+                                      <span>Typography</span>
+                                      <h3>Readable AI interface</h3>
+                                      <p>{activeDesign.typography}</p>
+                                    </div>
+                                    <div className="component-sample">
+                                      <span>Components</span>
+                                      <div className="sample-controls">
+                                        <button>Primary action</button>
+                                        <button>Secondary</button>
+                                        <label>
+                                          Prompt field
+                                          <input value="Generate a SaaS dashboard" readOnly />
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="catalog-columns">
+                                    <div>
+                                      <span>Layout</span>
+                                      {activeDesign.layout.slice(0, 4).map((item) => <p key={item}>{item}</p>)}
+                                    </div>
+                                    <div>
+                                      <span>Do</span>
+                                      {activeDesign.rules.slice(0, 4).map((item) => <p key={item}>{item}</p>)}
+                                    </div>
+                                    <div>
+                                      <span>Do not</span>
+                                      {activeDesign.donts.slice(0, 4).map((item) => <p key={item}>{item}</p>)}
+                                    </div>
+                                  </div>
+                                  <div className="preview-grid">
+                                    {previewItems.map((item) => <div key={item}>{item}</div>)}
+                                  </div>
+                                </section>
+                              </main>
+                            </div>
+                          </section>
                         </div>
                       )}
                     </div>
