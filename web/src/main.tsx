@@ -18,15 +18,16 @@ const CHAT_HISTORY_LIMIT = 40;
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const MAX_AUTH_ATTEMPTS = 5;
 const AUTH_LOCK_MS = 1000 * 60 * 15;
-const INITIAL_ASSISTANT_MESSAGE = "Enter a web generation request below. Choose an Open Design preset, project type, and target stack to generate Design.md and preview in a chat flow.";
+const PRODUCT_NAME = "Design-md-ai";
+const INITIAL_ASSISTANT_MESSAGE = "Paste a product request, upload Design.md files, or import screenshots to create AI-ready Design.md context for coding agents.";
 const DEFAULT_PROJECT: ProjectRequest = {
-  projectName: "AI Design Agent Project",
+  projectName: "Design-md-ai Project",
   category: "SaaS",
   style: "Modern product UI",
   openDesign: "openai",
-  layout: "ChatGPT workspace",
-  target: "React + Vite",
-  prompt: "Create a web interface with a landing page, login, AI chat dashboard, and Pro upgrade page.",
+  layout: "Design.md handoff workspace",
+  target: "Codex + React",
+  prompt: "Create a Design.md handoff for a Figma-backed SaaS dashboard with components, tokens, responsive rules, and implementation guidance.",
 };
 
 const OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
@@ -191,38 +192,44 @@ const PROJECT_HISTORY = [
 ];
 
 const LANDING_FEATURES = [
-  ["Prompt to Product", "Turn natural language into a website structure, Design.md, preview, and clear implementation path."],
-  ["Design.md First", "Create the design document before code to reduce errors and keep the interface consistent."],
-  ["Code-aware Review", "Check imports, TypeScript, responsive behavior, and overflow before exporting the project."],
+  ["Figma context first", "Use component names, variables, layout intent, and imported Design.md files before asking an AI agent to write code."],
+  ["Design.md handoff", "Package screens, tokens, component rules, responsive behavior, and implementation guardrails into one readable spec."],
+  ["Agent-ready output", "Prepare context for Codex, Claude Code, Cursor, Windsurf, and Figma Make instead of sending a vague prompt."],
 ];
 
 const LANDING_SERVICES = [
-  ["Design.md", "Create the product structure, pages, components, and style guide."],
-  ["Preview", "Review the visual interface before generating complete code."],
-  ["React Code", "Export React components with a clear project structure."],
-  ["Error Fix", "Detect import, dependency, TypeScript, and layout overflow issues."],
-  ["Export", "Prepare source files, copy prompts, and open the project in an editor."],
-  ["Deploy Guide", "Suggest deployment steps and a production checklist."],
+  ["Design.md", "Create product context, page structure, component usage, tokens, and design rules."],
+  ["Figma scan", "Read components, variables, pages, and design-system metadata from the plugin workflow."],
+  ["Prompt export", "Turn the design system into compact prompts for implementation agents."],
+  ["Template mapping", "Map components into dashboard, admin table, settings, landing, mobile, AI workspace, or console layouts."],
+  ["Frame export", "Create a Figma frame that summarizes the selected project layout and mapped components."],
+  ["Review checklist", "Expose token coverage, responsive behavior, accessibility, and handoff gaps before coding."],
 ];
 
 const LANDING_SHOWCASE = [
-  ["AI SaaS Dashboard", "Dashboard", "98"],
-  ["Landing Page Builder", "Marketing", "96"],
-  ["Code Review Flow", "Developer Tool", "94"],
-  ["AI Project Router", "Workspace", "97"],
+  ["Figma Components", "Scan"],
+  ["Design Tokens", "Map"],
+  ["Design.md Folder", "Export"],
+  ["Agent Prompt", "Handoff"],
+];
+
+const HOW_IT_WORKS = [
+  ["Import design context", "Start from a Figma file, selected component, uploaded Design.md, or ZIP of markdown specs."],
+  ["Generate Design.md", "Normalize project context, component rules, tokens, responsive behavior, and target-agent instructions."],
+  ["Hand off to coding agents", "Copy or export the result for Codex, Claude Code, Cursor, Windsurf, or Figma Make."],
 ];
 
 const CODE_LINES = [
-  "# AI Design Agent",
-  "## Project Overview",
-  "- Type: SaaS / AI website builder",
-  "- Stack: React + Vite",
-  "- Output: Design.md + Preview",
+  "# Design-md-ai",
+  "## Handoff Overview",
+  "- Source: Figma components + tokens",
+  "- Target: Codex / Claude Code / Cursor",
+  "- Output: Design.md + agent prompt",
   "",
-  "## Quality Checks",
-  "- Responsive layout",
-  "- Import validation",
-  "- Accessibility pass",
+  "## Guardrails",
+  "- Preserve design tokens",
+  "- Map variants to props",
+  "- Verify responsive states",
 ];
 
 const encoder = new TextEncoder();
@@ -519,9 +526,10 @@ function App() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [chatHistoryReady, setChatHistoryReady] = useState(false);
+  const [copiedOutput, setCopiedOutput] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, "AI Design Agent"),
+    createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
   ]);
 
   const outputRequest = generatedRequest ?? request;
@@ -632,7 +640,7 @@ function App() {
     const nextRequest = {
       ...request,
       projectName: inferProjectName(prompt, request.category),
-      layout: "ChatGPT workspace",
+      layout: "Design.md handoff workspace",
       style: `${OPEN_DESIGN_PRESETS[request.openDesign].label} / ${request.category}`,
       prompt,
     };
@@ -652,10 +660,23 @@ function App() {
         ...current,
         createMessage(
           "assistant",
-          `Generated a project using ${parseDesignMd(nextRequest.prompt, OPEN_DESIGN_PRESETS[nextRequest.openDesign])?.label ?? OPEN_DESIGN_PRESETS[nextRequest.openDesign].label}. You can review Code or Preview below.`,
+          `Generated Design.md context using ${parseDesignMd(nextRequest.prompt, OPEN_DESIGN_PRESETS[nextRequest.openDesign])?.label ?? OPEN_DESIGN_PRESETS[nextRequest.openDesign].label}. Review the Design.md output or preview below.`,
         ),
       ]);
     }, 720);
+  }
+
+  async function copyOutput() {
+    await navigator.clipboard.writeText(previewMode === "prompt" ? designMd : buildPreviewText(outputRequest, OPEN_DESIGN_PRESETS).join("\n"));
+    setCopiedOutput(true);
+    window.setTimeout(() => setCopiedOutput(false), 1400);
+  }
+
+  function showComingSoon(label: string) {
+    setMessages((current) => [
+      ...current,
+      createMessage("assistant", `${label} is on the roadmap. The current public demo focuses on Design.md generation, prompt handoff, upload, preview, and history.`, "Coming soon"),
+    ]);
   }
 
   function logout() {
@@ -665,7 +686,7 @@ function App() {
     setHasGenerated(false);
     setGeneratedRequest(null);
     setMessages([
-      createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, "AI Design Agent"),
+      createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
     ]);
     setChatHistoryReady(false);
     setActiveHistoryPrompt("");
@@ -688,9 +709,9 @@ function App() {
     setPreviewMode("prompt");
     setActiveHistoryPrompt(item.prompt);
     setMessages([
-      createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, "AI Design Agent"),
+      createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
       createMessage("user", item.prompt),
-      createMessage("assistant", `Restored ${item.name}. You can continue this agent session or review the generated Code/Preview below.`),
+      createMessage("assistant", `Restored ${item.name}. You can continue the session or review the generated Design.md/Preview below.`),
     ]);
   }
 
@@ -701,7 +722,7 @@ function App() {
     setIsGenerating(false);
     setPreviewMode("prompt");
     setActiveHistoryPrompt("");
-    setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, "AI Design Agent")]);
+    setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
   }
 
   function openLandingAuth(mode: AuthMode) {
@@ -733,7 +754,7 @@ function App() {
     setHasGenerated(false);
     setMessages((current) => [
       ...current,
-      createMessage("assistant", `Loaded ${markdownFiles.length} markdown file${markdownFiles.length > 1 ? "s" : ""}${zipCount ? ` from ${zipCount} ZIP file${zipCount > 1 ? "s" : ""}` : ""} into the prompt. Send it to generate Code/Preview.`, "Upload Design.md"),
+      createMessage("assistant", `Loaded ${markdownFiles.length} markdown file${markdownFiles.length > 1 ? "s" : ""}${zipCount ? ` from ${zipCount} ZIP file${zipCount > 1 ? "s" : ""}` : ""} into the prompt. Send it to generate Design.md/Preview.`, "Upload Design.md"),
     ]);
   }
 
@@ -783,7 +804,7 @@ function App() {
 
       saveGeneratedProject(nextRequest);
       setHasGenerated(true);
-      setMessages((current) => [...current, createMessage("assistant", "Generated code from the screenshot. Review it in the Code/Preview tabs above.", "Screenshot-to-code")]);
+      setMessages((current) => [...current, createMessage("assistant", "Generated code from the screenshot. Review it in the Design.md/Preview tabs above.", "Screenshot-to-code")]);
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -830,17 +851,21 @@ function App() {
             {/*<a href="#gen-web" className="active" role="button" onClick={(event) => event.preventDefault()}>*/}
             {/*  Gen Web*/}
             {/*</a>*/}
-            <a href="#projects" role="button" onClick={(event) => event.preventDefault()}>
+            <a href="#projects" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Projects"); }}>
               Projects
+              <span className="nav-status">Soon</span>
             </a>
-            <a href="#templates" role="button" onClick={(event) => event.preventDefault()}>
+            <a href="#templates" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Templates"); }}>
               Templates
+              <span className="nav-status">Soon</span>
             </a>
-            <a href="#library" role="button" onClick={(event) => event.preventDefault()}>
+            <a href="#library" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("My Library"); }}>
               My Library
+              <span className="nav-status">Soon</span>
             </a>
-            <a href="#settings" role="button" onClick={(event) => event.preventDefault()}>
+            <a href="#settings" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Settings"); }}>
               Settings
+              <span className="nav-status">Soon</span>
             </a>
             <a
               className="ghost-button"
@@ -907,8 +932,8 @@ function App() {
             <span>{user.plan === "pro" ? "Pro account" : "Free account"}</span>
             <p className="p-2">
               {user.plan === "pro"
-                ? "Full generation controls are enabled."
-                : "Core preview enabled. Pro full feature is in development."}
+                ? "Full Design.md controls are enabled."
+                : "Core Design.md preview is enabled. Pro export controls are in development."}
             </p>
             <button onClick={upgradeToPro}>{user.plan === "pro" ? "Pro Active" : "Upgrade Pro"}</button>
           </section>
@@ -918,7 +943,7 @@ function App() {
           <div className="brand-block">
             <span className="brand-mark">AI</span>
             <div>
-              <strong>AI Design Agent</strong>
+              <strong>{PRODUCT_NAME}</strong>
               <span>{user.displayEmail}</span>
             </div>
             <button className="ghost-button logout-button" type="button" onClick={logout}>
@@ -954,7 +979,7 @@ function App() {
                           type="button"
                           onClick={() => setPreviewMode("prompt")}
                         >
-                          Code
+                          Design.md
                         </button>
                         <button
                           className={previewMode === "preview" ? "active" : ""}
@@ -967,7 +992,7 @@ function App() {
                       </div>
                       <nav>
                         <span className="target-pill">{outputRequest.target}</span>
-                        <button type="button">Copy</button>
+                        <button type="button" onClick={copyOutput}>{copiedOutput ? "Copied" : "Copy"}</button>
                       </nav>
                     </div>
                     <div className="output-panel">
@@ -981,10 +1006,10 @@ function App() {
                             <span />
                           </div>
                           <section className="preview-hero">
-                            <p>AI Design Agent</p>
+                            <p>{PRODUCT_NAME}</p>
                             <h2>{outputRequest.projectName}</h2>
                             <span>{activeDesign.label}</span>
-                            <button>Start generating</button>
+                            <button>Prepare handoff</button>
                           </section>
                           <section className="design-catalog">
                             <div className="catalog-header">
@@ -1089,19 +1114,18 @@ function App() {
   }
   return (
     <main className="landing-page">
-      <div className="landing-orb landing-orb-left" />
-      <div className="landing-orb landing-orb-right" />
       <header className="landing-nav">
         <a href="#top" className="landing-brand">
           <span>AI</span>
           <div>
-            <strong>AI Design Agent</strong>
-            <small>Warm editorial workspace</small>
+            <strong>{PRODUCT_NAME}</strong>
+            <small>Design.md handoff workspace</small>
           </div>
         </a>
         <nav>
           <a href="#features">Features</a>
-          <a href="#router-layout">Layout</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#router-layout">Handoff</a>
           <a href="#ai-gallery">Gallery</a>
           <a href="#login">Login</a>
         </nav>
@@ -1113,20 +1137,20 @@ function App() {
 
       <section id="top" className="landing-hero">
         <div className="landing-hero-copy">
-          <span className="eyebrow">Prompt-native product design</span>
-          <h1>A calmer way to turn ideas into interfaces.</h1>
+          <span className="eyebrow">Figma to Design.md for AI agents</span>
+          <h1>Design-md-ai turns design systems into coding-agent context.</h1>
           <p>
-            AI Design Agent turns one prompt into Design.md, preview, UI structure, and code guidance inside a warm, clear, low-noise interface.
+            Generate Design.md files, token maps, component guidance, and implementation prompts from Figma or uploaded markdown before asking Codex, Claude Code, Cursor, Windsurf, or Figma Make to build.
           </p>
           <div className="landing-actions">
-            <button className="primary-action dark" type="button" onClick={() => openLandingAuth("register")}>View product demo</button>
-            <a href="#router-layout">See router layout</a>
+            <button className="primary-action dark" type="button" onClick={() => openLandingAuth("register")}>Open workspace</button>
+            <a href="#how-it-works">See workflow</a>
           </div>
           <div className="landing-metrics">
             {[
-              ["Design.md", "Structure first"],
-              ["Preview", "Visual feedback"],
-              ["Code check", "Fewer build errors"],
+              ["Figma scan", "Components and tokens"],
+              ["Design.md", "Agent-ready spec"],
+              ["Prompt export", "Codex and Claude"],
             ].map(([value, label]) => (
               <article key={value}>
                 <strong>{value}</strong>
@@ -1151,17 +1175,17 @@ function App() {
             <section>
               <div className="mini-product">
                 <nav>
-                  <strong>AI Design Agent</strong>
-                  <span>Product</span>
-                  <span>Docs</span>
+                  <strong>{PRODUCT_NAME}</strong>
+                  <span>Figma</span>
+                  <span>Agents</span>
                 </nav>
                 <article>
-                  <small>Prompt to Interface</small>
-                  <h3>Design faster with a calmer AI workflow.</h3>
-                  <p>Generate structure, preview UI and guide implementation from one thoughtful workspace.</p>
+                  <small>Design.md Handoff</small>
+                  <h3>Ship cleaner code prompts from real design context.</h3>
+                  <p>Map components, tokens, layout rules, and responsive states before implementation begins.</p>
                   <div>
-                    <button>Open</button>
-                    <button>Demo</button>
+                    <button>Export</button>
+                    <button>Review</button>
                   </div>
                 </article>
               </div>
@@ -1172,8 +1196,8 @@ function App() {
 
       <section id="features" className="landing-section feature-section">
         <div className="section-heading">
-          <span>Product clarity</span>
-          <h2>Built for teams who need direction before code.</h2>
+          <span>Production handoff</span>
+          <h2>Built for teams who need design context before generated code.</h2>
         </div>
         <div className="feature-grid">
           {LANDING_FEATURES.map(([title, text], index) => (
@@ -1186,19 +1210,35 @@ function App() {
         </div>
       </section>
 
+      <section id="how-it-works" className="landing-section how-section">
+        <div className="section-heading">
+          <span>How it works</span>
+          <h2>Three steps from design truth to agent-ready implementation.</h2>
+        </div>
+        <div className="how-grid">
+          {HOW_IT_WORKS.map(([title, text], index) => (
+            <article key={title}>
+              <b>{String(index + 1).padStart(2, "0")}</b>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section id="router-layout" className="landing-section router-section">
         <div className="router-heading">
           <div>
-            <span>AI Design Router - Product Layout</span>
-            <h2>One workspace. Many design outputs. Zero blank canvas.</h2>
-            <p>A router-style layout helps users understand the product immediately: Design.md, preview, code review, and export.</p>
+            <span>Design.md handoff router</span>
+            <h2>One workspace for prompts, previews, tokens, and export-ready context.</h2>
+            <p>Design-md-ai keeps design-system information close to the prompt, so implementation agents receive grounded instructions instead of generic UI requests.</p>
           </div>
           <div className="router-stats">
             {[
-              ["60+", "Templates"],
-              ["9", "Output kinds"],
-              ["10+", "Tool flows"],
-              ["3-step", "Pipeline"],
+              ["7", "Layout templates"],
+              ["5", "Agent targets"],
+              ["3", "Input modes"],
+              ["1", "Design.md source"],
             ].map(([value, label]) => (
               <article key={label}><strong>{value}</strong><span>{label}</span></article>
             ))}
@@ -1217,19 +1257,19 @@ function App() {
 
       <section id="ai-gallery" className="landing-section gallery-section">
         <div className="section-heading">
-          <span>AI-made visual gallery</span>
-          <h2>Richer data, prettier product stories, generated inside the interface.</h2>
+          <span>Workflow coverage</span>
+          <h2>The demo focuses on concrete design handoff surfaces.</h2>
         </div>
         <div className="gallery-grid">
-          {LANDING_SHOWCASE.map(([title, type, score], index) => (
+          {LANDING_SHOWCASE.map(([title, type], index) => (
             <article key={title}>
               <div className={`gallery-art art-${index + 1}`}>
-                <span>AI Generated #{index + 1}</span>
-                <strong>{score}</strong>
+                <span>{type}</span>
+                <strong>{index + 1}</strong>
               </div>
               <small>{type}</small>
               <h3>{title}</h3>
-              <p>UX quality <b>{score}/100</b></p>
+              <p>Ready for <b>handoff</b></p>
             </article>
           ))}
         </div>
@@ -1237,16 +1277,16 @@ function App() {
 
       <section className="landing-section dark-demo">
         <div>
-          <span>Dark product chrome</span>
-          <h2>Show the work, not just the output.</h2>
-          <p>Code mockup cards clarify what structure the AI is creating, how the preview behaves, and how error checks are progressing.</p>
+          <span>Agent context</span>
+          <h2>Show the design rules before generated code.</h2>
+          <p>The workspace keeps Design.md, token decisions, preview, benchmark notes, and export actions visible in the same flow.</p>
         </div>
         <div>
-          {["Design.md", "Preview", "Code review", "Export"].map((item) => (
+          {["Design.md", "Token map", "Prompt export", "Figma frame"].map((item) => (
             <article key={item}>
               <b>&lt;/&gt;</b>
               <h3>{item}</h3>
-              <p>Ready for handoff with clear product context.</p>
+              <p>Ready for handoff with clear product and design-system context.</p>
             </article>
           ))}
         </div>
@@ -1256,8 +1296,8 @@ function App() {
         <div className="landing-auth-card">
           <div>
             <span>Secure workspace</span>
-            <h2>{authMode === "login" ? "Sign in to your AI Design workspace." : "Create your AI Design workspace."}</h2>
-            <p>Email is hashed, profiles are encrypted with AES-GCM, sessions expire automatically, and repeated failed logins trigger a temporary lock.</p>
+            <h2>{authMode === "login" ? `Sign in to ${PRODUCT_NAME}.` : `Create your ${PRODUCT_NAME} workspace.`}</h2>
+            <p>This public demo stores credentials locally with Web Crypto, expires sessions automatically, and locks repeated failed attempts. Use production backend auth before handling real customer accounts.</p>
           </div>
           <form onSubmit={handleAuthSubmit}>
             <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
