@@ -4,19 +4,7 @@ export type AccountPlan = "free" | "pro";
 export type AuthMode = "login" | "register";
 export type AppView = "landing" | "workspace";
 export type PreviewMode = "prompt" | "preview";
-export type OpenDesignPreset =
-  | "openai"
-  | "linear"
-  | "figma"
-  | "stripe"
-  | "github"
-  | "vercel"
-  | "cursor"
-  | "notion"
-  | "apple"
-  | "voltagent"
-  | "material"
-  | "shopify";
+export type OpenDesignPreset = string;
 
 export interface UserRecord {
   email?: string;

@@ -2,6 +2,7 @@
 import { createRoot } from "react-dom/client";
 import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
 import { buildDesignMd, buildPreviewText, extractDesignLabel, inferProjectName, parseDesignMd } from "./design/designParser";
+import { DESIGN_MD_TEMPLATES } from "./design/templateRegistry";
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
@@ -30,7 +31,7 @@ const DEFAULT_PROJECT: ProjectRequest = {
   prompt: "Create a Design.md handoff for a Figma-backed SaaS dashboard with components, tokens, responsive rules, and implementation guidance.",
 };
 
-const OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
+const BASE_OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
   openai: {
     label: "OpenAI workspace",
     direction: "Calm AI workspace, readable long-form answers, low distraction, clear safety and action states.",
@@ -176,6 +177,28 @@ const OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
     donts: ["Do not obscure prices or plan limits.", "Do not use decorative commerce graphics inside admin flows."],
   },
 };
+
+function buildTemplatePreset(template: (typeof DESIGN_MD_TEMPLATES)[number]): OpenDesignDefinition {
+  const fallback = BASE_OPEN_DESIGN_PRESETS[template.id] ?? BASE_OPEN_DESIGN_PRESETS.figma;
+  const parsed = parseDesignMd(template.markdown, fallback);
+
+  return {
+    ...fallback,
+    ...(parsed ?? {}),
+    label: template.label,
+    tokens: fallback.tokens,
+    donts: parsed?.donts ?? fallback.donts,
+  };
+}
+
+const OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
+  ...BASE_OPEN_DESIGN_PRESETS,
+  ...Object.fromEntries(DESIGN_MD_TEMPLATES.map((template) => [template.id, buildTemplatePreset(template)])),
+};
+
+function getOpenDesignPreset(id: OpenDesignPreset): OpenDesignDefinition {
+  return OPEN_DESIGN_PRESETS[id] ?? OPEN_DESIGN_PRESETS.openai;
+}
 
 const COMPETITOR_BENCHMARKS = [
   { name: "ChatGPT", focus: "General AI chat", gap: "Weak design-system export discipline", score: 82 },
@@ -538,8 +561,8 @@ function App() {
     [outputRequest, user?.plan],
   );
   const previewItems = useMemo(() => buildPreviewText(outputRequest, OPEN_DESIGN_PRESETS), [outputRequest]);
-  const selectedPreset = OPEN_DESIGN_PRESETS[request.openDesign];
-  const outputPreset = OPEN_DESIGN_PRESETS[outputRequest.openDesign];
+  const selectedPreset = getOpenDesignPreset(request.openDesign);
+  const outputPreset = getOpenDesignPreset(outputRequest.openDesign);
   const importedDesign = useMemo(() => parseDesignMd(outputRequest.prompt, outputPreset), [outputRequest.prompt, outputPreset]);
   const activeDesign = importedDesign ?? outputPreset;
 
@@ -641,7 +664,7 @@ function App() {
       ...request,
       projectName: inferProjectName(prompt, request.category),
       layout: "Design.md handoff workspace",
-      style: `${OPEN_DESIGN_PRESETS[request.openDesign].label} / ${request.category}`,
+      style: `${getOpenDesignPreset(request.openDesign).label} / ${request.category}`,
       prompt,
     };
     setGeneratedRequest(nextRequest);
@@ -660,7 +683,7 @@ function App() {
         ...current,
         createMessage(
           "assistant",
-          `Generated Design.md context using ${parseDesignMd(nextRequest.prompt, OPEN_DESIGN_PRESETS[nextRequest.openDesign])?.label ?? OPEN_DESIGN_PRESETS[nextRequest.openDesign].label}. Review the Design.md output or preview below.`,
+          `Generated Design.md context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(nextRequest.openDesign))?.label ?? getOpenDesignPreset(nextRequest.openDesign).label}. Review the Design.md output or preview below.`,
         ),
       ]);
     }, 720);
@@ -700,7 +723,7 @@ function App() {
       openDesign: item.openDesign,
       target: item.target,
       prompt: item.prompt,
-      style: `${OPEN_DESIGN_PRESETS[item.openDesign].label} / ${item.category}`,
+      style: `${getOpenDesignPreset(item.openDesign).label} / ${item.category}`,
     };
     setRequest((current) => ({ ...current, ...nextRequest, prompt: "" }));
     setGeneratedRequest(nextRequest);
@@ -796,7 +819,7 @@ function App() {
         ...request,
         projectName: inferProjectName(image.name.replace(/\.[^.]+$/, ""), "AI tool"),
         category: "AI tool",
-        style: `${OPEN_DESIGN_PRESETS[request.openDesign].label} / screenshot-to-code`,
+        style: `${getOpenDesignPreset(request.openDesign).label} / screenshot-to-code`,
         prompt,
       };
       setGeneratedRequest(nextRequest);
@@ -1149,7 +1172,7 @@ function App() {
           <div className="landing-metrics">
             {[
               ["Figma scan", "Components and tokens"],
-              ["Design.md", "Agent-ready spec"],
+              [`${DESIGN_MD_TEMPLATES.length} templates`, "Stored Design.md library"],
               ["Prompt export", "Codex and Claude"],
             ].map(([value, label]) => (
               <article key={value}>
@@ -1235,7 +1258,7 @@ function App() {
           </div>
           <div className="router-stats">
             {[
-              ["7", "Layout templates"],
+              [String(DESIGN_MD_TEMPLATES.length), "Design.md templates"],
               ["5", "Agent targets"],
               ["3", "Input modes"],
               ["1", "Design.md source"],
