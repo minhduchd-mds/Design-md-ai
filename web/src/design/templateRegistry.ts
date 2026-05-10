@@ -8,7 +8,20 @@ export interface DesignMdTemplate {
 export interface DesignMdTemplateMeta {
   id: string;
   label: string;
+  category: DesignMdTemplateCategory;
+  priority: "Product" | "Technical";
+  keywords: string[];
 }
+
+export type DesignMdTemplateCategory =
+  | "AI"
+  | "Automotive"
+  | "Commerce"
+  | "Developer"
+  | "Finance"
+  | "Media"
+  | "Product"
+  | "Workspace";
 
 const designModules = import.meta.glob("../design-md-templates/*/DESIGN.md", {
   query: "?raw",
@@ -33,14 +46,50 @@ function formatLabel(value: string): string {
     .replace(/\bX AI\b/g, "xAI");
 }
 
+const CATEGORY_KEYWORDS: Record<DesignMdTemplateCategory, string[]> = {
+  AI: ["claude", "cohere", "elevenlabs", "mistral", "minimax", "ollama", "opencode", "openai", "replicate", "runwayml", "together", "voltagent", "x-ai"],
+  Automotive: ["bmw", "bugatti", "ferrari", "lamborghini", "renault", "tesla"],
+  Commerce: ["airbnb", "mastercard", "nike", "shopify", "starbucks", "stripe"],
+  Developer: ["cal", "clickhouse", "composio", "cursor", "expo", "github", "hashicorp", "mongodb", "sentry", "supabase", "vercel", "warp", "webflow"],
+  Finance: ["binance", "coinbase", "kraken", "revolut", "wise"],
+  Media: ["pinterest", "playstation", "spotify", "theverge", "wired"],
+  Product: ["apple", "figma", "framer", "linear", "lovable", "meta", "miro", "notion", "posthog", "raycast", "resend", "sanity", "slack", "superhuman", "uber", "zapier"],
+  Workspace: ["airtable", "clay", "ibm", "mintlify", "nvidia", "vodafone"],
+};
+
+function inferCategory(id: string): DesignMdTemplateCategory {
+  return (
+    Object.entries(CATEGORY_KEYWORDS).find(([, keywords]) => keywords.some((keyword) => id.includes(keyword)))?.[0] as
+      | DesignMdTemplateCategory
+      | undefined
+  ) ?? "Product";
+}
+
+function inferPriority(category: DesignMdTemplateCategory): "Product" | "Technical" {
+  return ["AI", "Developer", "Workspace"].includes(category) ? "Technical" : "Product";
+}
+
+function inferKeywords(id: string, label: string, category: DesignMdTemplateCategory): string[] {
+  const baseKeywords = [category.toLowerCase(), inferPriority(category).toLowerCase()];
+  return Array.from(new Set([...id.split("-"), ...label.toLowerCase().split(/\s+/), ...baseKeywords])).filter(Boolean);
+}
+
 const templatePathById = new Map<string, string>();
 
 export const DESIGN_MD_TEMPLATES: DesignMdTemplateMeta[] = Object.keys(designModules)
   .map((path) => {
     const folder = folderName(path);
     const id = normalizeId(folder);
+    const label = formatLabel(folder);
+    const category = inferCategory(id);
     templatePathById.set(id, path);
-    return { id, label: formatLabel(folder) };
+    return {
+      id,
+      label,
+      category,
+      priority: inferPriority(category),
+      keywords: inferKeywords(id, label, category),
+    };
   })
   .sort((left, right) => left.label.localeCompare(right.label));
 

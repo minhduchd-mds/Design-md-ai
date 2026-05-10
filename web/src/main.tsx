@@ -2,7 +2,7 @@
 import { createRoot } from "react-dom/client";
 import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
 import { buildDesignMd, buildPreviewText, extractDesignLabel, inferProjectName, parseDesignMd } from "./design/designParser";
-import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate } from "./design/templateRegistry";
+import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate, type DesignMdTemplateCategory } from "./design/templateRegistry";
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
@@ -10,6 +10,8 @@ import "./styles.css";
 
 type PreviewMode = "prompt" | "preview" | "edit";
 type PreviewTheme = "light" | "dark";
+type TemplatePriorityFilter = "All" | "Product" | "Technical";
+type TemplateCategoryFilter = "All" | DesignMdTemplateCategory;
 
 const USER_STORE_KEY = "ai-design-agent.users.v1";
 const SESSION_STORE_KEY = "ai-design-agent.session.v1";
@@ -22,6 +24,18 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const MAX_AUTH_ATTEMPTS = 5;
 const AUTH_LOCK_MS = 1000 * 60 * 15;
 const PRODUCT_NAME = "Design-md-ai";
+const TEMPLATE_PRIORITY_FILTERS: TemplatePriorityFilter[] = ["All", "Product", "Technical"];
+const TEMPLATE_CATEGORY_FILTERS: TemplateCategoryFilter[] = [
+  "All",
+  "AI",
+  "Developer",
+  "Workspace",
+  "Product",
+  "Commerce",
+  "Finance",
+  "Automotive",
+  "Media",
+];
 const INITIAL_ASSISTANT_MESSAGE = "Paste a product request, upload Design.md files, or import screenshots to create AI-ready Design.md context for coding agents.";
 const DEFAULT_PROJECT: ProjectRequest = {
   projectName: "Design-md-ai Project",
@@ -260,6 +274,12 @@ const encoder = new TextEncoder();
 interface AuthAttemptRecord {
   count: number;
   lockedUntil: number;
+}
+
+interface MarkdownSection {
+  id: string;
+  title: string;
+  content: string;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -550,6 +570,128 @@ function getDesignMdEditKey(request: ProjectRequest): string {
   ].join("|"))}`;
 }
 
+function slugify(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section";
+}
+
+function templateCommandSlug(value: string): string {
+  const slug = slugify(value);
+  return slug && slug !== "template" ? slug : "custom";
+}
+
+function parseMarkdownSections(markdown: string): MarkdownSection[] {
+  const lines = markdown.split(/\r?\n/);
+  const sections: MarkdownSection[] = [];
+  let currentTitle = "Overview";
+  let currentLines: string[] = [];
+
+  const pushSection = () => {
+    const content = currentLines.join("\n").trim();
+    if (!content && sections.length > 0) return;
+    const baseId = slugify(currentTitle);
+    const duplicateCount = sections.filter((section) => section.id === baseId || section.id.startsWith(`${baseId}-`)).length;
+    sections.push({
+      id: duplicateCount ? `${baseId}-${duplicateCount + 1}` : baseId,
+      title: currentTitle,
+      content,
+    });
+  };
+
+  for (const line of lines) {
+    const heading = line.match(/^##\s+(.+?)\s*$/);
+    if (heading) {
+      pushSection();
+      currentTitle = heading[1].replace(/[#*_`]/g, "").trim();
+      currentLines = [];
+    } else if (/^#\s+/.test(line) && sections.length === 0 && currentLines.length === 0) {
+      currentLines.push(line.replace(/^#\s+/, ""));
+    } else {
+      currentLines.push(line);
+    }
+  }
+  pushSection();
+
+  return sections.filter((section) => section.content || section.title);
+}
+
+function markdownPreviewBlocks(content: string) {
+  const blocks: Array<{ type: "heading" | "list" | "code" | "paragraph"; text?: string; items?: string[] }> = [];
+  const lines = content.split(/\r?\n/);
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trim()) {
+      index += 1;
+      continue;
+    }
+
+    if (/^```/.test(line)) {
+      const codeLines: string[] = [];
+      index += 1;
+      while (index < lines.length && !/^```/.test(lines[index])) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      blocks.push({ type: "code", text: codeLines.join("\n") });
+      index += 1;
+      continue;
+    }
+
+    const heading = line.match(/^###\s+(.+?)\s*$/);
+    if (heading) {
+      blocks.push({ type: "heading", text: heading[1] });
+      index += 1;
+      continue;
+    }
+
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items: string[] = [];
+      while (index < lines.length && /^\s*[-*]\s+/.test(lines[index])) {
+        items.push(lines[index].replace(/^\s*[-*]\s+/, ""));
+        index += 1;
+      }
+      blocks.push({ type: "list", items });
+      continue;
+    }
+
+    const paragraph: string[] = [line];
+    index += 1;
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !/^```/.test(lines[index]) &&
+      !/^###\s+/.test(lines[index]) &&
+      !/^\s*[-*]\s+/.test(lines[index])
+    ) {
+      paragraph.push(lines[index]);
+      index += 1;
+    }
+    blocks.push({ type: "paragraph", text: paragraph.join(" ") });
+  }
+
+  return blocks;
+}
+
+function MarkdownSectionContent({ content }: { content: string }) {
+  return (
+    <>
+      {markdownPreviewBlocks(content).map((block, index) => {
+        if (block.type === "heading") return <h4 key={index}>{block.text}</h4>;
+        if (block.type === "code") return <pre key={index}>{block.text}</pre>;
+        if (block.type === "list") {
+          return (
+            <ul key={index}>
+              {block.items?.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          );
+        }
+        return <p key={index}>{block.text}</p>;
+      })}
+    </>
+  );
+}
+
 function App() {
   const [user, setUser] = useState<SessionUser | null>(() => getSessionUser());
   const [view, setView] = useState<AppView>(() => (getSessionUser() ? "workspace" : "landing"));
@@ -558,6 +700,9 @@ function App() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [landingTemplateQuery, setLandingTemplateQuery] = useState("");
+  const [landingTemplatePriority, setLandingTemplatePriority] = useState<TemplatePriorityFilter>("All");
+  const [landingTemplateCategory, setLandingTemplateCategory] = useState<TemplateCategoryFilter>("All");
   const [request, setRequest] = useState<ProjectRequest>(DEFAULT_PROJECT);
   const [generatedRequest, setGeneratedRequest] = useState<ProjectRequest | null>(null);
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryItem[]>(() => getProjectHistory());
@@ -589,11 +734,33 @@ function App() {
   );
   const designMdEditKey = useMemo(() => getDesignMdEditKey(outputRequest), [outputRequest]);
   const designMd = savedDesignMd ?? generatedDesignMd;
+  const designMdSections = useMemo(() => parseMarkdownSections(designMd), [designMd]);
+  const previewNavSections = useMemo(() => designMdSections.slice(0, 8), [designMdSections]);
+  const designMdStatus = savedDesignMd ? "Edited" : "Generated";
+  const usageSlug = hasDesignMdTemplate(outputRequest.openDesign) ? outputRequest.openDesign : "custom";
   const previewItems = useMemo(() => buildPreviewText(outputRequest, openDesignPresets), [openDesignPresets, outputRequest]);
   const selectedPreset = getOpenDesignPreset(request.openDesign, loadedTemplatePresets);
   const outputPreset = getOpenDesignPreset(outputRequest.openDesign, loadedTemplatePresets);
   const importedDesign = useMemo(() => parseDesignMd(outputRequest.prompt, outputPreset), [outputRequest.prompt, outputPreset]);
   const activeDesign = importedDesign ?? outputPreset;
+  const templatePriorityCounts = useMemo(
+    () => ({
+      All: DESIGN_MD_TEMPLATES.length,
+      Product: DESIGN_MD_TEMPLATES.filter((template) => template.priority === "Product").length,
+      Technical: DESIGN_MD_TEMPLATES.filter((template) => template.priority === "Technical").length,
+    }),
+    [],
+  );
+  const landingTemplateMatches = useMemo(() => {
+    const query = landingTemplateQuery.trim().toLowerCase();
+    const matches = DESIGN_MD_TEMPLATES.filter((template) => {
+      const matchesQuery = !query || `${template.id} ${template.label} ${template.category} ${template.priority} ${template.keywords.join(" ")}`.toLowerCase().includes(query);
+      const matchesPriority = landingTemplatePriority === "All" || template.priority === landingTemplatePriority;
+      const matchesCategory = landingTemplateCategory === "All" || template.category === landingTemplateCategory;
+      return matchesQuery && matchesPriority && matchesCategory;
+    });
+    return matches.slice(0, 18);
+  }, [landingTemplateCategory, landingTemplatePriority, landingTemplateQuery]);
 
   useEffect(() => {
     if (!user) return;
@@ -770,6 +937,20 @@ function App() {
     window.setTimeout(() => setCopiedOutput(false), 1400);
   }
 
+  function downloadDesignMd() {
+    const blob = new Blob([designMd], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${templateCommandSlug(outputRequest.projectName)}-DESIGN.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function scrollToPreviewSection(sectionId: string) {
+    document.getElementById(`preview-section-${sectionId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function saveDesignMdEdit() {
     localStorage.setItem(designMdEditKey, editDraft);
     setSavedDesignMd(editDraft);
@@ -846,6 +1027,30 @@ function App() {
     window.requestAnimationFrame(() => {
       document.getElementById("login")?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
+  }
+
+  function openTemplateLibrary() {
+    setView("landing");
+    window.requestAnimationFrame(() => {
+      document.getElementById("templates")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function selectLandingTemplate(templateId: string) {
+    const template = DESIGN_MD_TEMPLATES.find((item) => item.id === templateId);
+    setRequest((current) => ({
+      ...current,
+      projectName: `${template?.label ?? "Design.md"} Handoff`,
+      openDesign: templateId as OpenDesignPreset,
+      prompt: `Create a Design.md handoff using the ${template?.label ?? templateId} template. Include tokens, component rules, responsive behavior, accessibility notes, and implementation guidance.`,
+    }));
+
+    if (user) {
+      setView("workspace");
+      return;
+    }
+
+    openLandingAuth("register");
   }
 
   async function uploadMarkdownFiles(files: FileList) {
@@ -970,9 +1175,8 @@ function App() {
               Projects
               <span className="nav-status">Soon</span>
             </a>
-            <a href="#templates" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Templates"); }}>
+            <a href="#templates" role="button" onClick={(event) => { event.preventDefault(); openTemplateLibrary(); }}>
               Templates
-              <span className="nav-status">Soon</span>
             </a>
             <a href="#library" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("My Library"); }}>
               My Library
@@ -1110,10 +1314,11 @@ function App() {
                         >
                           Edit
                         </button>
-                        <span className="live-badge">Live</span>
+                        <span className={`design-status-badge ${savedDesignMd ? "edited" : ""}`}>{designMdStatus}</span>
                       </div>
                       <nav>
                         <span className="target-pill">{outputRequest.target}</span>
+                        <button type="button" onClick={downloadDesignMd}>Download</button>
                         <button type="button" onClick={copyOutput}>{copiedOutput ? "Copied" : "Copy"}</button>
                       </nav>
                     </div>
@@ -1150,7 +1355,7 @@ function App() {
                             <p>{activeDesign.direction}</p>
                             <div className="usage-card">
                               <span>Usage</span>
-                              <code>npx getdesign@latest add {outputRequest.openDesign}/design-md</code>
+                              <code>npx getdesign@latest add {usageSlug}/design-md</code>
                             </div>
                             <p className="preview-disclaimer">
                               This preview is generated from Design.md context and is not affiliated with the referenced brand.
@@ -1184,8 +1389,10 @@ function App() {
                             <div className="design-md-preview-frame">
                               <aside>
                                 <strong>{activeDesign.label}</strong>
-                                {["Overview", "Colors", "Typography", "Components", "Layout", "Rules"].map((item) => (
-                                  <span key={item}>{item}</span>
+                                {previewNavSections.map((section) => (
+                                  <button type="button" key={section.id} onClick={() => scrollToPreviewSection(section.id)}>
+                                    {section.title}
+                                  </button>
                                 ))}
                               </aside>
                               <main>
@@ -1199,6 +1406,14 @@ function App() {
                                   <p className="preview-label">{importedDesign ? "Imported Design.md" : "Open Design template"}</p>
                                   <h3>{outputRequest.projectName}</h3>
                                   <p>{activeDesign.direction}</p>
+                                  <div className="markdown-document-sections">
+                                    {designMdSections.slice(0, 6).map((section) => (
+                                      <article id={`preview-section-${section.id}`} key={section.id} className="markdown-document-section">
+                                        <span>{section.title}</span>
+                                        <MarkdownSectionContent content={section.content} />
+                                      </article>
+                                    ))}
+                                  </div>
                                   <div className="palette-strip">
                                     {activeDesign.palette.map((color) => (
                                       <div key={color} style={{ background: color }}>
@@ -1282,6 +1497,7 @@ function App() {
         <nav>
           <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
+          <a href="#templates">Templates</a>
           <a href="#router-layout">Handoff</a>
           <a href="#ai-gallery">Gallery</a>
           <a href="#login">Login</a>
@@ -1380,6 +1596,73 @@ function App() {
               <p>{text}</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section id="templates" className="landing-section template-library-section">
+        <div className="template-library-heading">
+          <div className="section-heading">
+            <span>Template library</span>
+            <h2>Search brand and product Design.md templates before opening the workspace.</h2>
+          </div>
+          <label className="template-search">
+            <span>Find a template</span>
+            <input
+              value={landingTemplateQuery}
+              onChange={(event) => setLandingTemplateQuery(event.target.value)}
+              placeholder="Airtable, Linear, Tesla, Stripe..."
+            />
+          </label>
+        </div>
+        <div className="template-filter-panel">
+          <div className="template-priority-tabs" aria-label="Template priority filters">
+            {TEMPLATE_PRIORITY_FILTERS.map((priority) => (
+              <button
+                key={priority}
+                type="button"
+                className={landingTemplatePriority === priority ? "active" : ""}
+                onClick={() => setLandingTemplatePriority(priority)}
+              >
+                <span>{priority === "All" ? "All priorities" : `${priority} priority`}</span>
+                <b>{templatePriorityCounts[priority]}</b>
+              </button>
+            ))}
+          </div>
+          <div className="template-category-chips" aria-label="Template category filters">
+            {TEMPLATE_CATEGORY_FILTERS.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={landingTemplateCategory === category ? "active" : ""}
+                onClick={() => setLandingTemplateCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="template-library-grid">
+          {landingTemplateMatches.map((template) => (
+            <article key={template.id}>
+              <div>
+                <span>{template.priority} priority</span>
+                <h3>{template.label}</h3>
+                <p>Use this Design.md style as starting context for tokens, components, layout rules, and implementation prompts.</p>
+              </div>
+              <div className="template-card-meta">
+                <span>{template.category}</span>
+                <span>{template.id}</span>
+              </div>
+              <div className="template-command">npx getdesign@latest add {templateCommandSlug(template.id)}/design-md</div>
+              <button type="button" onClick={() => selectLandingTemplate(template.id)}>Use template</button>
+            </article>
+          ))}
+          {landingTemplateMatches.length === 0 && (
+            <article className="template-empty">
+              <h3>No matching template</h3>
+              <p>Try a brand name, product type, or design system keyword.</p>
+            </article>
+          )}
         </div>
       </section>
 

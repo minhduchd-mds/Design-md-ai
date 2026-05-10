@@ -23,7 +23,9 @@ Core capabilities:
 - Create a project frame back inside Figma with mapped components and layout metadata.
 - Import `.md`, `.markdown`, `.txt`, and `.zip` files into the web workspace.
 - Use a bundled Design.md template library with 71 templates loaded on demand.
-- Preview generated Design.md and copy output from the workspace.
+- Search and filter templates by product/technical priority, category, brand, keyword, and template id.
+- Preview generated Design.md as structured sections with light/dark preview modes.
+- Edit generated Design.md, save changes locally, copy output, and download the current `DESIGN.md`.
 - Store demo accounts and chat history locally with Web Crypto.
 
 ## New Features
@@ -36,7 +38,14 @@ Recent updates include:
 - Template storage added under `web/src/design-md-templates`.
 - Template registry added at `web/src/design/templateRegistry.ts`.
 - Template markdown is lazy-loaded only when selected, keeping the main web bundle smaller.
+- Template metadata now includes `category`, `priority`, and `keywords`.
+- Template library now supports search, Product/Technical priority filters, and category filters.
+- Composer template picker now includes search and metadata-aware matching.
 - Open Design presets now support dynamic template IDs.
+- Preview now renders Design.md sections, sidebar section navigation, and light/dark preview themes.
+- Added an `Edit` tab for modifying generated Design.md and saving changes locally.
+- Added `Download` for exporting the current `DESIGN.md`.
+- Workspace `Templates` navigation opens the template library instead of showing a placeholder.
 - Sidebar roadmap items now show `Soon` instead of behaving like dead links.
 - Output `Copy` action now works.
 - SEO metadata added for the web deployment.
@@ -165,10 +174,10 @@ These are referenced by `manifest.json`.
 7. Run the plugin from:
 
    ```text
-   Plugins -> Development -> DesignReady.ai
+   Plugins -> Development -> Design-md-ai
    ```
 
-Note: the current manifest name is still `DesignReady.ai`. The product-facing web copy now uses `Design-md-ai`. Rename `manifest.json` if you also want the Figma plugin name to match.
+The local plugin name is `Design-md-ai`, matching the web product name.
 
 ## Web Workspace Usage
 
@@ -177,9 +186,12 @@ The web workspace supports:
 - Register/login for a local demo account.
 - Enter a product/design request.
 - Choose an Open Design preset or one of the imported Design.md templates.
+- Search templates directly from the composer dropdown.
 - Generate Design.md output.
-- Toggle between Design.md and Preview.
-- Copy generated output.
+- Toggle between Design.md, Preview, and Edit.
+- Save edited Design.md locally per project request.
+- Copy generated or edited output.
+- Download the current `DESIGN.md`.
 - Upload `.md`, `.markdown`, `.txt`, or ZIP files containing markdown.
 - Upload screenshots if a screenshot-to-code backend is configured.
 - Restore recent project history from local storage.
@@ -200,7 +212,22 @@ The registry is defined in:
 web/src/design/templateRegistry.ts
 ```
 
-Templates are exposed in the Open Design dropdown. The app loads only lightweight metadata at startup. Full `DESIGN.md` content is loaded on demand when a user selects a template.
+Templates are exposed in both the landing-page Template Library and the workspace Open Design dropdown. The app loads only lightweight metadata at startup. Full `DESIGN.md` content is loaded on demand when a user selects a template.
+
+Template metadata includes:
+
+- `category` for grouping templates such as AI, Developer, Workspace, Product, Commerce, Finance, Automotive, and Media.
+- `priority` for Product or Technical template selection.
+- `keywords` for broader search matching.
+
+The landing-page library supports:
+
+- Text search.
+- Product priority and Technical priority filters.
+- Category filters.
+- One-click template selection that prepares a matching Design.md request.
+
+The composer dropdown also supports metadata-aware search, so users can search by template name, id, category, priority, or keyword.
 
 This keeps the main bundle smaller while preserving the full library.
 
@@ -289,17 +316,15 @@ https://design-md-ai.vercel.app/
 - The web auth system is for local/demo use only.
 - Screenshot-to-code needs a separate backend.
 - Pro upgrade state is currently local/demo logic.
-- Some sidebar sections are marked `Soon` and are not full modules yet.
-- The Figma plugin manifest name still says `DesignReady.ai`.
-- Template search/category filtering is a recommended next improvement for the 71-template library.
+- Some sidebar sections such as Projects, My Library, and Settings are still marked `Soon` and are not full modules yet.
+- Download currently exports the current `DESIGN.md`; full project ZIP export is not implemented yet.
 
 ## Recommended Next Improvements
 
-- Add search and category filters for Design.md templates.
-- Add richer template metadata such as category, source, recommended use case, and visual style.
-- Rename the Figma plugin manifest to `Design-md-ai` for full brand consistency.
 - Add production backend auth and project persistence.
-- Add real project export/download from the web workspace.
+- Add full project ZIP export from the web workspace.
+- Add richer template metadata such as source, recommended use case, and visual style.
+- Add dedicated template detail routes such as `/templates/:slug/design-md`.
 - Add a deployed screenshot-to-code backend or hide that feature in production until ready.
 - Add screenshots or a short demo video to this README.
 

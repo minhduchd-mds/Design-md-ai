@@ -1,4 +1,6 @@
 ﻿import { useRef, useState } from "react";
+import { useMemo } from "react";
+import { DESIGN_MD_TEMPLATES } from "../design/templateRegistry";
 import type { OpenDesignDefinition, OpenDesignPreset, ProjectRequest, SetProjectRequest } from "../app/types";
 
 type ComposerDropdown = "tools" | "category" | "design" | null;
@@ -29,8 +31,18 @@ export function ChatComposer({
   onUploadScreenshot,
 }: ChatComposerProps) {
   const [composerDropdown, setComposerDropdown] = useState<ComposerDropdown>(null);
+  const [designQuery, setDesignQuery] = useState("");
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+  const templateMetaById = useMemo(() => new Map(DESIGN_MD_TEMPLATES.map((template) => [template.id, template])), []);
+  const designEntries = useMemo(() => {
+    const query = designQuery.trim().toLowerCase();
+    return Object.entries(openDesignPresets).filter(([id, preset]) => {
+      if (!query) return true;
+      const meta = templateMetaById.get(id);
+      return `${id} ${preset.label} ${preset.direction} ${meta?.category ?? ""} ${meta?.priority ?? ""} ${meta?.keywords.join(" ") ?? ""}`.toLowerCase().includes(query);
+    });
+  }, [designQuery, openDesignPresets, templateMetaById]);
 
   return (
     <form
@@ -176,7 +188,10 @@ export function ChatComposer({
                 type="button"
                 aria-haspopup="listbox"
                 aria-expanded={composerDropdown === "design"}
-                onClick={() => setComposerDropdown((current) => (current === "design" ? null : "design"))}
+                onClick={() => {
+                  setComposerDropdown((current) => (current === "design" ? null : "design"));
+                  setDesignQuery("");
+                }}
               >
                 {selectedPreset.label}
                 <svg
@@ -191,8 +206,17 @@ export function ChatComposer({
                 </svg>
               </button>
               {composerDropdown === "design" && (
-                <div className="composer-menu" role="listbox">
-                  {Object.entries(openDesignPresets).map(([id, preset]) => (
+                <div className="composer-menu design-menu" role="listbox">
+                  <label className="composer-search">
+                    <span>Search templates</span>
+                    <input
+                      value={designQuery}
+                      onChange={(event) => setDesignQuery(event.target.value)}
+                      placeholder="Airtable, Stripe, dashboard..."
+                      autoFocus
+                    />
+                  </label>
+                  {designEntries.map(([id, preset]) => (
                     <button
                       key={id}
                       type="button"
@@ -202,11 +226,17 @@ export function ChatComposer({
                       onClick={() => {
                         setRequest({ ...request, openDesign: id as OpenDesignPreset });
                         setComposerDropdown(null);
+                        setDesignQuery("");
                       }}
                     >
-                      {preset.label}
+                      <span>
+                        {preset.label}
+                        {templateMetaById.get(id)?.priority && <em>{templateMetaById.get(id)?.priority}</em>}
+                      </span>
+                      <small>{templateMetaById.get(id)?.category ?? id}</small>
                     </button>
                   ))}
+                  {designEntries.length === 0 && <p className="composer-empty">No template found.</p>}
                 </div>
               )}
             </div>

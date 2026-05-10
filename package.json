@@ -1,16 +1,16 @@
 {
-  "name": "designready-ai",
+  "name": "design-md-ai",
   "version": "1.1.5",
-  "description": "Score Figma designs for AI-readiness, fix issues, and generate code prompts. Each prompt trains a reusable skill for your design system.",
+  "description": "Figma to Design.md handoff workspace for AI coding agents.",
   "author": "Stefan Holzheu <design@stefan-holzheu.de>",
   "license": "MIT",
-  "homepage": "https://github.com/designready-ai/designready-ai",
+  "homepage": "https://github.com/minhduchd-mds/Design-md-ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/designready-ai/designready-ai.git"
+    "url": "https://github.com/minhduchd-mds/Design-md-ai.git"
   },
   "bugs": {
-    "url": "https://github.com/designready-ai/designready-ai/issues"
+    "url": "https://github.com/minhduchd-mds/Design-md-ai/issues"
   },
   "keywords": [
     "figma",
