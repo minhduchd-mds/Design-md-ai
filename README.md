@@ -13,6 +13,27 @@ Inspect variables and design tokens
 
 Quick Actions: One-click buttons for downloading files, exporting AI frames, and copying content.
 
+Method 1: Quick Installation from File (Recommended for Developers)
+
+Download the plugin file to your computer.
+
+(Usually the folder containing the manifest.json file)
+Open Figma Desktop (Desktop version required, not Web version)
+Press the shortcut:
+
+Mac: Cmd + Shift + P
+
+Windows: Ctrl + Shift + P
+
+Type the command: Develop → Select “Develop plugins” → “Import plugin from manifest…”
+Select the manifest.json file in the plugin folder you just downloaded.
+
+The plugin will appear in the Installed Plugins list (Dev section).
+
+To run the plugin: Right-click on the design file → Plugins → Find your plugin name.
+
+
+
 2. Integrated Channel Design Tool
 A powerful built-in design-to-code assistant that generates standard .md files aligned with your design system.
 Highlights:
