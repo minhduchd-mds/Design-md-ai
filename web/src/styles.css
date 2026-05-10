@@ -251,7 +251,7 @@ button {
   margin: 26px 0 22px;
   color: #172033;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(48px, 7vw, 86px);
+  font-size: clamp(48px, 5vw, 72px);
   line-height: 0.98;
   letter-spacing: 0;
   font-weight: 700;
