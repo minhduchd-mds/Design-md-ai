@@ -2,7 +2,7 @@
 import { createRoot } from "react-dom/client";
 import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
 import { buildDesignMd, buildPreviewText, extractDesignLabel, inferProjectName, parseDesignMd } from "./design/designParser";
-import { DESIGN_MD_TEMPLATES } from "./design/templateRegistry";
+import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate } from "./design/templateRegistry";
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
@@ -178,26 +178,24 @@ const BASE_OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> =
   },
 };
 
-function buildTemplatePreset(template: (typeof DESIGN_MD_TEMPLATES)[number]): OpenDesignDefinition {
-  const fallback = BASE_OPEN_DESIGN_PRESETS[template.id] ?? BASE_OPEN_DESIGN_PRESETS.figma;
-  const parsed = parseDesignMd(template.markdown, fallback);
-
-  return {
-    ...fallback,
-    ...(parsed ?? {}),
-    label: template.label,
-    tokens: fallback.tokens,
-    donts: parsed?.donts ?? fallback.donts,
-  };
-}
-
-const OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
+const OPEN_DESIGN_PRESETS_META: Record<OpenDesignPreset, OpenDesignDefinition> = {
   ...BASE_OPEN_DESIGN_PRESETS,
-  ...Object.fromEntries(DESIGN_MD_TEMPLATES.map((template) => [template.id, buildTemplatePreset(template)])),
+  ...Object.fromEntries(
+    DESIGN_MD_TEMPLATES.map((template) => [
+      template.id,
+      {
+        ...BASE_OPEN_DESIGN_PRESETS.figma,
+        label: template.label,
+      } satisfies OpenDesignDefinition,
+    ]),
+  ),
 };
 
-function getOpenDesignPreset(id: OpenDesignPreset): OpenDesignDefinition {
-  return OPEN_DESIGN_PRESETS[id] ?? OPEN_DESIGN_PRESETS.openai;
+function getOpenDesignPreset(
+  id: OpenDesignPreset,
+  loadedTemplates: Record<string, OpenDesignDefinition> = {},
+): OpenDesignDefinition {
+  return loadedTemplates[id] ?? OPEN_DESIGN_PRESETS_META[id] ?? OPEN_DESIGN_PRESETS_META.openai;
 }
 
 const COMPETITOR_BENCHMARKS = [
@@ -550,19 +548,24 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [chatHistoryReady, setChatHistoryReady] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
+  const [loadedTemplatePresets, setLoadedTemplatePresets] = useState<Record<string, OpenDesignDefinition>>({});
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
   ]);
 
   const outputRequest = generatedRequest ?? request;
-  const designMd = useMemo(
-    () => buildDesignMd(outputRequest, user?.plan ?? "free", OPEN_DESIGN_PRESETS, COMPETITOR_BENCHMARKS),
-    [outputRequest, user?.plan],
+  const openDesignPresets = useMemo(
+    () => ({ ...OPEN_DESIGN_PRESETS_META, ...loadedTemplatePresets }),
+    [loadedTemplatePresets],
   );
-  const previewItems = useMemo(() => buildPreviewText(outputRequest, OPEN_DESIGN_PRESETS), [outputRequest]);
-  const selectedPreset = getOpenDesignPreset(request.openDesign);
-  const outputPreset = getOpenDesignPreset(outputRequest.openDesign);
+  const designMd = useMemo(
+    () => buildDesignMd(outputRequest, user?.plan ?? "free", openDesignPresets, COMPETITOR_BENCHMARKS),
+    [openDesignPresets, outputRequest, user?.plan],
+  );
+  const previewItems = useMemo(() => buildPreviewText(outputRequest, openDesignPresets), [openDesignPresets, outputRequest]);
+  const selectedPreset = getOpenDesignPreset(request.openDesign, loadedTemplatePresets);
+  const outputPreset = getOpenDesignPreset(outputRequest.openDesign, loadedTemplatePresets);
   const importedDesign = useMemo(() => parseDesignMd(outputRequest.prompt, outputPreset), [outputRequest.prompt, outputPreset]);
   const activeDesign = importedDesign ?? outputPreset;
 
@@ -618,6 +621,39 @@ function App() {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [hasGenerated, isGenerating, messages]);
 
+  useEffect(() => {
+    const ids = [request.openDesign, outputRequest.openDesign].filter(hasDesignMdTemplate);
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+    ids.forEach((id) => {
+      if (loadedTemplatePresets[id]) return;
+      loadDesignMdTemplate(id)
+        .then((template) => {
+          if (!template || cancelled) return;
+          const fallback = BASE_OPEN_DESIGN_PRESETS[template.id] ?? BASE_OPEN_DESIGN_PRESETS.figma;
+          const parsed = parseDesignMd(template.markdown, fallback);
+          setLoadedTemplatePresets((current) => ({
+            ...current,
+            [id]: {
+              ...fallback,
+              ...(parsed ?? {}),
+              label: template.label,
+              tokens: fallback.tokens,
+              donts: parsed?.donts ?? fallback.donts,
+            },
+          }));
+        })
+        .catch(() => {
+          // Template loading is non-critical; keep the lightweight fallback preset.
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadedTemplatePresets, outputRequest.openDesign, request.openDesign]);
+
   async function handleAuthSubmit(event: React.FormEvent) {
     event.preventDefault();
     setAuthError("");
@@ -664,7 +700,7 @@ function App() {
       ...request,
       projectName: inferProjectName(prompt, request.category),
       layout: "Design.md handoff workspace",
-      style: `${getOpenDesignPreset(request.openDesign).label} / ${request.category}`,
+      style: `${getOpenDesignPreset(request.openDesign, loadedTemplatePresets).label} / ${request.category}`,
       prompt,
     };
     setGeneratedRequest(nextRequest);
@@ -683,14 +719,14 @@ function App() {
         ...current,
         createMessage(
           "assistant",
-          `Generated Design.md context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(nextRequest.openDesign))?.label ?? getOpenDesignPreset(nextRequest.openDesign).label}. Review the Design.md output or preview below.`,
+          `Generated Design.md context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(nextRequest.openDesign, loadedTemplatePresets))?.label ?? getOpenDesignPreset(nextRequest.openDesign, loadedTemplatePresets).label}. Review the Design.md output or preview below.`,
         ),
       ]);
     }, 720);
   }
 
   async function copyOutput() {
-    await navigator.clipboard.writeText(previewMode === "prompt" ? designMd : buildPreviewText(outputRequest, OPEN_DESIGN_PRESETS).join("\n"));
+    await navigator.clipboard.writeText(previewMode === "prompt" ? designMd : buildPreviewText(outputRequest, openDesignPresets).join("\n"));
     setCopiedOutput(true);
     window.setTimeout(() => setCopiedOutput(false), 1400);
   }
@@ -723,7 +759,7 @@ function App() {
       openDesign: item.openDesign,
       target: item.target,
       prompt: item.prompt,
-      style: `${getOpenDesignPreset(item.openDesign).label} / ${item.category}`,
+      style: `${getOpenDesignPreset(item.openDesign, loadedTemplatePresets).label} / ${item.category}`,
     };
     setRequest((current) => ({ ...current, ...nextRequest, prompt: "" }));
     setGeneratedRequest(nextRequest);
@@ -819,7 +855,7 @@ function App() {
         ...request,
         projectName: inferProjectName(image.name.replace(/\.[^.]+$/, ""), "AI tool"),
         category: "AI tool",
-        style: `${getOpenDesignPreset(request.openDesign).label} / screenshot-to-code`,
+        style: `${getOpenDesignPreset(request.openDesign, loadedTemplatePresets).label} / screenshot-to-code`,
         prompt,
       };
       setGeneratedRequest(nextRequest);
@@ -1122,7 +1158,7 @@ function App() {
 
           <ChatComposer
             isGenerating={isGenerating}
-            openDesignPresets={OPEN_DESIGN_PRESETS}
+            openDesignPresets={openDesignPresets}
             request={request}
             selectedPreset={selectedPreset}
             setRequest={setRequest}

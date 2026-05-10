@@ -5,17 +5,15 @@ export interface DesignMdTemplate {
   readme?: string;
 }
 
-const designModules = import.meta.glob("../design-md-templates/*/DESIGN.md", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>;
+export interface DesignMdTemplateMeta {
+  id: string;
+  label: string;
+}
 
-const readmeModules = import.meta.glob("../design-md-templates/*/README.md", {
-  eager: true,
+const designModules = import.meta.glob("../design-md-templates/*/DESIGN.md", {
   query: "?raw",
   import: "default",
-}) as Record<string, string>;
+}) as Record<string, () => Promise<string>>;
 
 function folderName(path: string): string {
   return path.split("/").at(-2) ?? "template";
@@ -35,15 +33,31 @@ function formatLabel(value: string): string {
     .replace(/\bX AI\b/g, "xAI");
 }
 
-export const DESIGN_MD_TEMPLATES: DesignMdTemplate[] = Object.entries(designModules)
-  .map(([path, markdown]) => {
+const templatePathById = new Map<string, string>();
+
+export const DESIGN_MD_TEMPLATES: DesignMdTemplateMeta[] = Object.keys(designModules)
+  .map((path) => {
     const folder = folderName(path);
-    const readmePath = path.replace(/DESIGN\.md$/, "README.md");
-    return {
-      id: normalizeId(folder),
-      label: formatLabel(folder),
-      markdown,
-      readme: readmeModules[readmePath],
-    };
+    const id = normalizeId(folder);
+    templatePathById.set(id, path);
+    return { id, label: formatLabel(folder) };
   })
   .sort((left, right) => left.label.localeCompare(right.label));
+
+export function hasDesignMdTemplate(id: string): boolean {
+  return templatePathById.has(id);
+}
+
+export async function loadDesignMdTemplate(id: string): Promise<DesignMdTemplate | null> {
+  const path = templatePathById.get(id);
+  if (!path) return null;
+
+  const markdown = await designModules[path]();
+  const meta = DESIGN_MD_TEMPLATES.find((template) => template.id === id);
+
+  return {
+    id,
+    label: meta?.label ?? formatLabel(folderName(path)),
+    markdown,
+  };
+}
