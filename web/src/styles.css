@@ -1499,6 +1499,40 @@ textarea {
   align-items: center;
 }
 
+.validation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+}
+
+.validation-summary strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.validation-summary span,
+.validation-summary em {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #dbe4ef;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 3px 8px;
+  font-style: normal;
+}
+
+.validation-summary em {
+  max-width: 100%;
+  color: #b45309;
+}
+
 .doc-icon {
   display: grid;
   width: 24px;

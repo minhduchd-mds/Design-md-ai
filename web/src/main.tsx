@@ -1,14 +1,21 @@
 ﻿import { StrictMode, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import type { DesignContext, ValidationReport } from "../../shared/designContext";
 import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
+import { buildContext, parseFileSources } from "./design/contextBuilder";
 import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "./design/designParser";
+import { computeValidationReport } from "./design/layoutValidator";
+import { generateScreens, type Screen } from "./design/screenGenerator";
+import { matchTemplates } from "./design/templateMatcher";
 import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate, type DesignMdTemplateCategory } from "./design/templateRegistry";
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
+import { analyzeImage } from "./workspace/imageAnalyzer";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
+import { SplitView } from "./workspace/SplitView";
 import "./styles.css";
 
-type PreviewMode = "prompt" | "preview" | "edit";
+type PreviewMode = "prompt" | "preview" | "edit" | "split";
 type PreviewTheme = "light" | "dark";
 type TemplatePriorityFilter = "All" | "Product" | "Technical";
 type TemplateCategoryFilter = "All" | DesignMdTemplateCategory;
@@ -725,6 +732,10 @@ function App() {
   const [savedDesignMd, setSavedDesignMd] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editSavedAt, setEditSavedAt] = useState<string | null>(null);
+  const [designContext, setDesignContext] = useState<DesignContext | null>(null);
+  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
+  const [generatedScreens, setGeneratedScreens] = useState<Screen[]>([]);
+  const [pendingUploadedFiles, setPendingUploadedFiles] = useState<File[]>([]);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
@@ -900,7 +911,7 @@ function App() {
     });
   }
 
-  function generateProject() {
+  async function generateProject() {
     const prompt = request.prompt.trim();
     if (!prompt) return;
     const nextRequest = {
@@ -910,8 +921,6 @@ function App() {
       style: `${getOpenDesignPreset(request.openDesign, loadedTemplatePresets).label} / ${request.category}`,
       prompt,
     };
-    setGeneratedRequest(nextRequest);
-    saveGeneratedProject(nextRequest);
     setMessages((current) => [
       ...current,
       createMessage("user", prompt),
@@ -919,22 +928,73 @@ function App() {
     setRequest((current) => ({ ...current, projectName: nextRequest.projectName, layout: nextRequest.layout, style: nextRequest.style, prompt: "" }));
     setIsGenerating(true);
     setHasGenerated(false);
-    window.setTimeout(() => {
+    setValidationReport(null);
+    setGeneratedScreens([]);
+
+    try {
+      const context = await buildContext({
+        pluginScanResult: [],
+        uploadedFiles: pendingUploadedFiles,
+        textPrompt: prompt,
+        variableCount: 0,
+        pageCount: 0,
+      });
+      context.selectedTemplateId = nextRequest.openDesign;
+      context.templateMatches = matchTemplates(context);
+
+      const topMatch = context.templateMatches[0];
+      const templateId =
+        topMatch && topMatch.score >= 20
+          ? topMatch.templateId
+          : hasDesignMdTemplate(nextRequest.openDesign)
+            ? nextRequest.openDesign
+            : topMatch?.templateId ?? nextRequest.openDesign;
+      context.selectedTemplateId = templateId;
+      const report = computeValidationReport(context, templateId);
+      context.validationReport = report;
+      const screens = await generateScreens(context);
+      const matchedRequest: ProjectRequest = {
+        ...nextRequest,
+        openDesign: templateId,
+        style: `${getOpenDesignPreset(templateId, loadedTemplatePresets).label} / ${nextRequest.category}`,
+      };
+
+      setGeneratedRequest(matchedRequest);
+      saveGeneratedProject(matchedRequest);
+      setRequest((current) => ({ ...current, openDesign: templateId, style: matchedRequest.style }));
+      setDesignContext(context);
+      setValidationReport(report);
+      setGeneratedScreens(screens);
       setHasGenerated(true);
-      setIsGenerating(false);
+      setPreviewMode(screens.length > 0 ? "split" : "prompt");
       setMessages((current) => [
         ...current,
         createMessage(
           "assistant",
-          `Generated Design.md context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(nextRequest.openDesign, loadedTemplatePresets))?.label ?? getOpenDesignPreset(nextRequest.openDesign, loadedTemplatePresets).label}. Review the Design.md output or preview below.`,
+          `Generated workflow context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(templateId, loadedTemplatePresets))?.label ?? getOpenDesignPreset(templateId, loadedTemplatePresets).label}. Readiness ${report.readinessScore}/100. Top templates: ${context.templateMatches.map((match) => match.templateId).join(", ") || templateId}.`,
+          "Workflow ready",
         ),
       ]);
-    }, 720);
+    } catch (error) {
+      setHasGenerated(false);
+      setMessages((current) => [
+        ...current,
+        createMessage(
+          "assistant",
+          error instanceof Error ? error.message : "Could not generate the workflow context.",
+          "Workflow error",
+        ),
+      ]);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   async function copyOutput() {
     const value =
-      previewMode === "edit"
+      previewMode === "split" && generatedScreens.length > 0
+        ? generatedScreens.map((screen) => screen.markdown).join("\n\n---\n\n")
+        : previewMode === "edit"
         ? editDraft
         : previewMode === "prompt"
           ? designMd
@@ -988,6 +1048,10 @@ function App() {
     setView("landing");
     setHasGenerated(false);
     setGeneratedRequest(null);
+    setGeneratedScreens([]);
+    setValidationReport(null);
+    setDesignContext(null);
+    setPendingUploadedFiles([]);
     setMessages([
       createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
     ]);
@@ -1010,6 +1074,9 @@ function App() {
     setHasGenerated(true);
     setIsGenerating(false);
     setPreviewMode("prompt");
+    setGeneratedScreens([]);
+    setValidationReport(null);
+    setDesignContext(null);
     setActiveHistoryPrompt(item.prompt);
     setMessages([
       createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
@@ -1024,6 +1091,10 @@ function App() {
     setHasGenerated(false);
     setIsGenerating(false);
     setPreviewMode("prompt");
+    setGeneratedScreens([]);
+    setValidationReport(null);
+    setDesignContext(null);
+    setPendingUploadedFiles([]);
     setActiveHistoryPrompt("");
     setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
   }
@@ -1061,6 +1132,8 @@ function App() {
   }
 
   async function uploadMarkdownFiles(files: FileList) {
+    const uploadedFiles = Array.from(files);
+    setPendingUploadedFiles(uploadedFiles);
     const { markdownFiles, zipCount } = await readMarkdownFiles(files);
 
     if (markdownFiles.length === 0) {
@@ -1076,12 +1149,15 @@ function App() {
     }
 
     const nextPrompt = buildMarkdownPrompt(markdownFiles);
+    const docSources = await parseFileSources(uploadedFiles);
     setRequest((current) => ({ ...current, prompt: nextPrompt }));
     setGeneratedRequest(null);
     setHasGenerated(false);
+    setGeneratedScreens([]);
+    setValidationReport(null);
     setMessages((current) => [
       ...current,
-      createMessage("assistant", `Loaded ${markdownFiles.length} markdown file${markdownFiles.length > 1 ? "s" : ""}${zipCount ? ` from ${zipCount} ZIP file${zipCount > 1 ? "s" : ""}` : ""} into the prompt. Send it to generate Design.md/Preview.`, "Upload Design.md"),
+      createMessage("assistant", `Loaded ${markdownFiles.length} markdown file${markdownFiles.length > 1 ? "s" : ""}${zipCount ? ` from ${zipCount} ZIP file${zipCount > 1 ? "s" : ""}` : ""} into the prompt and staged ${docSources.length} BA source${docSources.length > 1 ? "s" : ""} for workflow generation.`, "Upload Design.md"),
     ]);
   }
 
@@ -1116,22 +1192,56 @@ function App() {
     ]);
 
     try {
+      const baseContext = await buildContext({
+        pluginScanResult: [],
+        uploadedFiles: pendingUploadedFiles,
+        textPrompt: request.prompt || image.name,
+        variableCount: 0,
+        pageCount: 0,
+      });
+      const imageAnalysis = await analyzeImage(image, baseContext);
+      const imageTopMatch = imageAnalysis.top3[0];
+      const imageTemplateId =
+        imageTopMatch && imageTopMatch.score >= 20
+          ? imageTopMatch.templateId
+          : hasDesignMdTemplate(request.openDesign)
+            ? request.openDesign
+            : imageTopMatch?.templateId ?? request.openDesign;
+      imageAnalysis.enrichedContext.selectedTemplateId = imageTemplateId;
+      const imageReport = computeValidationReport(imageAnalysis.enrichedContext, imageTemplateId);
+      imageAnalysis.enrichedContext.validationReport = imageReport;
+      setDesignContext(imageAnalysis.enrichedContext);
+      setValidationReport(imageReport);
+      setRequest((current) => ({ ...current, openDesign: imageTemplateId }));
+
       const imageDataUrl = await fileToDataUrl(image);
       const result = await generateCodeFromScreenshot({ imageDataUrl, stack: "react_tailwind" });
       const prompt = `Screenshot-to-code generated React/Tailwind UI from ${image.name}.\n\n\`\`\`tsx\n${result.code}\n\`\`\``;
       const nextRequest: ProjectRequest = {
         ...request,
+        openDesign: imageTemplateId,
         projectName: inferProjectName(image.name.replace(/\.[^.]+$/, ""), "AI tool"),
         category: "AI tool",
-        style: `${getOpenDesignPreset(request.openDesign, loadedTemplatePresets).label} / screenshot-to-code`,
+        style: `${getOpenDesignPreset(imageTemplateId, loadedTemplatePresets).label} / screenshot-to-code`,
         prompt,
       };
+      imageAnalysis.enrichedContext.prompt = prompt;
+      const screens = await generateScreens(imageAnalysis.enrichedContext);
+      setGeneratedScreens(screens);
       setGeneratedRequest(nextRequest);
       setRequest((current) => ({ ...current, category: nextRequest.category, style: nextRequest.style, prompt: "" }));
 
       saveGeneratedProject(nextRequest);
       setHasGenerated(true);
-      setMessages((current) => [...current, createMessage("assistant", "Generated code from the screenshot. Review it in the Design.md/Preview tabs above.", "Screenshot-to-code")]);
+      setPreviewMode(screens.length > 0 ? "split" : "prompt");
+      setMessages((current) => [
+        ...current,
+        createMessage(
+          "assistant",
+          `Generated code from the screenshot and matched ${imageTemplateId}. Readiness ${imageReport.readinessScore}/100. Review it in Split View or Design.md.`,
+          "Screenshot-to-code",
+        ),
+      ]);
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -1178,9 +1288,8 @@ function App() {
             {/*<a href="#gen-web" className="active" role="button" onClick={(event) => event.preventDefault()}>*/}
             {/*  Gen Web*/}
             {/*</a>*/}
-            <a href="#projects" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Projects"); }}>
+            <a href="#projects" role="button" onClick={(event) => { event.preventDefault(); setIsHistoryOpen(true); }}>
               Projects
-              <span className="nav-status">Soon</span>
             </a>
             <a href="#templates" role="button" onClick={(event) => { event.preventDefault(); openTemplateLibrary(); }}>
               Templates
@@ -1321,6 +1430,15 @@ function App() {
                         >
                           Edit
                         </button>
+                        {generatedScreens.length > 0 && (
+                          <button
+                            className={previewMode === "split" ? "active" : ""}
+                            type="button"
+                            onClick={() => setPreviewMode("split")}
+                          >
+                            Split View
+                          </button>
+                        )}
                         <span className={`design-status-badge ${savedDesignMd ? "edited" : ""}`}>{designMdStatus}</span>
                       </div>
                       <nav>
@@ -1329,8 +1447,29 @@ function App() {
                         <button type="button" onClick={copyOutput}>{copiedOutput ? "Copied" : "Copy"}</button>
                       </nav>
                     </div>
+                    {validationReport && (
+                      <div className="validation-summary">
+                        <strong>Readiness {validationReport.readinessScore}/100</strong>
+                        <span>Components {validationReport.componentScore}</span>
+                        <span>Tokens {validationReport.tokenScore}</span>
+                        <span>Naming {validationReport.namingScore}</span>
+                        {designContext?.selectedTemplateId && <span>Template {designContext.selectedTemplateId}</span>}
+                        {!validationReport.canProceed && <em>Missing: {[...validationReport.missingComponents, ...validationReport.missingTokens].slice(0, 4).join(", ") || "component scan"}</em>}
+                      </div>
+                    )}
                     <div className="output-panel">
-                      {previewMode === "prompt" ? (
+                      {previewMode === "split" && generatedScreens.length > 0 ? (
+                        <SplitView
+                          initialMarkdown={designMd}
+                          screens={generatedScreens}
+                          projectId={templateCommandSlug(outputRequest.projectName)}
+                          onExport={(markdown) => {
+                            setSavedDesignMd(markdown);
+                            setEditDraft(markdown);
+                            setPreviewMode("edit");
+                          }}
+                        />
+                      ) : previewMode === "prompt" ? (
                         <pre>{designMd}</pre>
                       ) : previewMode === "edit" ? (
                         <div className="design-md-editor">

@@ -76,6 +76,8 @@
     "vitest": "^4.1.1"
   },
   "dependencies": {
-    "jszip": "^3.10.1"
+    "@supabase/supabase-js": "^2.105.4",
+    "jszip": "^3.10.1",
+    "marked": "^18.0.3"
   }
 }
