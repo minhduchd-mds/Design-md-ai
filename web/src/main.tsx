@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createEmptyContext, type DesignContext, type ValidationReport } from "../../shared/designContext";
 import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
 import { buildContext, parseFileSources } from "./design/contextBuilder";
+import { BA_TEMPLATE_CONTENT } from "./design/constants";
 import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "./design/designParser";
 import { computeValidationReport } from "./design/layoutValidator";
 import { generateScreens, type Screen } from "./design/screenGenerator";
@@ -1619,16 +1620,53 @@ function App() {
           />
           <div className="workspace-action-bar">
             <button type="button" onClick={() => analyzeImageInputRef.current?.click()}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+              </svg>
               Analyze image
             </button>
-            <button type="button" onClick={() => baDocInputRef.current?.click()}>
+            <button type="button" className="btn-ba-doc" onClick={() => baDocInputRef.current?.click()}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
               Add BA doc
             </button>
-            <button type="button" onClick={() => void generateFiveScreensFromContext()} disabled={isGenerating}>
+            <button
+              type="button"
+              className="btn-template"
+              onClick={() => {
+                const blob = new Blob([BA_TEMPLATE_CONTENT], { type: "text/markdown;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "BA-template.md";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              BA template
+            </button>
+            <button type="button" className="btn-generate" onClick={() => void generateFiveScreensFromContext()} disabled={isGenerating}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l1.88 5.76a1 1 0 0 0 .95.69h6.05l-4.9 3.56a1 1 0 0 0-.36 1.12L17.5 20l-4.9-3.56a1 1 0 0 0-1.18 0L6.5 20l1.88-5.87a1 1 0 0 0-.36-1.12L3.12 9.45h6.05a1 1 0 0 0 .95-.69z"/>
+              </svg>
               Generate 5 screens
             </button>
           </div>
           <div className="chat-scroll" ref={chatScrollRef}>
+            {messages.length === 0 && !isGenerating && !hasGenerated && (
+              <div className="chat-empty-state">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="chat-empty-icon">
+                  <path d="M12 3l1.88 5.76a1 1 0 0 0 .95.69h6.05l-4.9 3.56a1 1 0 0 0-.36 1.12L17.5 20l-4.9-3.56a1 1 0 0 0-1.18 0L6.5 20l1.88-5.87a1 1 0 0 0-.36-1.12L3.12 9.45h6.05a1 1 0 0 0 .95-.69z"/>
+                </svg>
+                <p className="chat-empty-title">Ready to generate</p>
+                <p className="chat-empty-hint">Upload a BA doc or describe your app, then click <strong>Generate 5 screens</strong></p>
+              </div>
+            )}
+
             {messages.map((message) => (
               <article key={message.id} className={`message ${message.role}`}>
                 {message.title && <strong>{message.title}</strong>}
@@ -1637,10 +1675,10 @@ function App() {
             ))}
 
             {isGenerating && (
-              <article className="message assistant thinking-row">
-                <span />
-                <p>Create Code Preview...</p>
-              </article>
+              <div className="thinking-row">
+                <span /><span /><span />
+                <p>Generating screens…</p>
+              </div>
             )}
 
             {hasGenerated && (
