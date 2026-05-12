@@ -1,4 +1,4 @@
-/* PromptExport — matches Figma ComponentSet layout */
+/* PromptExport — cyberpunk theme */
 
 /* ── Ready state ── */
 .root {
@@ -6,9 +6,19 @@
   flex-direction: column;
   gap: var(--dr-space-lg);
   padding: var(--dr-space-xl);
-  background: rgba(27, 196, 125, 0.08);
-  border: 1px solid var(--dr-success);
-  border-radius: var(--dr-radius-lg);
+  background: rgba(6, 255, 165, 0.04);
+  border: 1px solid rgba(6, 255, 165, 0.22);
+  border-radius: var(--dr-radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.root::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glow3), transparent);
 }
 
 .headerCol {
@@ -25,10 +35,10 @@
 }
 
 .title {
-  font-size: var(--dr-text-xl);
-  font-weight: var(--dr-weight-bold);
+  font-size: 13px;
+  font-weight: 700;
   line-height: 130%;
-  color: var(--dr-success);
+  color: var(--glow3);
   flex-shrink: 0;
 }
 
@@ -36,7 +46,7 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: var(--figma-color-text-tertiary, #666);
+  background: var(--text3);
   flex-shrink: 0;
 }
 
@@ -44,85 +54,97 @@
   font-size: var(--dr-text-sm);
   font-weight: var(--dr-weight-semibold);
   line-height: 130%;
-  color: var(--figma-color-text-secondary, #999);
+  color: var(--text2);
+  font-family: var(--dr-font-mono);
 }
 
 .description {
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-regular);
   line-height: 150%;
-  color: var(--figma-color-text-secondary, #999);
+  color: var(--text2);
   margin: 0;
 }
 
 .descriptionLight {
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-regular);
   line-height: 150%;
-  color: var(--figma-color-text-inverse, #fff);
+  color: var(--text);
   margin: 0;
 }
 
 .tokenEstimate {
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-bold);
   line-height: 150%;
-  color: var(--figma-color-text-inverse, #fff);
+  color: var(--text);
   margin: 0;
+}
+
+.tokenEstimate span {
+  color: var(--glow3);
+  font-family: var(--dr-font-mono);
 }
 
 .copyBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--dr-space-md) var(--dr-space-lg);
-  background: var(--dr-success);
+  gap: 6px;
+  padding: 9px 12px;
+  width: 100%;
+  background: var(--glow3);
   border: none;
-  border-radius: var(--dr-radius-md);
+  border-radius: 8px;
   cursor: pointer;
-  font-size: var(--dr-text-lg);
-  font-weight: var(--dr-weight-bold);
+  font-size: 12px;
+  font-weight: 700;
   line-height: 100%;
-  color: var(--figma-color-text-inverse, #fff);
-  font-family: inherit;
+  color: #03180e;
+  font-family: var(--dr-font-base);
+  letter-spacing: 0.3px;
+  box-shadow: 0 0 16px rgba(6, 255, 165, 0.25);
+  transition: box-shadow 0.2s;
 }
 
-.copyBtn:hover {
-  background: var(--dr-success-hover);
-}
+.copyBtn:hover { box-shadow: 0 0 26px rgba(6, 255, 165, 0.45); }
 
 .toggle {
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-regular);
   line-height: 150%;
-  color: var(--dr-brand);
+  color: var(--glow);
   text-align: center;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
-  font-family: inherit;
+  padding: 4px;
+  font-family: var(--dr-font-base);
+  width: 100%;
+  opacity: 0.8;
 }
 
-.toggle:hover {
-  text-decoration: underline;
-}
+.toggle:hover { opacity: 1; }
 
 .preview {
-  max-height: 300px;
+  max-height: 220px;
   overflow-y: auto;
-  background: var(--figma-color-bg, #2c2c2c);
-  border-radius: var(--dr-radius-sm);
-  padding: var(--dr-space-md);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  border-radius: 8px;
+  padding: 11px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
 }
 
 .preview pre {
   font-family: var(--dr-font-mono);
-  font-size: var(--dr-text-sm);
-  line-height: 1.5;
+  font-size: 10px;
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--figma-color-text, #e0e0e0);
+  color: var(--text2);
 }
 
 /* ── Locked state ── */
@@ -133,24 +155,25 @@
   justify-content: center;
   gap: var(--dr-space-md);
   padding: var(--dr-space-lg);
-  background: var(--figma-color-bg-secondary, #383838);
-  border: 1px solid var(--figma-color-border, #444);
-  border-radius: var(--dr-radius-md);
-  /* Match ready variant height */
-  min-height: 265px;
+  background: rgba(11, 18, 32, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--dr-radius-xl);
+  backdrop-filter: blur(10px);
+  min-height: 200px;
   text-align: center;
 }
 
 .lockedText {
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-regular);
   line-height: 150%;
-  color: var(--figma-color-text-secondary, #999);
+  color: var(--text2);
 }
 
 .lockedCurrent {
-  font-size: var(--dr-text-xl);
+  font-size: 13px;
   font-weight: var(--dr-weight-bold);
   line-height: 130%;
   color: var(--dr-warning);
+  font-family: var(--dr-font-mono);
 }
