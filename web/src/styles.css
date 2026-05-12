@@ -1110,6 +1110,59 @@ textarea {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
   background: #f5f7ff;
+  transition: grid-template-columns 0.22s ease;
+}
+
+.workspace-shell.sidebar-is-collapsed {
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #a6b2c4;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  align-self: flex-end;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.sidebar-is-collapsed .workspace-sidebar {
+  padding: 16px 10px;
+  align-items: center;
+}
+
+.sidebar-is-collapsed .nav-label,
+.sidebar-is-collapsed .nav-status,
+.sidebar-is-collapsed .sidebar-history,
+.sidebar-is-collapsed .plan-card,
+.sidebar-is-collapsed .brand-block div,
+.sidebar-is-collapsed .brand-block .logout-button {
+  display: none;
+}
+
+.sidebar-is-collapsed .side-nav {
+  width: 100%;
+}
+
+.sidebar-is-collapsed .side-nav a {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar-is-collapsed .brand-block {
+  justify-content: center;
 }
 
 .workspace-sidebar {

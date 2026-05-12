@@ -723,6 +723,7 @@ function App() {
   const [projectHistory, setProjectHistory] = useState<ProjectHistoryItem[]>(() => getProjectHistory());
   const [activeHistoryPrompt, setActiveHistoryPrompt] = useState(() => getProjectHistory()[0]?.prompt ?? "");
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("prompt");
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1430,8 +1431,24 @@ function App() {
 
   if (view === "workspace" && user) {
     return (
-      <main className="workspace-shell">
+      <main className={`workspace-shell${sidebarCollapsed ? " sidebar-is-collapsed" : ""}`}>
         <aside className="workspace-sidebar">
+          <button
+            className="sidebar-toggle"
+            type="button"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setSidebarCollapsed((c) => !c)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d={sidebarCollapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"}
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           <nav className="side-nav">
             <a
               href="#new-project"
@@ -1453,23 +1470,20 @@ function App() {
                   fill="white"
                 />
               </svg>
-              New Project
+              <span className="nav-label">New Project</span>
             </a>
-            {/*<a href="#gen-web" className="active" role="button" onClick={(event) => event.preventDefault()}>*/}
-            {/*  Gen Web*/}
-            {/*</a>*/}
             <a href="#projects" role="button" onClick={(event) => { event.preventDefault(); setIsHistoryOpen(true); }}>
-              Projects
+              <span className="nav-label">Projects</span>
             </a>
             <a href="#templates" role="button" onClick={(event) => { event.preventDefault(); openTemplateLibrary(); }}>
-              Templates
+              <span className="nav-label">Templates</span>
             </a>
             <a href="#library" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("My Library"); }}>
-              My Library
+              <span className="nav-label">My Library</span>
               <span className="nav-status">Soon</span>
             </a>
             <a href="#settings" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Settings"); }}>
-              Settings
+              <span className="nav-label">Settings</span>
               <span className="nav-status">Soon</span>
             </a>
             <a
@@ -1481,7 +1495,7 @@ function App() {
                 setView("landing");
               }}
             >
-              Back to website
+              <span className="nav-label">Back to website</span>
             </a>
           </nav>
           <section className={`sidebar-history ${isHistoryOpen ? "is-open" : "is-hidden"}`}>
