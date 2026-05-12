@@ -51,3 +51,4 @@ export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 export const MAX_CONTEXT_PROMPT_LENGTH = 10000;
 export const DEBOUNCE_MS = 300;
 export const AUTOSAVE_INTERVAL_MS = 30000;
+export const WS_TIMEOUT_MS = 12000;
