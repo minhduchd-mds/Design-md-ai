@@ -1,73 +1,90 @@
-/*  Design Tokens
- * Figma provides --figma-color-* at runtime. These :root fallbacks
- * ensure components work in Storybook and standalone contexts.
- */
+/* Design Tokens — Cyberpunk/AI theme */
 
 :root {
-  /* Figma runtime variables — fallbacks for non-Figma environments */
-  --figma-color-bg: #2c2c2c;
-  --figma-color-bg-secondary: #383838;
-  --figma-color-bg-brand: #0d99ff;
-  --figma-color-bg-danger: #f85149;
-  --figma-color-border: #444;
-  --figma-color-text: #e0e0e0;
-  --figma-color-text-secondary: #999;
-  --figma-color-text-tertiary: #666;
-  --figma-color-text-brand: #0d99ff;
-  --figma-color-text-inverse: #ffffff;
+  /* Background layers */
+  --bg: #03050a;
+  --bg2: #070c14;
+  --bg3: #0b1220;
 
-  /* Brand colors */
-  --dr-brand: #18a0fb;
-  --dr-success: #1bc47d;
-  --dr-success-hover: #15a568;
-  --dr-warning: #f5a623;
-  --dr-error: #f24822;
+  /* Glow colors */
+  --glow: #00d4ff;
+  --glow2: #7c3aed;
+  --glow3: #06ffa5;
+
+  /* Text */
+  --text: #e2f0ff;
+  --text2: #6b8aad;
+  --text3: #2e4a6b;
+
+  /* Borders */
+  --border: rgba(0, 212, 255, 0.12);
+  --border2: rgba(0, 212, 255, 0.25);
+
+  /* Figma runtime fallbacks (overridden at runtime by Figma) */
+  --figma-color-bg: #03050a;
+  --figma-color-bg-secondary: #070c14;
+  --figma-color-bg-brand: #00d4ff;
+  --figma-color-bg-danger: #f85149;
+  --figma-color-border: rgba(0, 212, 255, 0.18);
+  --figma-color-text: #e2f0ff;
+  --figma-color-text-secondary: #6b8aad;
+  --figma-color-text-tertiary: #2e4a6b;
+  --figma-color-text-brand: #00d4ff;
+  --figma-color-text-inverse: #000000;
+
+  /* Brand / status colors */
+  --dr-brand: #00d4ff;
+  --dr-success: #06ffa5;
+  --dr-success-hover: #04cc86;
+  --dr-warning: #ffd166;
+  --dr-error: #f85149;
 
   /* Atomic level colors */
-  --dr-atom: #58a6ff;
-  --dr-molecule: #bc8cff;
-  --dr-organism: #f5a623;
+  --dr-atom: #00d4ff;
+  --dr-molecule: #7c3aed;
+  --dr-organism: #ffd166;
 
   /* Score colors */
-  --dr-score-green: #7ee787;
-  --dr-score-yellow: #e0e040;
+  --dr-score-green: #06ffa5;
+  --dr-score-yellow: #ffd166;
   --dr-score-red: #f85149;
 
-  /* Chart segment colors (donut dimensions) */
+  /* Chart colors */
   --dr-chart-variants: #ff6b9d;
 
-  /* Typography — families */
-  --dr-font-base: Inter, system-ui, -apple-system, sans-serif;
-  --dr-font-mono: 'SF Mono', Monaco, Consolas, monospace;
+  /* Typography */
+  --dr-font-base: 'Syne', system-ui, -apple-system, sans-serif;
+  --dr-font-mono: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
 
-  /* Typography — sizes */
+  /* Type sizes */
   --dr-text-xs: 9px;
   --dr-text-sm: 10px;
   --dr-text-md: 11px;
   --dr-text-lg: 12px;
   --dr-text-xl: 13px;
   --dr-text-2xl: 18px;
-  --dr-text-score: 38px;
+  --dr-text-score: 36px;
 
-  /* Typography — weights */
+  /* Weights */
   --dr-weight-regular: 400;
   --dr-weight-medium: 500;
   --dr-weight-semibold: 600;
   --dr-weight-bold: 700;
 
-  /* Spacing (5 steps) */
+  /* Spacing */
   --dr-space-xs: 2px;
   --dr-space-sm: 4px;
   --dr-space-md: 8px;
   --dr-space-lg: 12px;
   --dr-space-xl: 16px;
 
-  /* Border radius (4 steps + circle) */
+  /* Radius */
   --dr-radius-sm: 4px;
   --dr-radius-md: 6px;
   --dr-radius-lg: 8px;
-  --dr-radius-pill: 10px;
+  --dr-radius-xl: 14px;
+  --dr-radius-pill: 20px;
 
   /* Transitions */
-  --dr-transition: 0.15s;
+  --dr-transition: 0.18s;
 }

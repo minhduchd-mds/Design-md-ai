@@ -1,53 +1,82 @@
-/* ScoreOverview — matches Figma ComponentSet layout */
+/* ScoreOverview — cyberpunk theme */
 
 .root {
   display: flex;
   flex-direction: column;
   gap: var(--dr-space-lg);
   padding: var(--dr-space-xl);
-  background: var(--figma-color-bg, #2c2c2c);
-  border: 1px solid var(--figma-color-border, #444);
-  border-radius: var(--dr-radius-lg);
+  background: rgba(11, 18, 32, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--dr-radius-xl);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
 }
 
+.root::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.45), transparent);
+}
+
+.root:hover { border-color: rgba(0, 212, 255, 0.28); }
+
 .title {
-  font-size: var(--dr-text-xl);
-  font-weight: var(--dr-weight-bold);
+  font-size: 13px;
+  font-weight: 700;
   line-height: 130%;
-  color: var(--figma-color-text, #e0e0e0);
+  color: var(--text);
+  letter-spacing: -0.3px;
 }
 
 .description {
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-regular);
   line-height: 150%;
-  color: var(--figma-color-text-secondary, #999);
+  color: var(--text2);
   margin: 0;
 }
 
 .divider {
   border: none;
-  border-top: 1px solid var(--figma-color-border, #444);
+  border-top: 1px solid var(--border);
   margin: 0;
 }
 
 .sectionLabel {
-  font-size: var(--dr-text-md);
-  font-weight: var(--dr-weight-bold);
+  font-size: 9px;
+  font-weight: 700;
   line-height: 150%;
-  color: var(--figma-color-text, #e0e0e0);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sectionLabel::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  background: var(--glow);
+  opacity: 0.5;
 }
 
 .donutLayout {
   display: flex;
   align-items: center;
-  gap: var(--dr-space-xl);
+  gap: 18px;
   overflow: hidden;
 }
 
 .donutSvg {
-  width: 140px;
-  height: 140px;
+  width: 96px;
+  height: 96px;
   flex-shrink: 0;
 }
 
@@ -55,7 +84,7 @@
 .legend {
   display: flex;
   flex-direction: column;
-  gap: var(--dr-space-sm);
+  gap: 5px;
   flex: 1;
   min-width: 0;
 }
@@ -63,7 +92,8 @@
 .legendItem {
   display: flex;
   align-items: center;
-  gap: var(--dr-space-md);
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .legendDot {
@@ -75,21 +105,22 @@
 
 .legendLabel {
   flex: 1;
-  font-size: var(--dr-text-md);
+  font-size: 11px;
   font-weight: var(--dr-weight-medium);
   line-height: 150%;
-  color: var(--figma-color-text-secondary, #999);
+  color: var(--text2);
 }
 
 .legendValue {
-  font-size: var(--dr-text-lg);
-  font-weight: var(--dr-weight-bold);
+  font-size: 11px;
+  font-weight: 500;
   line-height: 100%;
   flex-shrink: 0;
+  font-family: var(--dr-font-mono);
 }
 
 .toleranceDivider {
   border: none;
-  border-top: 1px solid var(--figma-color-border, #444);
+  border-top: 1px solid var(--border);
   margin: 0;
 }

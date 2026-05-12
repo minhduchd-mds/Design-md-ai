@@ -110,23 +110,31 @@ export function App() {
 
   return (
     <div className="app app-dashboard">
+      {/* Ambient background layers */}
+      <div className="bg-grid" />
+      <div className="orb orb1" />
+      <div className="orb orb2" />
+      <div className="orb orb3" />
+      <div className="scanline" />
+
       <header className="dashboard-topbar">
         <h1 className="dashboard-logo">DesignReady</h1>
 
         <div className="topbar-selection">
-          <span className="topbar-component-label">{selectedNode ? "Selected" : "Last scan"}</span>
+          <span className="topbar-status-dot" />
+          <span className="topbar-component-label">{selectedNode ? "Selected" : "·"}</span>
           {result?.atomicInfo && (
             <LevelIcon
               level={result.atomicInfo.level}
               color={LEVEL_CONFIG[result.atomicInfo.level]?.color ?? "#999"}
-              size={14}
+              size={12}
             />
           )}
           <span
             className="topbar-component-name"
             style={result?.atomicInfo ? { color: LEVEL_CONFIG[result.atomicInfo.level]?.color } : undefined}
           >
-            {selectionDisplayName || "—"}
+            {selectionDisplayName || "ACTIVE"}
           </span>
         </div>
 
