@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "api/*.ts": {
-      "runtime": "@vercel/node@5"
-    }
-  }
+  "buildCommand": "npm run web:build",
+  "outputDirectory": "dist-web"
 }
