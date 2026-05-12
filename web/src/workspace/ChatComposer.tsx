@@ -13,7 +13,8 @@ interface ChatComposerProps {
   request: ProjectRequest;
   selectedPreset: OpenDesignDefinition;
   setRequest: SetProjectRequest;
-  onGenerate: () => void;
+  onSendChat: () => void;
+  onGenerateDesignMd: () => void;
   onCreateImage: () => void;
   onUploadMarkdownFiles: (files: FileList) => void;
   onUploadScreenshot: (files: FileList) => void;
@@ -25,7 +26,8 @@ export function ChatComposer({
   request,
   selectedPreset,
   setRequest,
-  onGenerate,
+  onSendChat,
+  onGenerateDesignMd,
   onCreateImage,
   onUploadMarkdownFiles,
   onUploadScreenshot,
@@ -49,7 +51,7 @@ export function ChatComposer({
       className={`chat-composer ${isGenerating ? "is-generating" : ""}`}
       onSubmit={(event) => {
         event.preventDefault();
-        onGenerate();
+        onSendChat();
       }}
     >
       <div className="composer-box">
@@ -87,10 +89,10 @@ export function ChatComposer({
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
-                onGenerate();
+                onSendChat();
               }
             }}
-            placeholder="Ask for changes or enter a web generation request..."
+            placeholder="Chat with OpenAI, ask for BA notes, or describe the next design task..."
             rows={1}
           />
         </div>
@@ -140,6 +142,17 @@ export function ChatComposer({
                   >
                     <span className="tool-menu-icon">I</span>
                     Create image
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setComposerDropdown(null);
+                      onGenerateDesignMd();
+                    }}
+                  >
+                    <span className="tool-menu-icon">D</span>
+                    Generate Design.md
                   </button>
                 </div>
               )}
@@ -244,9 +257,17 @@ export function ChatComposer({
           <div className="composer-actions">
             <span>{isGenerating ? "Thinking" : "Ready"}</span>
             <button
+              className="design-md-send-button"
+              type="button"
+              disabled={isGenerating || !request.prompt.trim()}
+              onClick={onGenerateDesignMd}
+            >
+              Design.md
+            </button>
+            <button
               className="send-button"
               type="submit"
-              aria-label="Send prompt"
+              aria-label="Send chat message"
               disabled={isGenerating || !request.prompt.trim()}
             >
               <span className="send-bars" aria-hidden="true">

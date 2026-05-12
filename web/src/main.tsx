@@ -11,6 +11,7 @@ import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate, type De
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { analyzeImage } from "./workspace/imageAnalyzer";
+import { sendOpenAiChat } from "./workspace/openAiChat";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
 import { SplitView } from "./workspace/SplitView";
 import "./styles.css";
@@ -913,6 +914,38 @@ function App() {
     });
   }
 
+  async function sendChatMessage() {
+    const prompt = request.prompt.trim();
+    if (!prompt) return;
+
+    const userMessage = createMessage("user", prompt);
+    const chatMessages = [...messages, userMessage];
+    setMessages(chatMessages);
+    setRequest((current) => ({ ...current, prompt: "" }));
+    setIsGenerating(true);
+
+    try {
+      const response = await sendOpenAiChat(chatMessages, {
+        projectName: outputRequest.projectName,
+        category: request.category,
+        selectedTemplate: selectedPreset.label,
+        readinessScore: validationReport?.readinessScore ?? null,
+        activeDesignMd: hasGenerated,
+      });
+      setMessages((current) => [
+        ...current,
+        createMessage("assistant", response, "OpenAI chat"),
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        createMessage("assistant", error instanceof Error ? error.message : "Could not contact OpenAI chat.", "OpenAI chat"),
+      ]);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
   async function generateProject() {
     const prompt = request.prompt.trim();
     if (!prompt) return;
@@ -1797,7 +1830,8 @@ function App() {
             request={request}
             selectedPreset={selectedPreset}
             setRequest={setRequest}
-            onGenerate={generateProject}
+            onSendChat={sendChatMessage}
+            onGenerateDesignMd={generateProject}
             onCreateImage={createImageFromPrompt}
             onUploadMarkdownFiles={uploadMarkdownFiles}
             onUploadScreenshot={uploadScreenshot}
