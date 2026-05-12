@@ -1,6 +1,6 @@
 ﻿import { StrictMode, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { DesignContext, ValidationReport } from "../../shared/designContext";
+import { createEmptyContext, type DesignContext, type ValidationReport } from "../../shared/designContext";
 import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
 import { buildContext, parseFileSources } from "./design/contextBuilder";
 import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "./design/designParser";
@@ -737,6 +737,8 @@ function App() {
   const [generatedScreens, setGeneratedScreens] = useState<Screen[]>([]);
   const [pendingUploadedFiles, setPendingUploadedFiles] = useState<File[]>([]);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const analyzeImageInputRef = useRef<HTMLInputElement | null>(null);
+  const baDocInputRef = useRef<HTMLInputElement | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
   ]);
@@ -952,12 +954,12 @@ function App() {
       context.selectedTemplateId = templateId;
       const report = computeValidationReport(context, templateId);
       context.validationReport = report;
-      const screens = await generateScreens(context);
       const matchedRequest: ProjectRequest = {
         ...nextRequest,
         openDesign: templateId,
         style: `${getOpenDesignPreset(templateId, loadedTemplatePresets).label} / ${nextRequest.category}`,
       };
+      const screens = report.canProceed ? await generateScreens(context) : [];
 
       setGeneratedRequest(matchedRequest);
       saveGeneratedProject(matchedRequest);
@@ -971,8 +973,10 @@ function App() {
         ...current,
         createMessage(
           "assistant",
-          `Generated workflow context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(templateId, loadedTemplatePresets))?.label ?? getOpenDesignPreset(templateId, loadedTemplatePresets).label}. Readiness ${report.readinessScore}/100. Top templates: ${context.templateMatches.map((match) => match.templateId).join(", ") || templateId}.`,
-          "Workflow ready",
+          report.canProceed
+            ? `Generated workflow context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(templateId, loadedTemplatePresets))?.label ?? getOpenDesignPreset(templateId, loadedTemplatePresets).label}. Readiness ${report.readinessScore}/100. Top templates: ${context.templateMatches.map((match) => match.templateId).join(", ") || templateId}.`
+            : `Validated workflow context using ${parseDesignMd(nextRequest.prompt, getOpenDesignPreset(templateId, loadedTemplatePresets))?.label ?? getOpenDesignPreset(templateId, loadedTemplatePresets).label}. Readiness ${report.readinessScore}/100. Fix missing items to proceed: ${[...report.missingComponents, ...report.missingTokens].slice(0, 6).join(", ") || "component scan data"}.`,
+          report.canProceed ? "Workflow ready" : "Validation required",
         ),
       ]);
     } catch (error) {
@@ -984,6 +988,137 @@ function App() {
           error instanceof Error ? error.message : "Could not generate the workflow context.",
           "Workflow error",
         ),
+      ]);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  async function getWorkflowContext(): Promise<DesignContext> {
+    if (designContext) return designContext;
+
+    const prompt = request.prompt.trim() || outputRequest.prompt.trim() || DEFAULT_PROJECT.prompt;
+    const context = await buildContext({
+      pluginScanResult: [],
+      uploadedFiles: pendingUploadedFiles,
+      textPrompt: prompt,
+      variableCount: 0,
+      pageCount: 0,
+    });
+    context.selectedTemplateId = request.openDesign;
+    context.templateMatches = matchTemplates(context);
+    return context;
+  }
+
+  async function analyzeWorkspaceImage(files: FileList) {
+    const image = Array.from(files).find((file) => /^image\//.test(file.type));
+    if (!image) {
+      setMessages((current) => [...current, createMessage("assistant", "Choose a PNG, JPG, or WEBP image file.", "Analyze image")]);
+      return;
+    }
+
+    setIsGenerating(true);
+    setMessages((current) => [
+      ...current,
+      createMessage("user", `Analyze image: ${image.name}`),
+      createMessage("assistant", "Analyzing layout pattern and matching templates...", "Analyze image"),
+    ]);
+
+    try {
+      const context = await getWorkflowContext();
+      const result = await analyzeImage(image, context);
+      const templateId = result.top3[0]?.templateId ?? context.selectedTemplateId ?? request.openDesign;
+      const enrichedContext = {
+        ...result.enrichedContext,
+        selectedTemplateId: templateId,
+      };
+      const report = computeValidationReport(enrichedContext, templateId);
+      enrichedContext.validationReport = report;
+
+      setDesignContext(enrichedContext);
+      setValidationReport(report);
+      setRequest((current) => ({ ...current, openDesign: templateId }));
+      setMessages((current) => [
+        ...current,
+        createMessage(
+          "assistant",
+          `Image analysis complete. Top templates: ${result.top3.map((match) => `${match.templateId} ${match.score}%`).join(", ") || templateId}.`,
+          "Analyze image",
+        ),
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        createMessage("assistant", error instanceof Error ? error.message : "Could not analyze the image.", "Analyze image"),
+      ]);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  async function addBaDocument(files: FileList) {
+    const uploadedFiles = Array.from(files);
+    const docs = await parseFileSources(uploadedFiles);
+    if (docs.length === 0) {
+      setMessages((current) => [...current, createMessage("assistant", "Add a .md or .txt BA document.", "Add BA doc")]);
+      return;
+    }
+
+    setPendingUploadedFiles((current) => [...current, ...uploadedFiles]);
+    const baseContext = designContext ?? createEmptyContext();
+    const updatedContext = {
+      ...baseContext,
+      docs: [...baseContext.docs, ...docs],
+      prompt: baseContext.prompt || request.prompt || outputRequest.prompt,
+    };
+    updatedContext.templateMatches = matchTemplates(updatedContext);
+    updatedContext.selectedTemplateId = updatedContext.selectedTemplateId ?? updatedContext.templateMatches[0]?.templateId ?? request.openDesign;
+
+    setDesignContext(updatedContext);
+    setMessages((current) => [
+      ...current,
+      createMessage("assistant", `Document added: ${docs.map((doc) => doc.filename).join(", ")}`, "Add BA doc"),
+    ]);
+  }
+
+  async function generateFiveScreensFromContext() {
+    setIsGenerating(true);
+    setMessages((current) => [
+      ...current,
+      createMessage("assistant", "Generating 5 screens...", "Generate 5 screens"),
+    ]);
+
+    try {
+      const context = await getWorkflowContext();
+      const templateId = context.selectedTemplateId ?? context.templateMatches[0]?.templateId ?? request.openDesign;
+      context.selectedTemplateId = templateId;
+      context.validationReport = computeValidationReport(context, templateId);
+      const screens = await generateScreens(context);
+      const prompt = context.prompt || outputRequest.prompt || DEFAULT_PROJECT.prompt;
+      const nextRequest: ProjectRequest = generatedRequest ?? {
+        ...request,
+        projectName: inferProjectName(prompt, request.category),
+        layout: "Design.md handoff workspace",
+        style: `${getOpenDesignPreset(templateId, loadedTemplatePresets).label} / ${request.category}`,
+        openDesign: templateId,
+        prompt,
+      };
+
+      setDesignContext(context);
+      setValidationReport(context.validationReport);
+      setGeneratedScreens(screens);
+      setGeneratedRequest(nextRequest);
+      saveGeneratedProject(nextRequest);
+      setHasGenerated(true);
+      setPreviewMode("split");
+      setMessages((current) => [
+        ...current,
+        createMessage("assistant", `Generated ${screens.length} screens and opened Split View.`, "Generate 5 screens"),
+      ]);
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        createMessage("assistant", error instanceof Error ? error.message : "Could not generate screens.", "Generate 5 screens"),
       ]);
     } finally {
       setIsGenerating(false);
@@ -1226,7 +1361,7 @@ function App() {
         prompt,
       };
       imageAnalysis.enrichedContext.prompt = prompt;
-      const screens = await generateScreens(imageAnalysis.enrichedContext);
+      const screens = imageReport.canProceed ? await generateScreens(imageAnalysis.enrichedContext) : [];
       setGeneratedScreens(screens);
       setGeneratedRequest(nextRequest);
       setRequest((current) => ({ ...current, category: nextRequest.category, style: nextRequest.style, prompt: "" }));
@@ -1238,7 +1373,9 @@ function App() {
         ...current,
         createMessage(
           "assistant",
-          `Generated code from the screenshot and matched ${imageTemplateId}. Readiness ${imageReport.readinessScore}/100. Review it in Split View or Design.md.`,
+          imageReport.canProceed
+            ? `Generated code from the screenshot and matched ${imageTemplateId}. Readiness ${imageReport.readinessScore}/100. Review it in Split View or Design.md.`
+            : `Generated code from the screenshot and matched ${imageTemplateId}. Readiness ${imageReport.readinessScore}/100. Fix missing items to proceed with screen generation.`,
           "Screenshot-to-code",
         ),
       ]);
@@ -1388,6 +1525,42 @@ function App() {
         </aside>
 
         <section className="chat-workspace builder-workspace">
+          <input
+            ref={analyzeImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            hidden
+            onChange={(event) => {
+              if (event.currentTarget.files?.length) {
+                void analyzeWorkspaceImage(event.currentTarget.files);
+              }
+              event.currentTarget.value = "";
+            }}
+          />
+          <input
+            ref={baDocInputRef}
+            type="file"
+            accept=".md,.txt,text/markdown,text/plain"
+            hidden
+            multiple
+            onChange={(event) => {
+              if (event.currentTarget.files?.length) {
+                void addBaDocument(event.currentTarget.files);
+              }
+              event.currentTarget.value = "";
+            }}
+          />
+          <div className="workspace-action-bar">
+            <button type="button" onClick={() => analyzeImageInputRef.current?.click()}>
+              Analyze image
+            </button>
+            <button type="button" onClick={() => baDocInputRef.current?.click()}>
+              Add BA doc
+            </button>
+            <button type="button" onClick={() => void generateFiveScreensFromContext()} disabled={isGenerating}>
+              Generate 5 screens
+            </button>
+          </div>
           <div className="chat-scroll" ref={chatScrollRef}>
             {messages.map((message) => (
               <article key={message.id} className={`message ${message.role}`}>
@@ -1448,20 +1621,20 @@ function App() {
                       </nav>
                     </div>
                     {validationReport && (
-                      <div className="validation-summary">
+                      <div className={`validation-summary ${validationReport.readinessScore >= 60 ? "is-good" : validationReport.readinessScore >= 40 ? "is-warning" : "is-danger"}`}>
                         <strong>Readiness {validationReport.readinessScore}/100</strong>
                         <span>Components {validationReport.componentScore}</span>
                         <span>Tokens {validationReport.tokenScore}</span>
                         <span>Naming {validationReport.namingScore}</span>
                         {designContext?.selectedTemplateId && <span>Template {designContext.selectedTemplateId}</span>}
-                        {!validationReport.canProceed && <em>Missing: {[...validationReport.missingComponents, ...validationReport.missingTokens].slice(0, 4).join(", ") || "component scan"}</em>}
+                        {!validationReport.canProceed && <em>Fix missing items to proceed: {[...validationReport.missingComponents, ...validationReport.missingTokens].slice(0, 4).join(", ") || "component scan"}</em>}
                       </div>
                     )}
                     <div className="output-panel">
                       {previewMode === "split" && generatedScreens.length > 0 ? (
                         <SplitView
-                          initialMarkdown={designMd}
-                          screens={generatedScreens}
+                          key={`${templateCommandSlug(outputRequest.projectName)}-${generatedScreens.map((screen) => screen.name).join("|")}`}
+                          initialScreens={generatedScreens}
                           projectId={templateCommandSlug(outputRequest.projectName)}
                           onExport={(markdown) => {
                             setSavedDesignMd(markdown);

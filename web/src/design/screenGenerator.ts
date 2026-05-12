@@ -1,19 +1,8 @@
-import type { DesignContext } from "../../../shared/designContext";
-import { sanitize } from "../../../shared/sanitize";
+import type { DesignContext, Screen } from "../../../shared/designContext";
+import { SCREEN_NAMES } from "./constants";
 import { loadDesignMdTemplate } from "./templateRegistry";
 
-export interface Screen {
-  name: string;
-  markdown: string;
-  components: string[];
-  colorTokens: string[];
-}
-
-interface ClaudeResponse {
-  content?: Array<{ type?: string; text?: string }>;
-}
-
-const SCREEN_NAMES = ["Login / Onboarding", "Main Dashboard", "Detail / Item View", "Form / Create / Edit", "Settings / Profile"];
+export type { Screen } from "../../../shared/designContext";
 
 function extractComponentNames(markdown: string): string[] {
   return Array.from(
@@ -85,89 +74,30 @@ export function parseScreensFromMarkdown(markdown: string): Screen[] {
     });
 }
 
-async function buildGenerationPrompt(context: DesignContext): Promise<string> {
+async function getSelectedTemplateLabel(context: DesignContext): Promise<string> {
   const template = context.selectedTemplateId ? await loadDesignMdTemplate(context.selectedTemplateId) : null;
-  const selectedTemplate = template?.label ?? context.selectedTemplateId ?? "Unselected";
-  const components = context.components.map((component) => component.componentName || component.name).join(", ");
-  const docs = sanitize(context.docs.map((doc) => doc.content).join("\n")).slice(0, 2000);
-
-  return `Generate a complete DESIGN.md specification for a ${selectedTemplate} project.
-
-Project context:
-- Prompt: ${context.prompt}
-- Available components: ${components}
-- Template: ${selectedTemplate}
-- Bootstrap suggestions: ${context.bootstrapSuggestions.join(", ")}
-- Layout pattern detected: ${JSON.stringify(context.layoutPattern)}
-- BA documentation summary: ${docs}
-
-Generate specifications for exactly these 5 screens:
-1. Login / Onboarding
-2. Main Dashboard
-3. Detail / Item View
-4. Form / Create / Edit
-5. Settings / Profile
-
-For EACH screen use this exact structure:
-
-## Screen: [Screen Name]
-
-### Purpose
-[1 sentence]
-
-### Layout
-- Grid: [columns]
-- Nav: [position]
-- Key regions: [list]
-
-### Components
-| Component | Variant | Props |
-|-----------|---------|-------|
-[rows]
-
-### Color tokens
-[list of --token-name: purpose]
-
-### Spacing
-[key spacing rules]
-
-### Interactions
-[key user interactions]`;
+  return template?.label ?? context.selectedTemplateId ?? "Unselected";
 }
 
-async function callClaudeForScreens(context: DesignContext): Promise<string> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("VITE_ANTHROPIC_API_KEY is not configured.");
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+async function callGenerateScreensApi(context: DesignContext): Promise<string> {
+  const response = await fetch("/api/generate-screens", {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      system:
-        "You are a senior UI/UX designer creating DESIGN.md specifications for AI coding agents. Generate precise, structured markdown that Claude Code, Cursor, and Windsurf can follow directly without ambiguity.",
-      messages: [{ role: "user", content: await buildGenerationPrompt(context) }],
+      context,
+      selectedTemplateLabel: await getSelectedTemplateLabel(context),
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Screen generation failed with ${response.status}.`);
-  }
-
-  const result = (await response.json()) as ClaudeResponse;
-  const text = result.content?.find((item) => item.type === "text" || item.text)?.text;
-  if (!text) throw new Error("Screen generation returned no text content.");
-  return text;
+  if (!response.ok) throw new Error(`Screen generation failed with ${response.status}.`);
+  const result = await response.json() as { markdown?: string };
+  if (!result.markdown) throw new Error("Screen generation returned no text content.");
+  return result.markdown;
 }
 
 export async function generateScreens(context: DesignContext): Promise<Screen[]> {
   try {
-    const markdown = await callClaudeForScreens(context);
+    const markdown = await callGenerateScreensApi(context);
     const screens = parseScreensFromMarkdown(markdown);
     return screens.length === 5 ? screens : SCREEN_NAMES.map((name) => createSkeletonScreen(name, context));
   } catch {

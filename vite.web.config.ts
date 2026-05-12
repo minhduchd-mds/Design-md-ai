@@ -8,6 +8,7 @@ export default defineConfig({
     outDir: "../dist-web",
     emptyOutDir: true,
     target: "es2020",
+    chunkSizeWarningLimit: 700,
   },
   server: {
     host: "127.0.0.1",

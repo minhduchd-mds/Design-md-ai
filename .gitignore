@@ -9,3 +9,4 @@ coverage/
 *storybook.log
 storybook-static
 .claude/
+.env.local

@@ -20,6 +20,12 @@ describe("layoutValidator", () => {
     expect(validateNaming(context).score).toBe(100);
   });
 
+  it("treats empty naming input as not applicable", () => {
+    const context = createEmptyContext();
+
+    expect(validateNaming(context)).toEqual({ score: 100, issues: [] });
+  });
+
   it("computes a weighted validation report", () => {
     const context = createEmptyContext();
     context.components = [

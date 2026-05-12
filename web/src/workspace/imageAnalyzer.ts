@@ -1,8 +1,9 @@
 import type { DesignContext, LayoutPattern, TemplateMatch } from "../../../shared/designContext";
+import { sanitize } from "../../../shared/sanitize";
+import { MAX_IMAGE_SIZE_BYTES } from "../design/constants";
 import { DESIGN_MD_TEMPLATES } from "../design/templateRegistry";
 import { matchTemplates } from "../design/templateMatcher";
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_SIDE = 1024;
 const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
@@ -14,30 +15,30 @@ export interface ImageAnalysisResult {
 
 function validateImage(file: File): void {
   if (!ACCEPTED_TYPES.has(file.type)) {
-    throw new Error("Upload a PNG, JPEG, or WebP image.");
+    throw new Error("Unsupported format. Use PNG, JPG, or WebP.");
   }
-  if (file.size > MAX_IMAGE_BYTES) {
-    throw new Error("Image must be 5MB or smaller.");
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error("Image too large. Max 5MB.");
   }
 }
 
-async function resizeImage(file: File): Promise<File> {
+async function resizeImage(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
 
-  if (scale === 1) return file;
+  if ("OffscreenCanvas" in window) {
+    const canvas = new OffscreenCanvas(width, height);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, width, height);
+    return canvas.convertToBlob({ type: file.type, quality: 0.85 });
+  }
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, width, height);
-
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, file.type, 0.9));
-  return blob ? new File([blob], file.name, { type: file.type }) : file;
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, width, height);
+  return await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob ?? file), file.type, 0.85));
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -51,9 +52,10 @@ function fileToDataUrl(file: File): Promise<string> {
 
 function buildContextSummary(context: DesignContext): string {
   return [
-    `Project has ${context.components.length} components, ${context.docs.length} documents.`,
-    `Prompt: ${context.prompt.slice(0, 200)}.`,
-    `Bootstrap: ${context.bootstrapSuggestions.join(", ")}.`,
+    `Project has ${context.components.length} components.`,
+    `Prompt: ${sanitize(context.prompt).slice(0, 200)}.`,
+    `Bootstrap suggestions: ${context.bootstrapSuggestions.join(", ")}.`,
+    `Docs: ${context.docs.map((doc) => doc.filename).join(", ")}.`,
   ].join(" ");
 }
 
@@ -74,7 +76,7 @@ function fallbackResult(context: DesignContext): ImageAnalysisResult {
 export async function analyzeImage(file: File, context: DesignContext): Promise<ImageAnalysisResult> {
   validateImage(file);
 
-  const url = import.meta.env.VITE_ANALYZE_IMAGE_URL;
+  const url = import.meta.env.VITE_ANALYZE_IMAGE_URL || "/api/analyze-image";
   if (!url) {
     return fallbackResult(context);
   }
@@ -87,7 +89,7 @@ export async function analyzeImage(file: File, context: DesignContext): Promise<
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         base64Image: dataUrl.split(",")[1] ?? dataUrl,
-        mimeType: resized.type,
+        mimeType: file.type,
         contextSummary: buildContextSummary(context),
         templateMeta: DESIGN_MD_TEMPLATES.map(({ id, category, priority, keywords }) => ({
           id,

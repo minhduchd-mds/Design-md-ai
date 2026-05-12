@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Screen } from "../design/screenGenerator";
+import type { Screen } from "../../../shared/designContext";
 
 export interface ProjectVersion {
   id: string;
@@ -24,7 +24,7 @@ export const supabase: SupabaseClient | null =
   supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 if (!supabase) {
-  console.warn("Supabase is not configured. Project persistence will use local-only behavior.");
+  console.warn("Supabase not configured. Project versions will save to localStorage only.");
 }
 
 function toProjectVersion(row: ProjectVersionRow): ProjectVersion {
@@ -37,43 +37,89 @@ function toProjectVersion(row: ProjectVersionRow): ProjectVersion {
   };
 }
 
-export async function saveProjectVersion(projectId: string, markdown: string, screens: Screen[]): Promise<void> {
-  if (!supabase) return;
+function getLocalStorageKey(projectId: string): string {
+  return `pv-${projectId}`;
+}
 
-  const { error } = await supabase.from("project_versions").insert({
-    project_id: projectId,
-    design_md: markdown,
+function saveLocalProjectVersion(projectId: string, designMd: string, screens: Screen[]): void {
+  const version: ProjectVersion = {
+    id: `local-${Date.now()}`,
+    projectId,
+    designMd,
     screens,
-  });
+    createdAt: new Date().toISOString(),
+  };
+  localStorage.setItem(getLocalStorageKey(projectId), JSON.stringify(version));
+}
 
-  if (error) throw error;
+function loadLocalProjectVersion(projectId: string): ProjectVersion | null {
+  try {
+    const raw = localStorage.getItem(getLocalStorageKey(projectId));
+    return raw ? JSON.parse(raw) as ProjectVersion : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveProjectVersion(projectId: string, designMd: string, screens: Screen[]): Promise<void> {
+  if (!supabase) {
+    saveLocalProjectVersion(projectId, designMd, screens);
+    return;
+  }
+
+  try {
+    const { error } = await supabase.from("project_versions").insert({
+      project_id: projectId,
+      design_md: designMd,
+      screens,
+    });
+
+    if (error) throw error;
+  } catch (error) {
+    console.warn("Could not save Supabase project version. Falling back to localStorage.", error);
+    saveLocalProjectVersion(projectId, designMd, screens);
+  }
 }
 
 export async function loadLatestVersion(projectId: string): Promise<ProjectVersion | null> {
-  if (!supabase) return null;
+  if (!supabase) return loadLocalProjectVersion(projectId);
 
-  const { data, error } = await supabase
-    .from("project_versions")
-    .select("id, project_id, design_md, screens, created_at")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ProjectVersionRow>();
+  try {
+    const { data, error } = await supabase
+      .from("project_versions")
+      .select("id, project_id, design_md, screens, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<ProjectVersionRow>();
 
-  if (error) throw error;
-  return data ? toProjectVersion(data) : null;
+    if (error) throw error;
+    return data ? toProjectVersion(data) : loadLocalProjectVersion(projectId);
+  } catch (error) {
+    console.warn("Could not load Supabase project version. Falling back to localStorage.", error);
+    return loadLocalProjectVersion(projectId);
+  }
 }
 
 export async function listVersions(projectId: string): Promise<ProjectVersion[]> {
-  if (!supabase) return [];
+  if (!supabase) {
+    const version = loadLocalProjectVersion(projectId);
+    return version ? [version] : [];
+  }
 
-  const { data, error } = await supabase
-    .from("project_versions")
-    .select("id, project_id, design_md, screens, created_at")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .returns<ProjectVersionRow[]>();
+  try {
+    const { data, error } = await supabase
+      .from("project_versions")
+      .select("id, project_id, design_md, screens, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .returns<ProjectVersionRow[]>();
 
-  if (error) throw error;
-  return (data ?? []).map(toProjectVersion);
+    if (error) throw error;
+    return (data ?? []).map(toProjectVersion);
+  } catch (error) {
+    console.warn("Could not list Supabase project versions. Falling back to localStorage.", error);
+    const version = loadLocalProjectVersion(projectId);
+    return version ? [version] : [];
+  }
 }

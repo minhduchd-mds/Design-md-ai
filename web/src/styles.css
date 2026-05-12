@@ -1331,6 +1331,35 @@ textarea {
     #f5f7ff;
 }
 
+.workspace-action-bar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin: 0 auto 14px;
+}
+
+.workspace-action-bar button {
+  border: 1px solid #d6ddea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #243047;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.workspace-action-bar button:hover:not(:disabled) {
+  border-color: #aab8d0;
+  background: #f8fafc;
+}
+
+.workspace-action-bar button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .chat-scroll {
   display: flex;
   flex: 1;
@@ -1514,6 +1543,18 @@ textarea {
 .validation-summary strong {
   color: #0f172a;
   font-weight: 700;
+}
+
+.validation-summary.is-good strong {
+  color: #15803d;
+}
+
+.validation-summary.is-warning strong {
+  color: #b45309;
+}
+
+.validation-summary.is-danger strong {
+  color: #b91c1c;
 }
 
 .validation-summary span,

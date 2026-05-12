@@ -97,7 +97,7 @@ export function validateColorTokens(context: DesignContext, templateId: string):
 
 export function validateNaming(context: DesignContext): { score: number; issues: string[] } {
   const names = collectComponentNames(context.components);
-  if (names.length === 0) return { score: 0, issues: ["No components available for naming validation."] };
+  if (names.length === 0) return { score: 100, issues: [] };
 
   const issues = names.filter((name) => !/^[A-Z][A-Za-z0-9/ -]*$/.test(name) || name.trim().length < 3);
   return {

@@ -4,19 +4,12 @@ import type { DesignContext, DocSource } from "../../../shared/designContext";
 import { createEmptyContext } from "../../../shared/designContext";
 import { sanitize } from "../../../shared/sanitize";
 
-const BOOTSTRAP_SYSTEM_PROMPT =
-  'You are a UI design system expert. The user is starting a new project with no existing components. Based on their project description and any BA documentation provided, suggest the minimal component set needed. Return ONLY a JSON array of component names, no explanation. Example: ["Button","Input","Card","Modal","Toast","Nav","Table"] Limit to 12 components maximum.';
-
 export interface InputSources {
   pluginScanResult: SerializedNode[] | null;
   variableCount?: number;
   pageCount?: number;
   uploadedFiles: File[];
   textPrompt: string;
-}
-
-interface BootstrapResponse {
-  content?: Array<{ type?: string; text?: string }>;
 }
 
 function getFileType(fileName: string): "md" | "txt" | null {
@@ -69,47 +62,27 @@ export async function parseFileSources(files: File[]): Promise<DocSource[]> {
   return docs;
 }
 
-function parseBootstrapSuggestions(raw: string): string[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is string => typeof item === "string").map((item) => sanitize(item)).filter(Boolean).slice(0, 12);
-  } catch {
-    return [];
-  }
+function parseBootstrapSuggestions(value: unknown): string[] {
+  const components =
+    Array.isArray(value)
+      ? value
+      : typeof value === "object" && value !== null && Array.isArray((value as { components?: unknown }).components)
+        ? (value as { components: unknown[] }).components
+        : [];
+  return components.filter((item): item is string => typeof item === "string").map((item) => sanitize(item)).filter(Boolean).slice(0, 12);
 }
 
 async function fetchBootstrapSuggestions(prompt: string, docs: DocSource[]): Promise<string[]> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) return [];
-
-  const userContent = sanitize(
-    [
-      prompt,
-      ...docs.map((doc) => `${doc.filename}\n${doc.content}`),
-    ].join("\n\n"),
-  );
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("/api/bootstrap-context", {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      system: BOOTSTRAP_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userContent }],
-    }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt: sanitize(prompt), docs }),
   });
 
   if (!response.ok) return [];
 
-  const result = (await response.json()) as BootstrapResponse;
-  const text = result.content?.find((item) => item.type === "text" || item.text)?.text ?? "";
-  return parseBootstrapSuggestions(text);
+  const result = await response.json() as { components?: unknown };
+  return parseBootstrapSuggestions(result.components);
 }
 
 export async function buildContext(sources: InputSources): Promise<DesignContext> {

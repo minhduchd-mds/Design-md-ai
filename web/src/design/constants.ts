@@ -1,4 +1,4 @@
-# BA Handoff Guide - Design-md-ai Output
+export const BA_TEMPLATE_CONTENT = `# BA Handoff Guide - Design-md-ai Output
 
 ## What is DESIGN.md?
 
@@ -9,7 +9,7 @@ your design system and the code generator.
 
 ## How to read this document
 
-Each `## Screen:` section describes one screen of your application.
+Each \`## Screen:\` section describes one screen of your application.
 Under each screen you will find:
 
 - **Layout**: grid structure and navigation position
@@ -27,19 +27,27 @@ Under each screen you will find:
 ## Component naming convention
 
 Component names match your Figma component set names exactly.
-If listed as `Button/Primary`, your Figma file should have a component
-named `Button` with a variant property `Type = Primary`.
+If listed as \`Button/Primary\`, your Figma file should have a component
+named \`Button\` with a variant property \`Type = Primary\`.
 
 ## Color tokens
 
-Token names use CSS custom property format: `--color-primary`.
+Token names use CSS custom property format: \`--color-primary\`.
 These should match your Figma local variables exactly.
 
 ## Adding a note for the AI agent
 
-Add a `> Note:` blockquote with your instruction anywhere in the document.
+Add a \`> Note:\` blockquote with your instruction anywhere in the document.
 The AI agent will incorporate it as a constraint.
 
 Example:
 > Note: The login screen must support SSO via Google OAuth only.
 > Do not implement email/password login.
+`;
+
+export const SCREEN_NAMES = ["Login", "Dashboard", "Detail", "Form", "Settings"] as const;
+export type ScreenName = typeof SCREEN_NAMES[number];
+export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_CONTEXT_PROMPT_LENGTH = 10000;
+export const DEBOUNCE_MS = 300;
+export const AUTOSAVE_INTERVAL_MS = 30000;

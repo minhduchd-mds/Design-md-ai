@@ -1,0 +1,104 @@
+import OpenAI from "openai";
+
+export const config = { api: { bodyParser: true } };
+
+interface DocSource {
+  filename: string;
+  content: string;
+  type: "md" | "txt" | "zip-entry";
+}
+
+interface BootstrapBody {
+  prompt?: string;
+  docs?: DocSource[];
+}
+
+interface VercelRequest {
+  method?: string;
+  body?: BootstrapBody;
+}
+
+interface VercelResponse {
+  setHeader: (name: string, value: string) => void;
+  status: (code: number) => VercelResponse;
+  json: (body: unknown) => void;
+  end: () => void;
+}
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+const systemPrompt =
+  'You are a UI design system expert. The user is starting a new project with no existing components. Based on their project description and any BA documentation provided, suggest the minimal component set needed. Return ONLY valid JSON object with key "components" containing an array of component name strings. Maximum 12 components. Example: {"components": ["Button","Input","Card","Modal","Toast"]}';
+
+function setCors(response: VercelResponse): void {
+  Object.entries(corsHeaders).forEach(([key, value]) => response.setHeader(key, value));
+}
+
+function sanitize(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/[^\x20-\x7E\n\r\t\u00C0-\u024F\u4E00-\u9FFF]/g, "")
+    .trim()
+    .slice(0, 10000);
+}
+
+function parseComponents(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const components =
+      Array.isArray(parsed)
+        ? parsed
+        : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { components?: unknown }).components)
+          ? (parsed as { components: unknown[] }).components
+          : [];
+    return components.filter((item): item is string => typeof item === "string").map((item) => sanitize(item)).filter(Boolean).slice(0, 12);
+  } catch {
+    return [];
+  }
+}
+
+export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
+  setCors(response);
+
+  if (request.method === "OPTIONS") {
+    response.status(200).end();
+    return;
+  }
+
+  if (request.method !== "POST") {
+    response.status(405).json({ error: "Method not allowed." });
+    return;
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    response.status(500).json({ error: "OPENAI_API_KEY is not configured." });
+    return;
+  }
+
+  const prompt = sanitize(request.body?.prompt ?? "");
+  const docs = request.body?.docs ?? [];
+  const userPrompt = `Project description: ${prompt}
+BA documentation: ${sanitize(docs.map((doc) => doc.content).join("\n")).slice(0, 2000)}`;
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 500,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    response.status(200).json({ components: parseComponents(completion.choices[0]?.message.content ?? "{}") });
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : "Bootstrap generation failed." });
+  }
+}

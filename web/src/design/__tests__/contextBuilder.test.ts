@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import JSZip from "jszip";
 import { buildContext, parseFileSources } from "../contextBuilder";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("parseFileSources", () => {
   it("reads markdown files into doc sources", async () => {
@@ -13,19 +18,31 @@ describe("parseFileSources", () => {
       },
     ]);
   });
+
+  it("extracts markdown and text entries from zip files", async () => {
+    const zip = new JSZip();
+    zip.file("docs/prd.md", "# PRD");
+    zip.file("notes.txt", "Plain notes");
+    zip.file("image.png", "ignored");
+    const blob = await zip.generateAsync({ type: "blob" });
+    const file = new File([blob], "docs.zip", { type: "application/zip" });
+
+    const sources = await parseFileSources([file]);
+
+    expect(sources).toEqual([
+      { filename: "docs/prd.md", content: "# PRD", type: "zip-entry" },
+      { filename: "notes.txt", content: "Plain notes", type: "zip-entry" },
+    ]);
+  });
 });
 
 describe("buildContext", () => {
   it("uses bootstrap suggestions when no components are provided", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({
-          content: [{ type: "text", text: '["Button","Input","Card"]' }],
-        }),
+      json: () => Promise.resolve({ components: ["Button", "Input", "Card"] }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    vi.stubEnv("VITE_ANTHROPIC_API_KEY", "test-key");
 
     const context = await buildContext({
       pluginScanResult: [],
@@ -34,9 +51,21 @@ describe("buildContext", () => {
     });
 
     expect(context.bootstrapSuggestions).toEqual(["Button", "Input", "Card"]);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith("/api/bootstrap-context", expect.objectContaining({ method: "POST" }));
+  });
 
-    vi.unstubAllEnvs();
-    vi.unstubAllGlobals();
+  it("does not call bootstrap when scanned components exist", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const context = await buildContext({
+      pluginScanResult: [{ id: "1", name: "Button", type: "COMPONENT" }],
+      uploadedFiles: [],
+      textPrompt: "Build a CRM dashboard",
+    });
+
+    expect(context.components).toHaveLength(1);
+    expect(context.bootstrapSuggestions).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

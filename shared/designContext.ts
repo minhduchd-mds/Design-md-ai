@@ -30,6 +30,13 @@ export interface ValidationReport {
   canProceed: boolean;
 }
 
+export interface Screen {
+  name: string;
+  markdown: string;
+  components: string[];
+  colorTokens: string[];
+}
+
 export interface DesignContext {
   components: SerializedNode[];
   variableCount: number;
