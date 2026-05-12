@@ -11,7 +11,7 @@ import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate, type De
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { analyzeImage } from "./workspace/imageAnalyzer";
-import { sendOpenAiChat } from "./workspace/openAiChat";
+import { sendClaudeChat } from "./workspace/claudeChat";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
 import { SplitView } from "./workspace/SplitView";
 import "./styles.css";
@@ -925,7 +925,7 @@ function App() {
     setIsGenerating(true);
 
     try {
-      const response = await sendOpenAiChat(chatMessages, {
+      const response = await sendClaudeChat(chatMessages, {
         projectName: outputRequest.projectName,
         category: request.category,
         selectedTemplate: selectedPreset.label,
@@ -934,7 +934,7 @@ function App() {
       });
       setMessages((current) => [
         ...current,
-        createMessage("assistant", response, "OpenAI chat"),
+        createMessage("assistant", response, "Claude chat"),
       ]);
     } catch (error) {
       setMessages((current) => [

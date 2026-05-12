@@ -41,7 +41,7 @@ function setCors(response: VercelResponse): void {
 function sanitize(input: string): string {
   return input
     .replace(/<[^>]*>/g, "")
-    .replace(/[^\x20-\x7E\n\r\t\u00C0-\u024F\u4E00-\u9FFF]/g, "")
+    .replace(/[^\x20-\x7E\n\r\tÀ-ɏ一-鿿]/g, "")
     .trim()
     .slice(0, 10000);
 }
@@ -55,7 +55,11 @@ function parseComponents(raw: string): string[] {
         : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { components?: unknown }).components)
           ? (parsed as { components: unknown[] }).components
           : [];
-    return components.filter((item): item is string => typeof item === "string").map((item) => sanitize(item)).filter(Boolean).slice(0, 12);
+    return components
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => sanitize(item))
+      .filter(Boolean)
+      .slice(0, 12);
   } catch {
     return [];
   }
@@ -64,31 +68,21 @@ function parseComponents(raw: string): string[] {
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   setCors(response);
 
-  if (request.method === "OPTIONS") {
-    response.status(200).end();
-    return;
-  }
+  if (request.method === "OPTIONS") { response.status(200).end(); return; }
+  if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
 
-  if (request.method !== "POST") {
-    response.status(405).json({ error: "Method not allowed." });
-    return;
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    response.status(500).json({ error: "OPENAI_API_KEY is not configured." });
-    return;
-  }
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) { response.status(500).json({ error: "GROQ_API_KEY is not configured." }); return; }
 
   const prompt = sanitize(request.body?.prompt ?? "");
   const docs = request.body?.docs ?? [];
   const userPrompt = `Project description: ${prompt}
-BA documentation: ${sanitize(docs.map((doc) => doc.content).join("\n")).slice(0, 2000)}`;
+BA documentation: ${sanitize(docs.map((d) => d.content).join("\n")).slice(0, 2000)}`;
 
   try {
-    const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const groq = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
       max_tokens: 500,
       response_format: { type: "json_object" },
       messages: [
@@ -97,7 +91,9 @@ BA documentation: ${sanitize(docs.map((doc) => doc.content).join("\n")).slice(0,
       ],
     });
 
-    response.status(200).json({ components: parseComponents(completion.choices[0]?.message.content ?? "{}") });
+    response.status(200).json({
+      components: parseComponents(completion.choices[0]?.message.content ?? "{}"),
+    });
   } catch (error) {
     response.status(500).json({ error: error instanceof Error ? error.message : "Bootstrap generation failed." });
   }

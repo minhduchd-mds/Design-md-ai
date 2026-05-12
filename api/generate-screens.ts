@@ -35,7 +35,7 @@ const corsHeaders = {
 };
 
 const systemPrompt =
-  "You are a senior UI/UX designer creating DESIGN.md specifications for AI coding agents (GPT, Claude Code, Cursor, Windsurf). Generate precise, structured markdown. Be specific about component variants, props, and token names. Do not add preamble or explanation - output ONLY the markdown specification.";
+  "You are a senior UI/UX designer creating DESIGN.md specifications for AI coding agents (Claude Code, Cursor, Windsurf). Generate precise, structured markdown. Be specific about component variants, props, and token names. Do not add preamble or explanation - output ONLY the markdown specification.";
 
 function setCors(response: VercelResponse): void {
   Object.entries(corsHeaders).forEach(([key, value]) => response.setHeader(key, value));
@@ -44,14 +44,17 @@ function setCors(response: VercelResponse): void {
 function sanitize(input: string): string {
   return input
     .replace(/<[^>]*>/g, "")
-    .replace(/[^\x20-\x7E\n\r\t\u00C0-\u024F\u4E00-\u9FFF]/g, "")
+    .replace(/[^\x20-\x7E\n\r\tÀ-ɏ一-鿿]/g, "")
     .trim()
     .slice(0, 10000);
 }
 
 function buildGenerationPrompt(context: DesignContextPayload, selectedTemplateLabel: string): string {
-  const components = (context.components ?? []).map((component) => component.componentName || component.name).filter(Boolean).join(", ");
-  const docs = sanitize((context.docs ?? []).map((doc) => doc.content).join("\n")).slice(0, 2000);
+  const components = (context.components ?? [])
+    .map((c) => c.componentName || c.name)
+    .filter(Boolean)
+    .join(", ");
+  const docs = sanitize((context.docs ?? []).map((d) => d.content).join("\n")).slice(0, 2000);
 
   return `Generate a complete DESIGN.md specification for a ${selectedTemplateLabel} project.
 
@@ -100,28 +103,21 @@ For EACH screen use this exact structure:
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   setCors(response);
 
-  if (request.method === "OPTIONS") {
-    response.status(200).end();
-    return;
-  }
+  if (request.method === "OPTIONS") { response.status(200).end(); return; }
+  if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
 
-  if (request.method !== "POST") {
-    response.status(405).json({ error: "Method not allowed." });
-    return;
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    response.status(500).json({ error: "OPENAI_API_KEY is not configured." });
-    return;
-  }
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) { response.status(500).json({ error: "GROQ_API_KEY is not configured." }); return; }
 
   try {
     const context = request.body?.context ?? {};
-    const selectedTemplateLabel = sanitize(request.body?.selectedTemplateLabel ?? context.selectedTemplateId ?? "Unselected");
-    const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const selectedTemplateLabel = sanitize(
+      request.body?.selectedTemplateLabel ?? context.selectedTemplateId ?? "Unselected"
+    );
+
+    const groq = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
       max_tokens: 4000,
       messages: [
         { role: "system", content: systemPrompt },

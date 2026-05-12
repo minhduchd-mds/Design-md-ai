@@ -40,7 +40,7 @@ const corsHeaders = {
 };
 
 const systemPrompt =
-  "You are the OpenAI chat assistant inside Design-md-ai. Answer the user's chat request directly and practically. Keep Design.md generation as a separate workflow: when the user asks to create or regenerate Design.md, explain the next action briefly and tell them to use the dedicated Design.md action if needed. Do not claim to edit files or run tools unless the app context says that already happened.";
+  "You are the AI chat assistant inside Design-md-ai. Answer the user's chat request directly and practically. Keep Design.md generation as a separate workflow: when the user asks to create or regenerate Design.md, explain the next action briefly and tell them to use the dedicated Design.md action if needed. Do not claim to edit files or run tools unless the app context says that already happened.";
 
 function setCors(response: VercelResponse): void {
   Object.entries(corsHeaders).forEach(([key, value]) => response.setHeader(key, value));
@@ -49,7 +49,7 @@ function setCors(response: VercelResponse): void {
 function sanitize(input: string): string {
   return input
     .replace(/<[^>]*>/g, "")
-    .replace(/[^\x20-\x7E\n\r\t\u00C0-\u024F\u4E00-\u9FFF]/g, "")
+    .replace(/[^\x20-\x7E\n\r\tÀ-ɏ一-鿿]/g, "")
     .trim()
     .slice(0, 6000);
 }
@@ -67,33 +67,23 @@ function buildContextLine(context: ChatContextPayload | undefined): string {
 
 function normalizeMessages(messages: ChatMessagePayload[] | undefined) {
   return (messages ?? [])
-    .filter((message) => message.role === "user" || message.role === "assistant")
-    .map((message) => ({
-      role: message.role as "user" | "assistant",
-      content: sanitize([message.title, message.content].filter(Boolean).join("\n")),
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: sanitize([m.title, m.content].filter(Boolean).join("\n")),
     }))
-    .filter((message) => message.content)
+    .filter((m) => m.content)
     .slice(-12);
 }
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   setCors(response);
 
-  if (request.method === "OPTIONS") {
-    response.status(200).end();
-    return;
-  }
+  if (request.method === "OPTIONS") { response.status(200).end(); return; }
+  if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
 
-  if (request.method !== "POST") {
-    response.status(405).json({ error: "Method not allowed." });
-    return;
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    response.status(500).json({ error: "OPENAI_API_KEY is not configured." });
-    return;
-  }
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) { response.status(500).json({ error: "GROQ_API_KEY is not configured." }); return; }
 
   const messages = normalizeMessages(request.body?.messages);
   if (messages.length === 0 || messages[messages.length - 1]?.role !== "user") {
@@ -102,9 +92,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
-    const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const groq = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
       max_tokens: 1200,
       messages: [
         { role: "system", content: systemPrompt },
