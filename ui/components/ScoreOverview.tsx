@@ -19,6 +19,9 @@ function scoreColor(score: number): string {
 
 const WEIGHTS = SCORE_WEIGHTS;
 
+// SVG donut geometry — constant, never change
+const cx = 100, cy = 100, r = 72, strokeW = 28;
+
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
@@ -106,7 +109,7 @@ export function ScoreOverview({ score, categories }: ScoreOverviewProps) {
       segs.push({ label: "AI Tolerance", value: tolerance, color: "#444", isTolerance: true });
     }
 
-    const cx = 100, cy = 100, r = 72, strokeW = 28, gap = 2;
+    const gap = 2;
     const computedArcs = segs.reduce(
       (acc, seg) => {
         const sweep = (seg.value / 100) * 360 - gap;
@@ -116,9 +119,6 @@ export function ScoreOverview({ score, categories }: ScoreOverviewProps) {
       },
       { angle: -90, result: [] as (DonutSegment & { startAngle: number; sweepAngle: number })[] },
     ).result;
-
-    // expose cx/cy/r/strokeW for the SVG (constant values inlined below)
-    void cx; void cy; void r; void strokeW;
 
     return { segments: segs, arcs: computedArcs, tolArc: computedArcs.find((a) => a.isTolerance) };
   }, [categories]);
