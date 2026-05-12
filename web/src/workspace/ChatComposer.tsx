@@ -92,7 +92,7 @@ export function ChatComposer({
                 onSendChat();
               }
             }}
-            placeholder="Chat with OpenAI, ask for BA notes, or describe the next design task..."
+            placeholder="Chat with Groq, ask for BA notes, or describe the next design task..."
             rows={1}
           />
         </div>

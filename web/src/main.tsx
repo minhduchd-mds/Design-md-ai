@@ -59,7 +59,7 @@ const DEFAULT_PROJECT: ProjectRequest = {
 
 const BASE_OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
   openai: {
-    label: "OpenAI workspace",
+    label: "Groq workspace",
     direction: "Calm AI workspace, readable long-form answers, low distraction, clear safety and action states.",
     palette: ["#F7F7F4", "#FFFFFF", "#202123", "#10A37F", "#D9EDE7"],
     typography: "Humanist sans, normal body weight, generous line-height, compact headings.",
@@ -934,12 +934,12 @@ function App() {
       });
       setMessages((current) => [
         ...current,
-        createMessage("assistant", response, "Claude chat"),
+        createMessage("assistant", response, "Groq chat"),
       ]);
     } catch (error) {
       setMessages((current) => [
         ...current,
-        createMessage("assistant", error instanceof Error ? error.message : "Could not contact OpenAI chat.", "OpenAI chat"),
+        createMessage("assistant", error instanceof Error ? error.message : "Could not contact Groq.", "Groq chat"),
       ]);
     } finally {
       setIsGenerating(false);
