@@ -363,11 +363,10 @@ html, body {
 /* ── Cards ── */
 
 .card {
-  background: rgba(11, 18, 32, 0.7);
+  background: rgba(11, 18, 32, 0.94);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 16px;
-  backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
   transition: border-color 0.3s;
@@ -420,8 +419,7 @@ html, body {
   padding: var(--dr-space-xl);
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: rgba(11, 18, 32, 0.7);
-  backdrop-filter: blur(10px);
+  background: rgba(11, 18, 32, 0.94);
   position: relative;
   overflow: hidden;
   transition: border-color 0.3s;
@@ -570,8 +568,7 @@ html, body {
 .design-card {
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: rgba(11, 18, 32, 0.7);
-  backdrop-filter: blur(10px);
+  background: rgba(11, 18, 32, 0.94);
   position: relative;
   overflow: hidden;
 }

@@ -155,10 +155,9 @@
   justify-content: center;
   gap: var(--dr-space-md);
   padding: var(--dr-space-lg);
-  background: rgba(11, 18, 32, 0.7);
+  background: rgba(11, 18, 32, 0.94);
   border: 1px solid var(--border);
   border-radius: var(--dr-radius-xl);
-  backdrop-filter: blur(10px);
   min-height: 200px;
   text-align: center;
 }

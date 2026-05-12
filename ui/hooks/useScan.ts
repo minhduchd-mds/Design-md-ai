@@ -1,15 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { SerializedNode, ScanResult, ViewportVariant, PluginProfile } from "../../shared/types";
-import { scan as runScan } from "../lib/scanner";
+import { scan as runScan, invalidateScanCache } from "../lib/scanner";
+import { sendPluginMessage } from "../lib/pluginMessage";
+import { SCAN_TIMEOUT_MS } from "../../shared/constants";
 
 export function useScan() {
-  const [result, setResult] = useState<ScanResult | null>(null);
+  const [result, setResult]       = useState<ScanResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [variants, setVariants] = useState<ViewportVariant[]>([]);
-  const pendingNodeRef = useRef<SerializedNode | null>(null);
-  const profileRef = useRef<PluginProfile | null>(null);
-  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+  const [variants, setVariants]   = useState<ViewportVariant[]>([]);
+
+  const pendingNodeRef  = useRef<SerializedNode | null>(null);
+  const profileRef      = useRef<PluginProfile | null>(null);
+  const scanTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -45,7 +48,7 @@ export function useScan() {
     setError(null);
     pendingNodeRef.current = node;
     profileRef.current = profile ?? null;
-    parent.postMessage({ pluginMessage: { type: "request-variants" } }, "*");
+    sendPluginMessage({ type: "request-variants" });
 
     if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
     scanTimeoutRef.current = setTimeout(() => {
@@ -54,7 +57,7 @@ export function useScan() {
         setError("Scan timed out. Please try again.");
         setIsScanning(false);
       }
-    }, 10000);
+    }, SCAN_TIMEOUT_MS);
   }, []);
 
   const reset = useCallback(() => {
@@ -63,5 +66,10 @@ export function useScan() {
     setVariants([]);
   }, []);
 
-  return { result, isScanning, error, scan, reset, variants };
+  /** Invalidate the cache for a node after fixes have been applied. */
+  const invalidateCache = useCallback((nodeId: string) => {
+    invalidateScanCache(nodeId);
+  }, []);
+
+  return { result, isScanning, error, scan, reset, variants, invalidateCache };
 }

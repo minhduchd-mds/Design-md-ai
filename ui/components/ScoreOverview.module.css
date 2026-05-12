@@ -5,10 +5,9 @@
   flex-direction: column;
   gap: var(--dr-space-lg);
   padding: var(--dr-space-xl);
-  background: rgba(11, 18, 32, 0.7);
+  background: rgba(11, 18, 32, 0.94);
   border: 1px solid var(--border);
   border-radius: var(--dr-radius-xl);
-  backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
   transition: border-color 0.3s;
