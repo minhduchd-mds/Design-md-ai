@@ -15,6 +15,7 @@ import { analyzeImage } from "./workspace/imageAnalyzer";
 import { sendClaudeChat } from "./workspace/claudeChat";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
 import { SplitView } from "./workspace/SplitView";
+import { HtmlPreviewModal, type HtmlPreviewState } from "./workspace/HtmlPreviewModal";
 import "./styles.css";
 
 type PreviewMode = "prompt" | "preview" | "edit" | "split";
@@ -554,12 +555,13 @@ async function decryptChatMessages(emailHash: string, payload: string): Promise<
   return JSON.parse(new TextDecoder().decode(plain)) as ChatMessage[];
 }
 
-function createMessage(role: ChatMessage["role"], content: string, title?: string): ChatMessage {
+function createMessage(role: ChatMessage["role"], content: string, title?: string, htmlCode?: string): ChatMessage {
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     role,
     title,
     content,
+    htmlCode,
   };
 }
 
@@ -739,6 +741,7 @@ function App() {
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [generatedScreens, setGeneratedScreens] = useState<Screen[]>([]);
   const [pendingUploadedFiles, setPendingUploadedFiles] = useState<File[]>([]);
+  const [htmlPreview, setHtmlPreview] = useState<HtmlPreviewState | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const analyzeImageInputRef = useRef<HTMLInputElement | null>(null);
   const baDocInputRef = useRef<HTMLInputElement | null>(null);
@@ -916,6 +919,26 @@ function App() {
     });
   }
 
+  function detectWebIntent(prompt: string): boolean {
+    const p = prompt.toLowerCase();
+    return /tạo\s*(web|website|trang|app|giao diện)|create\s*(web|website|page|app|landing|ui)|build\s*(web|website|page|app|landing)|make\s*(web|website|page|app)|html|landing page|homepage|web app|single.?page|portfolio site/.test(p);
+  }
+
+  async function generateHtmlFromPrompt(prompt: string): Promise<string | null> {
+    try {
+      const res = await fetch("/api/generate-html", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, style: selectedPreset.label }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json() as { html?: string };
+      return data.html ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async function sendChatMessage() {
     const prompt = request.prompt.trim();
     if (!prompt) return;
@@ -926,17 +949,22 @@ function App() {
     setRequest((current) => ({ ...current, prompt: "" }));
     setIsGenerating(true);
 
+    const isWebIntent = detectWebIntent(prompt);
+
     try {
-      const response = await sendClaudeChat(chatMessages, {
-        projectName: outputRequest.projectName,
-        category: request.category,
-        selectedTemplate: selectedPreset.label,
-        readinessScore: validationReport?.readinessScore ?? null,
-        activeDesignMd: hasGenerated,
-      });
+      const [chatResponse, htmlCode] = await Promise.all([
+        sendClaudeChat(chatMessages, {
+          projectName: outputRequest.projectName,
+          category: request.category,
+          selectedTemplate: selectedPreset.label,
+          readinessScore: validationReport?.readinessScore ?? null,
+          activeDesignMd: hasGenerated,
+        }),
+        isWebIntent ? generateHtmlFromPrompt(prompt) : Promise.resolve(null),
+      ]);
       setMessages((current) => [
         ...current,
-        createMessage("assistant", response, "Groq chat"),
+        createMessage("assistant", chatResponse, "Groq chat", htmlCode ?? undefined),
       ]);
     } catch (error) {
       setMessages((current) => [
@@ -1432,6 +1460,7 @@ function App() {
 
   if (view === "workspace" && user) {
     return (
+      <>
       <main className={`workspace-shell${sidebarCollapsed ? " sidebar-is-collapsed" : ""}`}>
         <aside className="workspace-sidebar">
           <button
@@ -1671,6 +1700,18 @@ function App() {
               <article key={message.id} className={`message ${message.role}`}>
                 {message.title && <strong>{message.title}</strong>}
                 <p>{message.content}</p>
+                {message.htmlCode && (
+                  <button
+                    type="button"
+                    className="html-preview-trigger"
+                    onClick={() => setHtmlPreview({ html: message.htmlCode!, title: (message.title ?? request.prompt.slice(0, 40)) || "Web Preview" })}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Run preview
+                  </button>
+                )}
               </article>
             ))}
 
@@ -1927,6 +1968,14 @@ function App() {
           />
         </section>
       </main>
+      {htmlPreview && (
+        <HtmlPreviewModal
+          state={htmlPreview}
+          onClose={() => setHtmlPreview(null)}
+          onHtmlChange={(html) => setHtmlPreview((prev) => prev ? { ...prev, html } : null)}
+        />
+      )}
+      </>
     );
   }
   return (
