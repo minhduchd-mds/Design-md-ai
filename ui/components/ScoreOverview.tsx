@@ -215,7 +215,7 @@ export function ScoreOverview({ score, categories }: ScoreOverviewProps) {
   );
 }
 
-function LegendItem({ segment }: { segment: DonutSegment }) {
+const LegendItem = React.memo(function LegendItem({ segment }: { segment: DonutSegment }) {
   const animVal = useAnimatedValue(segment.value, 500);
 
   return (
@@ -233,4 +233,4 @@ function LegendItem({ segment }: { segment: DonutSegment }) {
       </span>
     </div>
   );
-}
+});

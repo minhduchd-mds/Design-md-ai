@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { SerializedNode, BatchScanResult, PluginProfile } from "../../shared/types";
 import { batchScan } from "../lib/batch-scanner";
+import { sendPluginMessage } from "../lib/pluginMessage";
+import { SCAN_TIMEOUT_MS } from "../../shared/constants";
 
 export function useBatchScan() {
   const [result, setResult] = useState<BatchScanResult | null>(null);
@@ -42,14 +44,14 @@ export function useBatchScan() {
     setError(null);
     setResult(null);
     profileRef.current = profile ?? null;
-    parent.postMessage({ pluginMessage: { type: "request-batch-selection" } }, "*");
+    sendPluginMessage({ type: "request-batch-selection" });
 
     if (batchTimeoutRef.current) clearTimeout(batchTimeoutRef.current);
     batchTimeoutRef.current = setTimeout(() => {
       setError("Batch scan timed out. Please try again.");
       setIsScanning(false);
       batchTimeoutRef.current = null;
-    }, 10000);
+    }, SCAN_TIMEOUT_MS);
   }, []);
 
   const reset = useCallback(() => {

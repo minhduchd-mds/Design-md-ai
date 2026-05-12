@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import type { BatchScanResult } from "../../shared/types";
+import { useState, useEffect, useRef, memo } from "react";
+import type { BatchScanResult, BatchItemResult } from "../../shared/types";
 import { LevelIcon, LEVEL_CONFIG } from "./AtomicBadge";
 import styles from "./BatchPanel.module.css";
 
@@ -15,6 +15,29 @@ function estimateTokens(text: string): number {
 function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, ",")}${String(n % 1000).padStart(3, "0").slice(0, 3)}` : String(n);
 }
+
+interface BatchItemRowProps {
+  item: BatchItemResult;
+  index: number;
+  onSelect: (nodeId: string) => void;
+}
+
+const BatchItemRow = memo(function BatchItemRow({ item, index, onSelect }: BatchItemRowProps) {
+  const levelConfig = LEVEL_CONFIG[item.atomicLevel];
+  return (
+    <button className={styles.item} onClick={() => onSelect(item.nodeId)}>
+      <span className={styles.itemStep}>{index + 1}</span>
+      <span className={styles.itemName}>{item.name}</span>
+      <span className={styles.itemLevel}>
+        <LevelIcon level={item.atomicLevel} color={levelConfig?.color ?? "#999"} size={16} />
+        <span style={{ color: levelConfig?.color }}>{levelConfig?.label ?? item.atomicLevel}</span>
+      </span>
+      <span className={`${styles.itemScore} ${item.score >= 75 ? styles.green : item.score >= 50 ? styles.yellow : styles.red}`}>
+        {item.score}
+      </span>
+    </button>
+  );
+});
 
 export function BatchPanel({ result, onSelectNode }: BatchPanelProps) {
   const [copied, setCopied] = useState(false);
@@ -51,22 +74,9 @@ export function BatchPanel({ result, onSelectNode }: BatchPanelProps) {
       <span className={styles.sectionLabel}>Build Order → Atoms first</span>
 
       <div className={styles.items}>
-        {result.items.map((item, i) => {
-          const levelConfig = LEVEL_CONFIG[item.atomicLevel];
-          return (
-            <button key={item.nodeId} className={styles.item} onClick={() => onSelectNode(item.nodeId)}>
-              <span className={styles.itemStep}>{i + 1}</span>
-              <span className={styles.itemName}>{item.name}</span>
-              <span className={styles.itemLevel}>
-                <LevelIcon level={item.atomicLevel} color={levelConfig?.color ?? "#999"} size={16} />
-                <span style={{ color: levelConfig?.color }}>{levelConfig?.label ?? item.atomicLevel}</span>
-              </span>
-              <span className={`${styles.itemScore} ${item.score >= 75 ? styles.green : item.score >= 50 ? styles.yellow : styles.red}`}>
-                {item.score}
-              </span>
-            </button>
-          );
-        })}
+        {result.items.map((item, i) => (
+          <BatchItemRow key={item.nodeId} item={item} index={i} onSelect={onSelectNode} />
+        ))}
       </div>
 
       <div className={styles.overallRow}>

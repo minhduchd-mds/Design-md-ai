@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { RenameEntry, ScanIssue } from "../../shared/types";
+import { sendPluginMessage } from "../lib/pluginMessage";
 import { DeleteIcon } from "./DeleteIcon";
 import styles from "./FixPanel.module.css";
 
@@ -87,40 +88,40 @@ export function FixPanel({ issues, onFixesApplied, embedded }: FixPanelProps) {
   }, [onFixesApplied]);
 
   const requestRenames = useCallback(() => {
-    parent.postMessage({ pluginMessage: { type: "request-renames" } }, "*");
+    sendPluginMessage({ type: "request-renames" });
   }, []);
 
-  const applyRenames = () => {
+  const applyRenames = useCallback(() => {
     if (!renameEntries) return;
     const selected = renameEntries.filter((e) => selectedRenames.has(e.nodeId));
     if (selected.length === 0) return;
     setApplying(true);
     setRenameStatus("loading");
-    parent.postMessage({ pluginMessage: { type: "apply-renames", entries: selected } }, "*");
-  };
+    sendPluginMessage({ type: "apply-renames", entries: selected });
+  }, [renameEntries, selectedRenames]);
 
-  const toggleRename = (nodeId: string) => {
+  const toggleRename = useCallback((nodeId: string) => {
     setSelectedRenames((prev) => {
       const next = new Set(prev);
       if (next.has(nodeId)) next.delete(nodeId);
       else next.add(nodeId);
       return next;
     });
-  };
+  }, []);
 
-  const applyDelete = (nodeIds: string[]) => {
+  const applyDelete = useCallback((nodeIds: string[]) => {
     if (nodeIds.length === 0) return;
     setApplying(true);
     setBtnState((s) => ({ ...s, delete: "loading" }));
-    parent.postMessage({ pluginMessage: { type: "delete-nodes", nodeIds } }, "*");
-  };
+    sendPluginMessage({ type: "delete-nodes", nodeIds });
+  }, []);
 
-  const convertDividers = (nodeIds: string[]) => {
+  const convertDividers = useCallback((nodeIds: string[]) => {
     if (nodeIds.length === 0) return;
     setApplying(true);
     setBtnState((s) => ({ ...s, dividers: "loading" }));
-    parent.postMessage({ pluginMessage: { type: "convert-dividers", nodeIds } }, "*");
-  };
+    sendPluginMessage({ type: "convert-dividers", nodeIds });
+  }, []);
 
   const hasActiveSuccess =
     renameStatus === "success" || btnState.dividers === "success" || btnState.delete === "success";
