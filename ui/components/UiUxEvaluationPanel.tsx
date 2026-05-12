@@ -100,16 +100,15 @@ function evaluate(
     details: `Structure: ${structScore} · Naming: ${namingScore}`,
   });
 
-  const autoLayoutComponents = components.filter(c => c.layoutMode && c.layoutMode !== "NONE").length;
-  const layoutRatio = compCount > 0 ? autoLayoutComponents / compCount : 0;
+  const componentStructureScore = catScore("structure");
   results.push({
     id: "test-autolayout",
     category: "testing",
     label: "Auto Layout adoption",
-    description: "Components with Auto Layout are more predictable",
-    score: Math.round(layoutRatio * 100),
-    status: layoutRatio >= 0.7 ? "pass" : layoutRatio >= 0.4 ? "warn" : "fail",
-    details: `${autoLayoutComponents}/${compCount} use Auto Layout`,
+    description: "Well-structured components are more predictable for testing",
+    score: componentStructureScore,
+    status: componentStructureScore >= 70 ? "pass" : componentStructureScore >= 40 ? "warn" : "fail",
+    details: `Structure score: ${componentStructureScore} — higher means better Auto Layout usage`,
   });
 
   // Color

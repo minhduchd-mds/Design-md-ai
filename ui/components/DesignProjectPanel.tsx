@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type {
   DesignSystemComponentInfo,
   DesignSystemSnapshot,
@@ -6,6 +6,13 @@ import type {
   ScanResult,
 } from "../../shared/types";
 import { createZipBlob } from "../lib/zip";
+import { UiUxEvaluationPanel } from "./UiUxEvaluationPanel";
+import { BADocumentPanel } from "./BADocumentPanel";
+import type { BADocument } from "./BADocumentPanel";
+import { StandardsChecklist } from "./StandardsChecklist";
+import type { StandardItem } from "./StandardsChecklist";
+import { ScreenGenPanel } from "./ScreenGenPanel";
+import { ExportHub } from "./ExportHub";
 
 interface DesignProjectPanelProps {
   snapshot: DesignSystemSnapshot | null;
@@ -2899,6 +2906,11 @@ export function DesignProjectPanel({ snapshot, isLoading, error, scanResult, onR
   const [copied, setCopied] = useState(false);
   const [frameExportStatus, setFrameExportStatus] = useState<string | null>(null);
   const [templateComponentMappings, setTemplateComponentMappings] = useState<Record<string, string[]>>({});
+  const [baDocument, setBaDocument] = useState<BADocument | null>(null);
+  const [standards, setStandards] = useState<StandardItem[]>([]);
+
+  const handleBAChange = useCallback((doc: BADocument) => setBaDocument(doc), []);
+  const handleStandardsChange = useCallback((items: StandardItem[]) => setStandards(items), []);
 
   const effectiveProjectName = projectName || snapshot?.fileName || "Design System";
   const selectedPreset = useMemo(
@@ -3222,20 +3234,59 @@ export function DesignProjectPanel({ snapshot, isLoading, error, scanResult, onR
             </div>
           </section>
 
+          {/* UI/UX Evaluation Agent */}
+          <UiUxEvaluationPanel
+            components={components}
+            variables={variables}
+            scanResult={scanResult}
+          />
+
+          {/* BA Document Integration */}
+          <BADocumentPanel
+            onDocumentChange={handleBAChange}
+            initialDoc={baDocument}
+          />
+
+          {/* Standards Checklist */}
+          <StandardsChecklist onStandardsChange={handleStandardsChange} />
+
+          {/* Screen Generation */}
+          <ScreenGenPanel
+            components={components}
+            variables={variables}
+            baDocument={baDocument}
+            standards={standards}
+            layoutTemplate={layoutTemplate}
+            projectName={effectiveProjectName}
+            industry={industry}
+            style={style}
+          />
+
+          {/* Export Hub */}
+          <ExportHub
+            onDownloadProject={() => downloadProject(files, projectName || "design-system")}
+            onExportFigmaFrame={exportFigmaFrame}
+            onCopyPrompt={copyPrompt}
+            onExportBAReport={() => {
+              const report = buildBAReport(uiAudit, standards, baDocument, effectiveProjectName);
+              const blob = new Blob([report], { type: "text/markdown" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${effectiveProjectName.replace(/\s+/g, "-").toLowerCase()}-ba-report.md`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            isExporting={isExportingFrame}
+            isCopied={copied}
+            frameStatus={frameExportStatus}
+            tokenEstimate={tokenEstimate}
+            fileCount={markdownFiles.length}
+          />
+
+          {/* AI Prompt Preview */}
           <section className="design-card">
-            <span className="design-card-label">Actions</span>
-            <div className="action-stack">
-              <button className="btn-primary" onClick={() => downloadProject(files, projectName || "design-system")}>
-                Download Project
-              </button>
-              <button className="btn-secondary" onClick={exportFigmaFrame} disabled={isExportingFrame}>
-                {isExportingFrame ? "Exporting..." : "Xuất frame Figma"}
-              </button>
-              <button className="btn-secondary" onClick={copyPrompt}>
-                {copied ? "Copied" : "Copy AI Prompt"}
-              </button>
-            </div>
-            {frameExportStatus && <div className="design-sync-status">{frameExportStatus}</div>}
+            <span className="design-card-label">AI Prompt Preview</span>
             <pre className="prompt-preview">
               {aiPrompt.length > PROMPT_PREVIEW_LIMIT ? `${aiPrompt.slice(0, PROMPT_PREVIEW_LIMIT)}\n\n... preview truncated. Download Project for full compact export.` : aiPrompt}
             </pre>
@@ -3244,6 +3295,38 @@ export function DesignProjectPanel({ snapshot, isLoading, error, scanResult, onR
       )}
     </div>
   );
+}
+
+function buildBAReport(
+  uiAudit: { id: string; label: string; score: number; rationale: string }[],
+  standards: StandardItem[],
+  baDocument: BADocument | null,
+  projectName: string,
+): string {
+  let md = `# ${projectName} — BA & UI/UX Report\n\n`;
+  md += `Generated: ${new Date().toISOString()}\n\n`;
+
+  md += `## UI/UX Audit\n\n`;
+  md += `| Criterion | Score | Notes |\n|---|---|---|\n`;
+  for (const item of uiAudit) {
+    md += `| ${item.label} | ${item.score}/10 | ${item.rationale} |\n`;
+  }
+
+  const checked = standards.filter(s => s.checked);
+  const unchecked = standards.filter(s => !s.checked);
+  md += `\n## Standards Compliance\n\n`;
+  md += `### Met (${checked.length})\n`;
+  for (const s of checked) md += `- [x] ${s.label}\n`;
+  md += `\n### Not Met (${unchecked.length})\n`;
+  for (const s of unchecked) md += `- [ ] ${s.label}${s.required ? " ⚠️ REQUIRED" : ""}\n`;
+
+  if (baDocument?.content) {
+    md += `\n## BA Document: ${baDocument.title}\n\n`;
+    md += baDocument.content.slice(0, 3000);
+    if (baDocument.content.length > 3000) md += `\n\n... (truncated)`;
+  }
+
+  return md;
 }
 
 function Metric({ label, value, suffix = "" }: { label: string; value: number | string; suffix?: string }) {
