@@ -16,7 +16,10 @@ import { sendClaudeChat } from "./workspace/claudeChat";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
 import { SplitView } from "./workspace/SplitView";
 import { HtmlPreviewModal, type HtmlPreviewState } from "./workspace/HtmlPreviewModal";
+import { Marked } from "marked";
 import "./styles.css";
+
+const chatMarked = new Marked({ breaks: true });
 
 type PreviewMode = "prompt" | "preview" | "edit" | "split";
 type PreviewTheme = "light" | "dark";
@@ -1698,20 +1701,32 @@ function App() {
 
             {messages.map((message) => (
               <article key={message.id} className={`message ${message.role}`}>
-                {message.title && <strong>{message.title}</strong>}
-                <p>{message.content}</p>
-                {message.htmlCode && (
-                  <button
-                    type="button"
-                    className="html-preview-trigger"
-                    onClick={() => setHtmlPreview({ html: message.htmlCode!, title: (message.title ?? request.prompt.slice(0, 40)) || "Web Preview" })}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="5 3 19 12 5 21 5 3"/>
+                {message.role === "assistant" && (
+                  <div className="message-avatar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Run preview
-                  </button>
+                  </div>
                 )}
+                <div className="message-body">
+                  {message.role === "assistant" ? (
+                    <div className="message-markdown" dangerouslySetInnerHTML={{ __html: chatMarked.parse(message.content, { async: false }) as string }} />
+                  ) : (
+                    <p>{message.content}</p>
+                  )}
+                  {message.htmlCode && (
+                    <button
+                      type="button"
+                      className="html-preview-trigger"
+                      onClick={() => setHtmlPreview({ html: message.htmlCode!, title: (message.title ?? request.prompt.slice(0, 40)) || "Web Preview" })}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                      </svg>
+                      Run preview
+                    </button>
+                  )}
+                </div>
               </article>
             ))}
 
