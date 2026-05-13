@@ -3,6 +3,11 @@
   "outputDirectory": "dist-web",
   "installCommand": "npm ci",
   "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
