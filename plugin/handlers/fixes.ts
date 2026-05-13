@@ -35,7 +35,9 @@ function findSiblingTextContext(node: SceneNode): string | null {
   const parent = node.parent;
   if (!parent || !("children" in parent)) return null;
 
-  const siblings = (parent as FrameNode).children.filter((c) => c.id !== node.id && c.visible);
+  const siblings = (parent as FrameNode).children.filter(
+    (c: { id: any; visible: any }) => c.id !== node.id && c.visible,
+  );
 
   // Collect text from sibling text nodes
   const texts: string[] = [];
@@ -85,7 +87,7 @@ function suggestIconName(node: SceneNode): string {
     return `${siblingText}-icon`;
   }
 
-  // 2. Try closest semantic ancestor
+  // 2. Try the closest semantic ancestor
   const ancestor = findSemanticAncestor(node);
   if (ancestor) {
     return `${ancestor}-icon`;
@@ -125,7 +127,10 @@ async function suggestName(node: SceneNode): Promise<string> {
     if (fills && fills.length > 0 && fills.some((f) => f.type === "IMAGE")) {
       const parentName =
         node.parent && "name" in node.parent
-          ? (node.parent as SceneNode).name.toLowerCase().replace(/[\s/]+/g, "-").slice(0, 20)
+          ? (node.parent as SceneNode).name
+              .toLowerCase()
+              .replace(/[\s/]+/g, "-")
+              .slice(0, 20)
           : "";
       if (parentName && !isGenericName(parentName)) return `${parentName}-image`;
       return "thumbnail";
@@ -138,15 +143,16 @@ async function suggestName(node: SceneNode): Promise<string> {
   }
 
   if ("children" in node) {
-    const children = (node as FrameNode).children.filter((c) => c.visible);
-    const hasText = children.some((c) => c.type === "TEXT");
+    const children = (node as FrameNode).children.filter((c: { visible: any }) => c.visible);
+    const hasText = children.some((c: { type: string }) => c.type === "TEXT");
     const hasImage = children.some(
-      (c) => "fills" in c && (c.fills as readonly Paint[]).some?.((f: Paint) => f.type === "IMAGE"),
+      (c: { fills: readonly Paint[] }) =>
+        "fills" in c && (c.fills as readonly Paint[]).some?.((f: Paint) => f.type === "IMAGE"),
     );
 
     // Icon detection: all children are shapes (vectors, lines, ellipses, etc.)
     const SHAPE_TYPES = new Set(["VECTOR", "LINE", "ELLIPSE", "RECTANGLE", "STAR", "POLYGON", "BOOLEAN_OPERATION"]);
-    const allShapes = children.length > 0 && children.every((c) => SHAPE_TYPES.has(c.type));
+    const allShapes = children.length > 0 && children.every((c: { type: string }) => SHAPE_TYPES.has(c.type));
     if (allShapes) {
       return suggestIconName(node);
     }
@@ -249,7 +255,7 @@ export async function handleFixMessage(msg: PluginMessage): Promise<boolean> {
       const count = await applyRenames(msg.entries);
       const applied: PluginMessage = { type: "renames-applied", count };
       figma.ui.postMessage(applied);
-      sendSelection();
+      await sendSelection();
       return true;
     }
     case "delete-nodes": {
@@ -292,7 +298,7 @@ export async function handleFixMessage(msg: PluginMessage): Promise<boolean> {
       }
       const deleted: PluginMessage = { type: "nodes-deleted", count };
       figma.ui.postMessage(deleted);
-      sendSelection();
+      await sendSelection();
       return true;
     }
     case "convert-dividers": {

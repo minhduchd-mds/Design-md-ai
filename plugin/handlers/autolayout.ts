@@ -15,8 +15,8 @@ interface ChildInfo {
 
 function getVisibleChildren(frame: FrameNode | ComponentNode | GroupNode): ChildInfo[] {
   return frame.children
-    .filter((c) => c.visible && "x" in c && "width" in c)
-    .map((c) => ({
+    .filter((c: { visible: never }) => c.visible && "x" in c && "width" in c)
+    .map((c: { x: number; y: number; width: number; height: number; type: string }) => ({
       x: Math.round(c.x),
       y: Math.round(c.y),
       width: Math.round(c.width),
