@@ -1,8 +1,7 @@
 {
   "buildCommand": "npm run web:build",
-  "outputDirectory": "./dist-web",
+  "outputDirectory": "dist-web",
   "installCommand": "npm ci",
-  "framework": "vite",
   "functions": {
     "api/**/*.ts": {
       "runtime": "node@20.x"
