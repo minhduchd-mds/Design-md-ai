@@ -22,38 +22,20 @@ interface ChatBody {
   context?: ChatContextPayload;
 }
 
-interface VercelRequest {
-  method?: string;
-  body?: ChatBody;
-}
-
-interface VercelResponse {
-  setHeader: (name: string, value: string) => void;
-  status: (code: number) => VercelResponse;
-  json: (body: unknown) => void;
-  end: () => void;
-}
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Chat tab: pure assistant, no Design.md mentions
 const CHAT_SYSTEM_PROMPT =
   "You are a helpful AI assistant powered by Groq. Answer questions directly, clearly, and naturally. Use markdown in responses: code blocks for code, bullet lists for structured info, headers only for long answers. Be concise but thorough.";
 
-// Code tab: design/frontend assistant with workspace context
 const CODE_SYSTEM_PROMPT =
   "You are an AI assistant for UI design and frontend development. Help with component architecture, design tokens, layout planning, responsive behavior, and implementation guidance. When workspace context is provided, use it to give grounded, project-specific answers.";
 
 function buildSystemPrompt(workspaceTab: "chat" | "code" | undefined): string {
   return workspaceTab === "code" ? CODE_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT;
-}
-
-function setCors(response: VercelResponse): void {
-  Object.entries(corsHeaders).forEach(([key, value]) => response.setHeader(key, value));
 }
 
 function sanitize(input: string): string {
@@ -86,38 +68,61 @@ function normalizeMessages(messages: ChatMessagePayload[] | undefined) {
     .slice(-12);
 }
 
-export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
-  setCors(response);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function handler(req: any, res: any): Promise<void> {
+  Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
 
-  if (request.method === "OPTIONS") { response.status(200).end(); return; }
-  if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
+  if (req.method === "OPTIONS") { res.status(200).end(); return; }
+  if (req.method !== "POST") { res.status(405).end(); return; }
 
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) { response.status(500).json({ error: "GROQ_API_KEY is not configured." }); return; }
-
-  const messages = normalizeMessages(request.body?.messages);
-  if (messages.length === 0 || messages[messages.length - 1]?.role !== "user") {
-    response.status(400).json({ error: "A user message is required." });
+  const apiKey = process.env.GROQ_API_KEY as string | undefined;
+  if (!apiKey) {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.write(`data: ${JSON.stringify({ error: "GROQ_API_KEY not configured." })}\n\n`);
+    res.end();
     return;
   }
 
-  const context = request.body?.context;
+  const body = req.body as ChatBody;
+  const messages = normalizeMessages(body?.messages);
+  if (!messages.length || messages[messages.length - 1]?.role !== "user") {
+    res.status(400).end();
+    return;
+  }
+
+  const context = body?.context;
   const contextLine = buildContextLine(context);
   const systemMessages: { role: "system"; content: string }[] = [
     { role: "system", content: buildSystemPrompt(context?.workspaceTab) },
     ...(contextLine ? [{ role: "system" as const, content: `Workspace context:\n${contextLine}` }] : []),
   ];
 
+  // SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.setHeader("Connection", "keep-alive");
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
+
   try {
     const groq = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
-    const completion = await groq.chat.completions.create({
+    const stream = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       max_tokens: 8192,
+      stream: true,
       messages: [...systemMessages, ...messages],
     });
 
-    response.status(200).json({ message: completion.choices[0]?.message.content ?? "" });
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content ?? "";
+      if (delta) {
+        res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+      }
+    }
+    res.write("data: [DONE]\n\n");
   } catch (error) {
-    response.status(500).json({ error: error instanceof Error ? error.message : "Chat request failed." });
+    res.write(`data: ${JSON.stringify({ error: error instanceof Error ? error.message : "Stream failed." })}\n\n`);
+  } finally {
+    res.end();
   }
 }
