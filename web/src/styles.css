@@ -1049,26 +1049,13 @@ button {
   color: #0f766e;
 }
 
-/* Google login button */
-.google-login-btn {
+/* Google login button container (official GIS rendered button) */
+.google-btn-container {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 10px;
   width: min(560px, 100%);
   margin: 24px auto 0;
-  padding: 12px 20px;
-  border: 1.5px solid #d6ddea;
-  border-radius: 10px;
-  background: #fff;
-  color: #172033;
-  font-size: 14px;
-  font-weight: 600;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.google-login-btn:hover {
-  border-color: #4285F4;
-  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.12);
+  min-height: 44px;
 }
 
 /* Auth divider */
