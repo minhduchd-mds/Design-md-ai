@@ -80,8 +80,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
+    "highlight.js": "^11.11.1",
     "jszip": "^3.10.1",
     "marked": "^18.0.3",
+    "marked-highlight": "^2.2.4",
     "openai": "^6.37.0"
   }
 }

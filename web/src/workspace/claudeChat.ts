@@ -7,6 +7,7 @@ interface ChatContext {
   readinessScore: number | null;
   activeDesignMd: boolean;
   workspaceTab: "chat" | "code";
+  model?: string;
 }
 
 interface ChatResponse {

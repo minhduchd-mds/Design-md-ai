@@ -15,7 +15,15 @@ interface ChatContextPayload {
   readinessScore?: number | null;
   activeDesignMd?: boolean;
   workspaceTab?: "chat" | "code";
+  model?: string;
 }
+
+const ALLOWED_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "mixtral-8x7b-32768",
+  "gemma2-9b-it",
+];
 
 interface ChatBody {
   messages?: ChatMessagePayload[];
@@ -110,8 +118,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
   try {
     const groq = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
+    const requestedModel = context?.model ?? "llama-3.3-70b-versatile";
+    const model = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "llama-3.3-70b-versatile";
+
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model,
       max_tokens: 8192,
       messages: [...systemMessages, ...messages],
     });

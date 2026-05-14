@@ -17,9 +17,47 @@ import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } f
 import { SplitView } from "./workspace/SplitView";
 import { HtmlPreviewModal, type HtmlPreviewState } from "./workspace/HtmlPreviewModal";
 import { Marked } from "marked";
+import { markedHighlight } from "marked-highlight";
+import hljs from "highlight.js/lib/core";
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import xml from "highlight.js/lib/languages/xml";
+import css from "highlight.js/lib/languages/css";
+import json from "highlight.js/lib/languages/json";
+import bash from "highlight.js/lib/languages/bash";
+import python from "highlight.js/lib/languages/python";
+import markdown from "highlight.js/lib/languages/markdown";
+import "highlight.js/styles/github-dark.min.css";
 import "./styles.css";
 
-const chatMarked = new Marked({ breaks: true });
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("js", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("tsx", typescript);
+hljs.registerLanguage("jsx", javascript);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("sh", bash);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("py", python);
+hljs.registerLanguage("markdown", markdown);
+hljs.registerLanguage("md", markdown);
+
+const chatMarked = new Marked(
+  { breaks: true },
+  markedHighlight({
+    emptyLangClass: "hljs",
+    langPrefix: "hljs language-",
+    highlight(code, lang) {
+      const language = hljs.getLanguage(lang) ? lang : "plaintext";
+      return hljs.highlight(code, { language }).value;
+    },
+  }),
+);
 
 type PreviewMode = "prompt" | "preview" | "edit" | "split";
 type PreviewTheme = "light" | "dark";
@@ -737,6 +775,9 @@ function App() {
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [loadedTemplatePresets, setLoadedTemplatePresets] = useState<Record<string, OpenDesignDefinition>>({});
   const [workspaceTab, setWorkspaceTab] = useState<"chat" | "code">("chat");
+  const [groqModel, setGroqModel] = useState<string>(() => localStorage.getItem("designready.model") ?? "llama-3.3-70b-versatile");
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [chatTheme, setChatTheme] = useState<"dark" | "light">(() => {
     const saved = localStorage.getItem("designready.theme");
     return saved === "light" ? "light" : "dark";
@@ -973,6 +1014,7 @@ function App() {
             readinessScore: validationReport?.readinessScore ?? null,
             activeDesignMd: hasGenerated,
             workspaceTab,
+            model: groqModel,
           },
           (token) => {
             setMessages((current) =>
@@ -1320,6 +1362,37 @@ function App() {
     }
   }
 
+  function startNewChat() {
+    setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+    setRequest((current) => ({ ...current, prompt: "" }));
+    setIsGenerating(false);
+  }
+
+  async function copyMessageContent(msg: ChatMessage) {
+    await navigator.clipboard.writeText(msg.content);
+    setCopiedMessageId(msg.id);
+    window.setTimeout(() => setCopiedMessageId(null), 1400);
+  }
+
+  async function regenerateMessage(msgIndex: number) {
+    // Find the last user message before this index
+    let lastUserIdx = -1;
+    for (let i = msgIndex; i >= 0; i--) {
+      if (messages[i].role === "user") { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx < 0) return;
+    const userMsg = messages[lastUserIdx];
+    // Remove messages from lastUserIdx onward, then resend
+    const trimmed = messages.slice(0, lastUserIdx);
+    setMessages(trimmed);
+    setRequest((current) => ({ ...current, prompt: userMsg.content }));
+    // Trigger send on next tick
+    window.setTimeout(() => {
+      const sendBtn = document.querySelector<HTMLButtonElement>(".send-button");
+      sendBtn?.click();
+    }, 50);
+  }
+
   function startNewProject() {
     setRequest(DEFAULT_PROJECT);
     setGeneratedRequest(null);
@@ -1549,6 +1622,21 @@ function App() {
           </div>
           <nav className="side-nav">
             <a
+              href="#new-chat"
+              role="button"
+              className="new-chat-link"
+              onClick={(event) => {
+                event.preventDefault();
+                startNewChat();
+              }}
+            >
+              <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                <line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/>
+              </svg>
+              <span className="nav-label">New Chat</span>
+            </a>
+            <a
               href="#new-project"
               role="button"
               onClick={(event) => {
@@ -1583,10 +1671,9 @@ function App() {
               <span className="nav-label">My Library</span>
               <span className="nav-status">Soon</span>
             </a>
-            <a href="#settings" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("Settings"); }}>
+            <a href="#settings" role="button" onClick={(event) => { event.preventDefault(); setSettingsOpen((v) => !v); }}>
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.8"/></svg>
               <span className="nav-label">Settings</span>
-              <span className="nav-status">Soon</span>
             </a>
             <a
               className="ghost-button"
@@ -1674,6 +1761,54 @@ function App() {
               </div>
             )}
           </section>
+
+          {settingsOpen && (
+            <section className="settings-panel">
+              <h4>Settings</h4>
+              <label className="settings-row">
+                <span>AI Model</span>
+                <select
+                  value={groqModel}
+                  onChange={(e) => {
+                    const m = e.target.value;
+                    setGroqModel(m);
+                    localStorage.setItem("designready.model", m);
+                  }}
+                >
+                  <option value="llama-3.3-70b-versatile">Llama 3.3 70B (default)</option>
+                  <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
+                  <option value="mixtral-8x7b-32768">Mixtral 8x7B (32K ctx)</option>
+                  <option value="gemma2-9b-it">Gemma 2 9B</option>
+                </select>
+              </label>
+              <label className="settings-row">
+                <span>Theme</span>
+                <select
+                  value={chatTheme}
+                  onChange={(e) => {
+                    const t = e.target.value as "dark" | "light";
+                    setChatTheme(t);
+                    localStorage.setItem("designready.theme", t);
+                  }}
+                >
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="settings-danger-btn"
+                onClick={() => {
+                  setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+                  setProjectHistory([]);
+                  saveProjectHistory([]);
+                  setActiveHistoryPrompt("");
+                }}
+              >
+                Clear all history
+              </button>
+            </section>
+          )}
 
           {/*// Pro account  */}
           <section className="plan-card">
@@ -1839,6 +1974,25 @@ function App() {
                       </svg>
                       Run preview
                     </button>
+                  )}
+                  {message.role === "assistant" && message.content && !isGenerating && (
+                    <div className="message-actions">
+                      <button
+                        type="button"
+                        title="Copy"
+                        className={copiedMessageId === message.id ? "is-copied" : ""}
+                        onClick={() => void copyMessageContent(message)}
+                      >
+                        {copiedMessageId === message.id ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        )}
+                      </button>
+                      <button type="button" title="Regenerate" onClick={() => void regenerateMessage(msgIndex)}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                      </button>
+                    </div>
                   )}
                 </div>
               </article>

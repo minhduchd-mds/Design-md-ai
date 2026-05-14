@@ -87,15 +87,23 @@ export function ChatComposer({
         <div className="composer-input-row">
           <textarea
             value={request.prompt}
-            onChange={(event) => setRequest({ ...request, prompt: event.target.value })}
+            onChange={(event) => {
+              setRequest({ ...request, prompt: event.target.value });
+              const el = event.target;
+              el.style.height = "auto";
+              el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 onSendChat();
+                const el = event.target as HTMLTextAreaElement;
+                requestAnimationFrame(() => { el.style.height = "auto"; });
               }
             }}
             placeholder={workspaceTab === "chat" ? "Message Groq AI..." : "Describe your design task or paste BA notes..."}
             rows={1}
+            style={{ overflow: "hidden", resize: "none" }}
           />
         </div>
         <div className="composer-bottom-row">
