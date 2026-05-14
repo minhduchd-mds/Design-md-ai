@@ -102,7 +102,7 @@ const DEFAULT_PROJECT: ProjectRequest = {
 
 const BASE_OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
   openai: {
-    label: "Groq workspace",
+    label: "Trợ lý ảo workspace",
     direction: "Calm AI workspace, readable long-form answers, low distraction, clear safety and action states.",
     palette: ["#F7F7F4", "#FFFFFF", "#202123", "#10A37F", "#D9EDE7"],
     typography: "Humanist sans, normal body weight, generous line-height, compact headings.",
@@ -279,6 +279,75 @@ const PROJECT_HISTORY = [
   { name: "Modern SaaS Landing Page", date: "07/05/2024, 09:45 AM", prompt: "Create a modern SaaS landing page with login, dashboard, and Pro upgrade page.", category: "SaaS", openDesign: "openai" as const, target: "React + Vite" },
   { name: "AI Chat Dashboard", date: "08/05/2024, 09:45 AM", prompt: "Create an AI chat dashboard with sidebar, billing, prompt composer, and preview output.", category: "AI tool", openDesign: "openai" as const, target: "React + Vite" },
   { name: "E-commerce Website", date: "09/05/2024, 11:15 AM", prompt: "Create an e-commerce website with product page, cart, checkout, and admin view.", category: "E-commerce", openDesign: "shopify" as const, target: "React + Vite" },
+];
+
+const UIUX_CHECKLIST = [
+  {
+    category: "🎨 Visual Design",
+    items: [
+      "Consistent color palette & tokens",
+      "Typography scale (heading, body, caption)",
+      "Spacing system (4px / 8px grid)",
+      "Icon style consistency",
+      "Dark/Light theme support",
+      "Brand identity applied",
+    ],
+  },
+  {
+    category: "📐 Layout & Responsive",
+    items: [
+      "Mobile-first responsive design",
+      "Breakpoints defined (sm, md, lg, xl)",
+      "Flexible grid/container system",
+      "No horizontal overflow on mobile",
+      "Touch targets ≥ 44px on mobile",
+      "Consistent page margins & padding",
+    ],
+  },
+  {
+    category: "♿ Accessibility (a11y)",
+    items: [
+      "Color contrast ratio ≥ 4.5:1",
+      "All images have alt text",
+      "Keyboard navigation works",
+      "Focus indicators visible",
+      "ARIA labels on interactive elements",
+      "Screen reader tested",
+    ],
+  },
+  {
+    category: "🧩 Components",
+    items: [
+      "Button states (default, hover, active, disabled)",
+      "Form validation & error messages",
+      "Loading/skeleton states",
+      "Empty states designed",
+      "Toast/notification patterns",
+      "Modal/dialog accessibility",
+    ],
+  },
+  {
+    category: "⚡ Interaction & Performance",
+    items: [
+      "Micro-animations (transitions, hover)",
+      "Page transition smooth",
+      "Lazy loading for images/heavy content",
+      "Optimistic UI for actions",
+      "Error boundary & fallback UI",
+      "Debounced search/input",
+    ],
+  },
+  {
+    category: "🔒 Trust & UX Writing",
+    items: [
+      "Clear CTA copy (actionable verbs)",
+      "Error messages are helpful, not technical",
+      "Confirmation before destructive actions",
+      "Privacy & security indicators",
+      "Consistent tone of voice",
+      "Onboarding / first-time UX",
+    ],
+  },
 ];
 
 const LANDING_FEATURES = [
@@ -778,6 +847,14 @@ function App() {
   const [groqModel, setGroqModel] = useState<string>(() => localStorage.getItem("designready.model") ?? "llama-3.3-70b-versatile");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [templatePopupOpen, setTemplatePopupOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [checklistItems, setChecklistItems] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("designready.checklist");
+      return saved ? JSON.parse(saved) as Record<string, boolean> : {};
+    } catch { return {}; }
+  });
   const [chatTheme, setChatTheme] = useState<"dark" | "light">(() => {
     const saved = localStorage.getItem("designready.theme");
     return saved === "light" ? "light" : "dark";
@@ -994,7 +1071,7 @@ function App() {
 
     const userMessage = createMessage("user", prompt);
     const chatMessages = [...messages, userMessage];
-    const streamingMsg = createMessage("assistant", "", "Groq");
+    const streamingMsg = createMessage("assistant", "", "Trợ lý ảo");
     const streamingId = streamingMsg.id;
 
     setMessages([...chatMessages, streamingMsg]);
@@ -1033,7 +1110,7 @@ function App() {
       setMessages((current) =>
         current.map((m) =>
           m.id === streamingId
-            ? { ...m, content: error instanceof Error ? error.message : "Could not contact Groq." }
+            ? { ...m, content: error instanceof Error ? error.message : "Trợ lý ảo đang bận 'tư duy vĩ đại' — thử lại nhé! 🤖" }
             : m,
         ),
       );
@@ -1437,10 +1514,7 @@ function App() {
   }
 
   function openTemplateLibrary() {
-    setView("landing");
-    window.requestAnimationFrame(() => {
-      document.getElementById("templates")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    setTemplatePopupOpen(true);
   }
 
   function selectLandingTemplate(templateId: string) {
@@ -1636,28 +1710,6 @@ function App() {
               </svg>
               <span className="nav-label">New Chat</span>
             </a>
-            <a
-              href="#new-project"
-              role="button"
-              onClick={(event) => {
-                event.preventDefault();
-                startNewProject();
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 2.50002C10.5523 2.50002 11 2.94774 11 3.50002C10.9999 4.05224 10.5522 4.50002 10 4.50002H5C4.72386 4.50002 4.5 4.72388 4.5 5.00002V19C4.50008 19.2761 4.72391 19.5 5 19.5H19C19.2761 19.5 19.4999 19.2761 19.5 19V14C19.5 13.4477 19.9477 13 20.5 13C21.0523 13 21.5 13.4477 21.5 14V19C21.4999 20.3807 20.3807 21.5 19 21.5H5C3.61934 21.5 2.50008 20.3807 2.5 19V5.00002C2.5 3.61931 3.61929 2.50002 5 2.50002H10Z"
-                  fill="white"
-                />
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M17.1689 2.58791C17.8524 1.90449 18.9611 1.90449 19.6445 2.58791L21.4121 4.35549C22.0955 5.03891 22.0955 6.14766 21.4121 6.83108L13.7549 14.4873C13.4267 14.8154 12.9816 15 12.5176 15H10.25L10.1221 14.9932C9.53398 14.9334 9.06672 14.466 9.00684 13.8779L9 13.75V11.4824C9 11.0184 9.18464 10.5733 9.5127 10.2451L17.1689 2.58791ZM11 11.586V13H12.4141L19.8213 5.59377L18.4062 4.17873L11 11.586Z"
-                  fill="white"
-                />
-              </svg>
-              <span className="nav-label">New Project</span>
-            </a>
             <a href="#projects" role="button" onClick={(event) => { event.preventDefault(); setIsHistoryOpen(true); }}>
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h4l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
               <span className="nav-label">Projects</span>
@@ -1665,6 +1717,10 @@ function App() {
             <a href="#templates" role="button" onClick={(event) => { event.preventDefault(); openTemplateLibrary(); }}>
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="13" y="3" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="13" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="13" y="13" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/></svg>
               <span className="nav-label">Templates</span>
+            </a>
+            <a href="#checklist" role="button" onClick={(event) => { event.preventDefault(); setChecklistOpen((v) => !v); }}>
+              <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span className="nav-label">UI/UX Checklist</span>
             </a>
             <a href="#library" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("My Library"); }}>
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 3h14a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
@@ -1810,6 +1866,44 @@ function App() {
             </section>
           )}
 
+          {checklistOpen && (
+            <section className="checklist-panel">
+              <div className="checklist-header">
+                <h4>UI/UX Checklist</h4>
+                <span className="checklist-progress">{Object.values(checklistItems).filter(Boolean).length}/{UIUX_CHECKLIST.reduce((sum, g) => sum + g.items.length, 0)}</span>
+              </div>
+              {UIUX_CHECKLIST.map((group) => (
+                <div key={group.category} className="checklist-group">
+                  <h5>{group.category}</h5>
+                  {group.items.map((item) => (
+                    <label key={item} className="checklist-item">
+                      <input
+                        type="checkbox"
+                        checked={!!checklistItems[item]}
+                        onChange={() => {
+                          const next = { ...checklistItems, [item]: !checklistItems[item] };
+                          setChecklistItems(next);
+                          localStorage.setItem("designready.checklist", JSON.stringify(next));
+                        }}
+                      />
+                      <span>{item}</span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+              <button
+                type="button"
+                className="checklist-reset-btn"
+                onClick={() => {
+                  setChecklistItems({});
+                  localStorage.removeItem("designready.checklist");
+                }}
+              >
+                Reset checklist
+              </button>
+            </section>
+          )}
+
           {/*// Pro account  */}
           <section className="plan-card">
             <span>{user.plan === "pro" ? "Pro account" : "Free account"}</span>
@@ -1834,6 +1928,65 @@ function App() {
             </button>
           </div>
         </aside>
+
+        {templatePopupOpen && (
+          <div className="template-popup-overlay" onClick={(e) => { if (e.target === e.currentTarget) setTemplatePopupOpen(false); }}>
+            <div className="template-popup">
+              <div className="template-popup-header">
+                <h3>Template Library</h3>
+                <button type="button" className="template-popup-close" onClick={() => setTemplatePopupOpen(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="template-popup-search">
+                <input
+                  value={landingTemplateQuery}
+                  onChange={(e) => setLandingTemplateQuery(e.target.value)}
+                  placeholder="Search templates... (Airtable, Linear, Stripe...)"
+                  autoFocus
+                />
+              </div>
+              <div className="template-popup-filters">
+                <div className="template-priority-tabs" aria-label="Priority filters">
+                  {TEMPLATE_PRIORITY_FILTERS.map((priority) => (
+                    <button key={priority} type="button" className={landingTemplatePriority === priority ? "active" : ""} onClick={() => setLandingTemplatePriority(priority)}>
+                      <span>{priority === "All" ? "All" : priority}</span>
+                      <b>{templatePriorityCounts[priority]}</b>
+                    </button>
+                  ))}
+                </div>
+                <div className="template-category-chips" aria-label="Category filters">
+                  {TEMPLATE_CATEGORY_FILTERS.map((category) => (
+                    <button key={category} type="button" className={landingTemplateCategory === category ? "active" : ""} onClick={() => setLandingTemplateCategory(category)}>
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="template-popup-grid">
+                {landingTemplateMatches.map((template) => (
+                  <article key={template.id} className="template-popup-card">
+                    <div>
+                      <span className="template-popup-priority">{template.priority}</span>
+                      <h4>{template.label}</h4>
+                      <p>Tokens, components, layout rules, and implementation prompts.</p>
+                    </div>
+                    <div className="template-card-meta">
+                      <span>{template.category}</span>
+                      <span>{template.id}</span>
+                    </div>
+                    <button type="button" onClick={() => { selectLandingTemplate(template.id); setTemplatePopupOpen(false); }}>Use template</button>
+                  </article>
+                ))}
+                {landingTemplateMatches.length === 0 && (
+                  <div className="template-popup-empty">
+                    <p>No matching template. Try a brand name or product type.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <section className={`chat-workspace builder-workspace${chatTheme === "light" ? " theme-light" : ""}`}>
           <input
@@ -1930,7 +2083,7 @@ function App() {
                       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                     </svg>
                     <p className="chat-empty-title">Start a conversation</p>
-                    <p className="chat-empty-hint">Ask anything — powered by Groq AI</p>
+                    <p className="chat-empty-hint">Hỏi bất cứ gì — Trợ lý ảo luôn sẵn sàng phục vụ ☕</p>
                   </>
                 ) : (
                   <>
