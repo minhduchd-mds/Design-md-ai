@@ -15,39 +15,6 @@ interface ChatResponse {
   error?: string;
 }
 
-/**
- * Parse Vercel AI SDK Data Stream Protocol.
- * Text deltas arrive as `0:"text"\n`, errors as `3:"message"\n`.
- * We only need text deltas for the streaming UX.
- */
-function parseAIStreamLine(line: string, onToken: (token: string) => void): void {
-  if (!line) return;
-  const colonIdx = line.indexOf(":");
-  if (colonIdx < 1) return;
-
-  const type = line.slice(0, colonIdx);
-  const value = line.slice(colonIdx + 1);
-
-  if (type === "0") {
-    // Text delta — value is a JSON-encoded string
-    try {
-      const text = JSON.parse(value) as string;
-      if (text) onToken(text);
-    } catch {
-      // skip malformed chunks
-    }
-  } else if (type === "3") {
-    // Error
-    try {
-      const errMsg = JSON.parse(value) as string;
-      throw new Error(errMsg);
-    } catch (e) {
-      if (e instanceof Error && e.message !== "Unexpected end of JSON input") throw e;
-    }
-  }
-  // Types 2 (data), d (finish), e (step finish) are ignored — we only need text.
-}
-
 export async function sendClaudeChat(
   messages: ChatMessage[],
   context: ChatContext,
@@ -58,7 +25,7 @@ export async function sendClaudeChat(
     context,
   });
 
-  // ── Streaming path (AI SDK Data Stream Protocol) ──
+  // ── Streaming path (plain text stream from toTextStreamResponse) ──
   if (onToken) {
     let response: Response;
     try {
@@ -87,32 +54,15 @@ export async function sendClaudeChat(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let full = "";
-    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        parseAIStreamLine(trimmed, (text) => {
-          full += text;
-          onToken(text);
-        });
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) {
+        full += chunk;
+        onToken(chunk);
       }
-    }
-
-    // Flush remaining buffer
-    if (buffer.trim()) {
-      parseAIStreamLine(buffer.trim(), (text) => {
-        full += text;
-        onToken(text);
-      });
     }
 
     return full || "No response generated.";

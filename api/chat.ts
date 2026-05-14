@@ -1,5 +1,5 @@
 import { createGroq } from "@ai-sdk/groq";
-import { generateText, type CoreMessage } from "ai";
+import { generateText, type ModelMessage } from "ai";
 
 export const config = { runtime: "edge", maxDuration: 30 };
 
@@ -69,7 +69,7 @@ function buildSystemPrompt(context: ChatContextPayload | undefined): string {
   return `${base}\n\nWorkspace context:\n${lines.join("\n")}`;
 }
 
-function normalizeMessages(raw: ChatBody["messages"]): CoreMessage[] {
+function normalizeMessages(raw: ChatBody["messages"]): ModelMessage[] {
   return (raw ?? [])
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({
@@ -125,7 +125,7 @@ export default async function handler(req: Request): Promise<Response> {
       model: groq(modelId),
       system: buildSystemPrompt(context),
       messages,
-      maxTokens: 8192,
+      maxOutputTokens: 8192,
       temperature: 0.7,
     });
 
