@@ -13,7 +13,7 @@ interface ChatComposerProps {
   request: ProjectRequest;
   selectedPreset: OpenDesignDefinition;
   setRequest: SetProjectRequest;
-  workspaceTab: "chat" | "code";
+  workspaceTab: "chat" | "code" | "checklist";
   onSendChat: () => void;
   onGenerateDesignMd: () => void;
   onCreateImage: () => void;
@@ -101,7 +101,7 @@ export function ChatComposer({
                 requestAnimationFrame(() => { el.style.height = "auto"; });
               }
             }}
-            placeholder={workspaceTab === "chat" ? "Message Groq AI..." : "Describe your design task or paste BA notes..."}
+            placeholder={workspaceTab === "chat" ? "Nhắn tin cho Trợ lý ảo..." : "Describe your design task or paste BA notes..."}
             rows={1}
             style={{ overflow: "hidden", resize: "none" }}
           />

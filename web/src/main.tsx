@@ -59,6 +59,17 @@ const chatMarked = new Marked(
   }),
 );
 
+interface ChecklistRow {
+  id: string;
+  category: string;
+  section: string;
+  criterion: string;
+  type: "UI" | "UX";
+  status: "pass" | "fail" | "warn";
+  score: number;
+  desc: string;
+}
+
 type PreviewMode = "prompt" | "preview" | "edit" | "split";
 type PreviewTheme = "light" | "dark";
 type TemplatePriorityFilter = "All" | "Product" | "Technical";
@@ -281,74 +292,34 @@ const PROJECT_HISTORY = [
   { name: "E-commerce Website", date: "09/05/2024, 11:15 AM", prompt: "Create an e-commerce website with product page, cart, checkout, and admin view.", category: "E-commerce", openDesign: "shopify" as const, target: "React + Vite" },
 ];
 
-const UIUX_CHECKLIST = [
-  {
-    category: "🎨 Visual Design",
-    items: [
-      "Consistent color palette & tokens",
-      "Typography scale (heading, body, caption)",
-      "Spacing system (4px / 8px grid)",
-      "Icon style consistency",
-      "Dark/Light theme support",
-      "Brand identity applied",
-    ],
-  },
-  {
-    category: "📐 Layout & Responsive",
-    items: [
-      "Mobile-first responsive design",
-      "Breakpoints defined (sm, md, lg, xl)",
-      "Flexible grid/container system",
-      "No horizontal overflow on mobile",
-      "Touch targets ≥ 44px on mobile",
-      "Consistent page margins & padding",
-    ],
-  },
-  {
-    category: "♿ Accessibility (a11y)",
-    items: [
-      "Color contrast ratio ≥ 4.5:1",
-      "All images have alt text",
-      "Keyboard navigation works",
-      "Focus indicators visible",
-      "ARIA labels on interactive elements",
-      "Screen reader tested",
-    ],
-  },
-  {
-    category: "🧩 Components",
-    items: [
-      "Button states (default, hover, active, disabled)",
-      "Form validation & error messages",
-      "Loading/skeleton states",
-      "Empty states designed",
-      "Toast/notification patterns",
-      "Modal/dialog accessibility",
-    ],
-  },
-  {
-    category: "⚡ Interaction & Performance",
-    items: [
-      "Micro-animations (transitions, hover)",
-      "Page transition smooth",
-      "Lazy loading for images/heavy content",
-      "Optimistic UI for actions",
-      "Error boundary & fallback UI",
-      "Debounced search/input",
-    ],
-  },
-  {
-    category: "🔒 Trust & UX Writing",
-    items: [
-      "Clear CTA copy (actionable verbs)",
-      "Error messages are helpful, not technical",
-      "Confirmation before destructive actions",
-      "Privacy & security indicators",
-      "Consistent tone of voice",
-      "Onboarding / first-time UX",
-    ],
-  },
+const DEFAULT_CHECKLIST_ROWS: ChecklistRow[] = [
+  { id: "c01", category: "Typography", section: "Hero Section", criterion: "Font size body ≥ 16px", type: "UI", status: "pass", score: 9, desc: "Font size đạt chuẩn 16px" },
+  { id: "c02", category: "Typography", section: "Navigation Bar", criterion: "Font weight headings ≥ 600", type: "UI", status: "pass", score: 8, desc: "Headings đủ đậm" },
+  { id: "c03", category: "Typography", section: "Card Section", criterion: "Line height ≥ 1.5", type: "UI", status: "warn", score: 6, desc: "Line-height hơi thấp (1.4)" },
+  { id: "c04", category: "Color", section: "Hero Section", criterion: "Contrast ratio ≥ 4.5:1", type: "UI", status: "pass", score: 10, desc: "Contrast đạt chuẩn WCAG AA" },
+  { id: "c05", category: "Color", section: "Footer", criterion: "Token nhất quán toàn app", type: "UI", status: "fail", score: 3, desc: "Sai color token ở footer CTA" },
+  { id: "c06", category: "Color", section: "Sidebar", criterion: "Dark mode colors đúng", type: "UI", status: "pass", score: 8, desc: "Dark theme consistent" },
+  { id: "c07", category: "Spacing", section: "Card Section", criterion: "Grid spacing 8px system", type: "UI", status: "fail", score: 4, desc: "Gap 12px thay vì 8px/16px" },
+  { id: "c08", category: "Spacing", section: "Form Section", criterion: "Padding nhất quán", type: "UI", status: "pass", score: 9, desc: "Padding đúng 16px/24px" },
+  { id: "c09", category: "Layout", section: "Hero Section", criterion: "Responsive breakpoints", type: "UX", status: "pass", score: 9, desc: "Breakpoints sm/md/lg/xl đầy đủ" },
+  { id: "c10", category: "Layout", section: "Navigation Bar", criterion: "Mobile hamburger menu", type: "UX", status: "pass", score: 8, desc: "Hamburger hoạt động tốt" },
+  { id: "c11", category: "Layout", section: "Dashboard", criterion: "No horizontal overflow", type: "UX", status: "warn", score: 5, desc: "Overflow nhẹ ở 320px" },
+  { id: "c12", category: "Interaction", section: "Form Section", criterion: "Button states đầy đủ", type: "UX", status: "pass", score: 9, desc: "Hover/active/disabled đủ" },
+  { id: "c13", category: "Interaction", section: "Card Section", criterion: "Loading skeleton", type: "UX", status: "fail", score: 2, desc: "Thiếu skeleton loading" },
+  { id: "c14", category: "Interaction", section: "Modal", criterion: "Focus trap trong modal", type: "UX", status: "pass", score: 8, desc: "Focus trap hoạt động" },
+  { id: "c15", category: "Accessibility", section: "Navigation Bar", criterion: "Keyboard navigation", type: "UX", status: "pass", score: 9, desc: "Tab/Enter hoạt động đúng" },
+  { id: "c16", category: "Accessibility", section: "Form Section", criterion: "ARIA labels đầy đủ", type: "UX", status: "warn", score: 6, desc: "Thiếu aria-label 2 inputs" },
+  { id: "c17", category: "Accessibility", section: "Hero Section", criterion: "Alt text cho images", type: "UX", status: "pass", score: 10, desc: "Tất cả images có alt" },
+  { id: "c18", category: "Accessibility", section: "Footer", criterion: "Screen reader tested", type: "UX", status: "fail", score: 3, desc: "Chưa test screen reader" },
+  { id: "c19", category: "Component", section: "Form Section", criterion: "Validation messages", type: "UI", status: "pass", score: 8, desc: "Error messages rõ ràng" },
+  { id: "c20", category: "Component", section: "Dashboard", criterion: "Empty state design", type: "UX", status: "pass", score: 7, desc: "Empty state có illustration" },
+  { id: "c21", category: "Component", section: "Card Section", criterion: "Toast notifications", type: "UX", status: "pass", score: 8, desc: "Toast 4 loại đầy đủ" },
+  { id: "c22", category: "Trust", section: "Form Section", criterion: "Confirm trước xóa", type: "UX", status: "pass", score: 9, desc: "Confirm dialog khi xóa" },
+  { id: "c23", category: "Trust", section: "Hero Section", criterion: "CTA copy rõ ràng", type: "UX", status: "pass", score: 8, desc: "CTA dùng action verbs" },
+  { id: "c24", category: "Trust", section: "Footer", criterion: "Privacy indicators", type: "UX", status: "pass", score: 7, desc: "Privacy link có hiển thị" },
 ];
+
+const CHECKLIST_CATEGORIES = ["All", "Typography", "Color", "Spacing", "Layout", "Interaction", "Accessibility", "Component", "Trust"];
 
 const LANDING_FEATURES = [
   ["Figma context first", "Use component names, variables, layout intent, and imported Design.md files before asking an AI agent to write code."],
@@ -843,17 +814,28 @@ function App() {
   const [chatHistoryReady, setChatHistoryReady] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [loadedTemplatePresets, setLoadedTemplatePresets] = useState<Record<string, OpenDesignDefinition>>({});
-  const [workspaceTab, setWorkspaceTab] = useState<"chat" | "code">("chat");
+  const [workspaceTab, setWorkspaceTab] = useState<"chat" | "code" | "checklist">("chat");
   const [groqModel, setGroqModel] = useState<string>(() => localStorage.getItem("designready.model") ?? "llama-3.3-70b-versatile");
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [templatePopupOpen, setTemplatePopupOpen] = useState(false);
-  const [checklistOpen, setChecklistOpen] = useState(false);
-  const [checklistItems, setChecklistItems] = useState<Record<string, boolean>>(() => {
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
+  const [setupModalTab, setSetupModalTab] = useState(0);
+  const [checklistItems, setChecklistItems] = useState<ChecklistRow[]>(() => {
     try {
-      const saved = localStorage.getItem("designready.checklist");
-      return saved ? JSON.parse(saved) as Record<string, boolean> : {};
-    } catch { return {}; }
+      const saved = localStorage.getItem("designready.checklist-v2");
+      return saved ? JSON.parse(saved) as ChecklistRow[] : DEFAULT_CHECKLIST_ROWS;
+    } catch { return DEFAULT_CHECKLIST_ROWS; }
+  });
+  const [checklistSearch, setChecklistSearch] = useState("");
+  const [checklistFilter, setChecklistFilter] = useState<"all" | "ui" | "ux" | "pass" | "fail" | "warn">("all");
+  const [checklistPage, setChecklistPage] = useState(1);
+  const [checklistPerPage, setChecklistPerPage] = useState(10);
+  const [setupDatasource, setSetupDatasource] = useState<{ type: string; url: string; sheet: string; headerRow: number }>(() => {
+    try {
+      const s = localStorage.getItem("designready.setup-datasource");
+      return s ? JSON.parse(s) as { type: string; url: string; sheet: string; headerRow: number } : { type: "excel", url: "", sheet: "", headerRow: 1 };
+    } catch { return { type: "excel", url: "", sheet: "", headerRow: 1 }; }
   });
   const [chatTheme, setChatTheme] = useState<"dark" | "light">(() => {
     const saved = localStorage.getItem("designready.theme");
@@ -1718,9 +1700,9 @@ function App() {
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="13" y="3" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="13" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/><rect x="13" y="13" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.8"/></svg>
               <span className="nav-label">Templates</span>
             </a>
-            <a href="#checklist" role="button" onClick={(event) => { event.preventDefault(); setChecklistOpen((v) => !v); }}>
+            <a href="#checklist" role="button" className={workspaceTab === "checklist" ? "active" : ""} onClick={(event) => { event.preventDefault(); setWorkspaceTab("checklist"); }}>
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <span className="nav-label">UI/UX Checklist</span>
+              <span className="nav-label">Checklist UI/UX</span>
             </a>
             <a href="#library" role="button" onClick={(event) => { event.preventDefault(); showComingSoon("My Library"); }}>
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 3h14a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
@@ -1756,6 +1738,24 @@ function App() {
                   onClick={() => openHistoryProject(item)}
                 />
               ))}
+            </div>
+          )}
+
+          {!sidebarCollapsed && (
+            <div className="sidebar-projects-section">
+              <span className="sidebar-section-label">DỰ ÁN</span>
+              <a href="#" className="sidebar-project-item" onClick={(e) => e.preventDefault()}>
+                <svg className="nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h4l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+                <span>TenantX Platform</span>
+              </a>
+              <a href="#" className="sidebar-project-item" onClick={(e) => e.preventDefault()}>
+                <svg className="nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h4l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+                <span>Mobile App v2</span>
+              </a>
+              <a href="#" className="sidebar-project-item add-project" onClick={(e) => e.preventDefault()}>
+                <svg className="nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Thêm dự án</span>
+              </a>
             </div>
           )}
 
@@ -1866,44 +1866,6 @@ function App() {
             </section>
           )}
 
-          {checklistOpen && (
-            <section className="checklist-panel">
-              <div className="checklist-header">
-                <h4>UI/UX Checklist</h4>
-                <span className="checklist-progress">{Object.values(checklistItems).filter(Boolean).length}/{UIUX_CHECKLIST.reduce((sum, g) => sum + g.items.length, 0)}</span>
-              </div>
-              {UIUX_CHECKLIST.map((group) => (
-                <div key={group.category} className="checklist-group">
-                  <h5>{group.category}</h5>
-                  {group.items.map((item) => (
-                    <label key={item} className="checklist-item">
-                      <input
-                        type="checkbox"
-                        checked={!!checklistItems[item]}
-                        onChange={() => {
-                          const next = { ...checklistItems, [item]: !checklistItems[item] };
-                          setChecklistItems(next);
-                          localStorage.setItem("designready.checklist", JSON.stringify(next));
-                        }}
-                      />
-                      <span>{item}</span>
-                    </label>
-                  ))}
-                </div>
-              ))}
-              <button
-                type="button"
-                className="checklist-reset-btn"
-                onClick={() => {
-                  setChecklistItems({});
-                  localStorage.removeItem("designready.checklist");
-                }}
-              >
-                Reset checklist
-              </button>
-            </section>
-          )}
-
           {/*// Pro account  */}
           <section className="plan-card">
             <span>{user.plan === "pro" ? "Pro account" : "Free account"}</span>
@@ -1988,7 +1950,260 @@ function App() {
           </div>
         )}
 
-        <section className={`chat-workspace builder-workspace${chatTheme === "light" ? " theme-light" : ""}`}>
+        {workspaceTab === "checklist" && (
+          <section className="checklist-content-panel">
+            <div className="checklist-content-header">
+              <div>
+                <h2>Checklist UI/UX</h2>
+                <span className="checklist-subtitle">
+                  {checklistItems.length} tiêu chí · {checklistItems.filter(r => r.status === "pass").length} pass · {checklistItems.filter(r => r.status === "fail").length} fail · {checklistItems.filter(r => r.status === "warn").length} cảnh báo
+                </span>
+              </div>
+              <div className="checklist-header-actions">
+                <button type="button" className="btn-setup" onClick={() => { setSetupModalOpen(true); setSetupModalTab(0); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.8"/></svg>
+                  Cài đặt kết nối &amp; Checklist
+                </button>
+              </div>
+            </div>
+
+            {/* Score Card */}
+            <div className="checklist-score-card">
+              <div className="score-circle">
+                <svg viewBox="0 0 80 80" width="80" height="80">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border)" strokeWidth="6"/>
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="var(--teal, #00c9a7)" strokeWidth="6" strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 34}`}
+                    strokeDashoffset={`${2 * Math.PI * 34 * (1 - Math.round(checklistItems.reduce((s, r) => s + r.score, 0) / checklistItems.length * 10) / 100)}`}
+                    transform="rotate(-90 40 40)"/>
+                  <text x="40" y="44" textAnchor="middle" fill="var(--teal, #00c9a7)" fontSize="16" fontWeight="700">
+                    {Math.round(checklistItems.reduce((s, r) => s + r.score, 0) / checklistItems.length * 10)}
+                  </text>
+                </svg>
+              </div>
+              <div className="score-bars">
+                {["Typography", "Color", "Spacing", "Accessibility"].map(cat => {
+                  const items = checklistItems.filter(r => r.category === cat);
+                  const avg = items.length ? Math.round(items.reduce((s, r) => s + r.score, 0) / items.length * 10) : 0;
+                  return (
+                    <div key={cat} className="score-bar-row">
+                      <span>{cat}</span>
+                      <div className="score-bar-track">
+                        <div className="score-bar-fill" style={{ width: `${avg}%`, background: avg >= 80 ? "var(--green, #22c55e)" : avg >= 50 ? "var(--amber, #f59e0b)" : "var(--red, #ef4444)" }}/>
+                      </div>
+                      <span className="score-bar-val">{avg}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="checklist-filter-bar">
+              <input
+                type="text"
+                placeholder="Tìm kiếm tiêu chí..."
+                value={checklistSearch}
+                onChange={(e) => { setChecklistSearch(e.target.value); setChecklistPage(1); }}
+                className="checklist-search-input"
+              />
+              <div className="checklist-filter-tabs">
+                {(["all", "ui", "ux", "pass", "fail", "warn"] as const).map(f => (
+                  <button key={f} type="button" className={checklistFilter === f ? "active" : ""} onClick={() => { setChecklistFilter(f); setChecklistPage(1); }}>
+                    {f === "all" ? "Tất cả" : f.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <select value={checklistFilter === "all" ? "" : ""} onChange={(e) => { if (e.target.value) { setChecklistSearch(""); setChecklistFilter("all"); setChecklistPage(1); } }} className="checklist-cat-dropdown">
+                <option value="">Danh mục ▼</option>
+                {CHECKLIST_CATEGORIES.filter(c => c !== "All").map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Table */}
+            <div className="checklist-table-wrapper">
+              <table className="checklist-table">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Danh mục / Section</th>
+                    <th>Tiêu chí</th>
+                    <th>Loại</th>
+                    <th>Trạng thái</th>
+                    <th>Điểm</th>
+                    <th>Mô tả</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    let filtered = checklistItems;
+                    if (checklistSearch) filtered = filtered.filter(r => r.criterion.toLowerCase().includes(checklistSearch.toLowerCase()) || r.category.toLowerCase().includes(checklistSearch.toLowerCase()) || r.section.toLowerCase().includes(checklistSearch.toLowerCase()));
+                    if (checklistFilter === "ui") filtered = filtered.filter(r => r.type === "UI");
+                    else if (checklistFilter === "ux") filtered = filtered.filter(r => r.type === "UX");
+                    else if (checklistFilter === "pass") filtered = filtered.filter(r => r.status === "pass");
+                    else if (checklistFilter === "fail") filtered = filtered.filter(r => r.status === "fail");
+                    else if (checklistFilter === "warn") filtered = filtered.filter(r => r.status === "warn");
+                    const totalFiltered = filtered.length;
+                    const totalPages = Math.max(1, Math.ceil(totalFiltered / checklistPerPage));
+                    const page = Math.min(checklistPage, totalPages);
+                    const start = (page - 1) * checklistPerPage;
+                    const paged = checklistPerPage >= 999 ? filtered : filtered.slice(start, start + checklistPerPage);
+                    return (
+                      <>
+                        {paged.map((row, idx) => (
+                          <tr key={row.id}>
+                            <td className="col-stt">{String(start + idx + 1).padStart(2, "0")}</td>
+                            <td className="col-cat"><strong>{row.category}</strong><br/><span className="section-name">{row.section}</span></td>
+                            <td>{row.criterion}</td>
+                            <td><span className={`badge-type badge-${row.type.toLowerCase()}`}>{row.type}</span></td>
+                            <td><span className={`status-${row.status}`}>{row.status === "pass" ? "✓ Pass" : row.status === "fail" ? "✗ Fail" : "⚠ Warn"}</span></td>
+                            <td className={`col-score status-${row.status}`}>{row.score}/10</td>
+                            <td className="col-desc">{row.desc}</td>
+                          </tr>
+                        ))}
+                        {paged.length === 0 && (
+                          <tr><td colSpan={7} className="checklist-empty">Không tìm thấy tiêu chí phù hợp</td></tr>
+                        )}
+                      </>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="checklist-pagination">
+              <div className="pagination-per-page">
+                Hiển thị
+                <select value={checklistPerPage} onChange={(e) => { setChecklistPerPage(Number(e.target.value)); setChecklistPage(1); }}>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={999}>Tất cả</option>
+                </select>
+                dòng/trang
+              </div>
+              <span className="pagination-total">Tổng: {checklistItems.length} tiêu chí</span>
+              <div className="pagination-nav">
+                <button type="button" disabled={checklistPage <= 1} onClick={() => setChecklistPage(p => p - 1)}>‹</button>
+                {Array.from({ length: Math.max(1, Math.ceil(checklistItems.length / checklistPerPage)) }, (_, i) => (
+                  <button key={i} type="button" className={checklistPage === i + 1 ? "active" : ""} onClick={() => setChecklistPage(i + 1)}>{i + 1}</button>
+                ))}
+                <button type="button" disabled={checklistPage >= Math.ceil(checklistItems.length / checklistPerPage)} onClick={() => setChecklistPage(p => p + 1)}>›</button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Setup Modal */}
+        {setupModalOpen && (
+          <div className="template-popup-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSetupModalOpen(false); }}>
+            <div className="setup-modal">
+              <div className="setup-modal-header">
+                <h3>Cài đặt kết nối &amp; Checklist</h3>
+                <button type="button" className="template-popup-close" onClick={() => setSetupModalOpen(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="setup-modal-tabs">
+                <button type="button" className={setupModalTab === 0 ? "active" : ""} onClick={() => setSetupModalTab(0)}>Nguồn dữ liệu</button>
+                <button type="button" className={setupModalTab === 1 ? "active" : ""} onClick={() => setSetupModalTab(1)}>Tiêu chí Checklist</button>
+                <button type="button" className={setupModalTab === 2 ? "active" : ""} onClick={() => setSetupModalTab(2)}>Kết nối MCP / Tools</button>
+              </div>
+              <div className="setup-modal-body">
+                {setupModalTab === 0 && (
+                  <div className="setup-tab-datasource">
+                    <label className="setup-field">
+                      <span>Loại nguồn dữ liệu</span>
+                      <select value={setupDatasource.type} onChange={(e) => setSetupDatasource(s => ({ ...s, type: e.target.value }))}>
+                        <option value="excel">Excel (XLSX)</option>
+                        <option value="google">Google Sheets</option>
+                        <option value="airtable">Airtable</option>
+                        <option value="upload">Tải file lên</option>
+                      </select>
+                    </label>
+                    <label className="setup-field">
+                      <span>Đường dẫn / URL</span>
+                      <input type="text" value={setupDatasource.url} onChange={(e) => setSetupDatasource(s => ({ ...s, url: e.target.value }))} placeholder="https://docs.google.com/spreadsheets/..."/>
+                    </label>
+                    <div className="setup-field-row">
+                      <label className="setup-field">
+                        <span>Sheet / Table name</span>
+                        <input type="text" value={setupDatasource.sheet} onChange={(e) => setSetupDatasource(s => ({ ...s, sheet: e.target.value }))} placeholder="Sheet1 hoặc tbl_checklist"/>
+                      </label>
+                      <label className="setup-field" style={{ maxWidth: 120 }}>
+                        <span>Header row</span>
+                        <input type="number" value={setupDatasource.headerRow} onChange={(e) => setSetupDatasource(s => ({ ...s, headerRow: Number(e.target.value) }))} min={1}/>
+                      </label>
+                    </div>
+                  </div>
+                )}
+                {setupModalTab === 1 && (
+                  <div className="setup-tab-criteria">
+                    <p className="setup-info">Quản lý các tiêu chí đánh giá UI/UX. Thêm, xóa hoặc sắp xếp lại theo nhu cầu.</p>
+                    <table className="setup-criteria-table">
+                      <thead><tr><th>Danh mục</th><th>Tiêu chí</th><th>Loại</th><th>Trọng số</th><th></th></tr></thead>
+                      <tbody>
+                        {checklistItems.map((row) => (
+                          <tr key={row.id}>
+                            <td>{row.category}</td>
+                            <td>{row.criterion}</td>
+                            <td><span className={`badge-type badge-${row.type.toLowerCase()}`}>{row.type}</span></td>
+                            <td>{row.score}</td>
+                            <td><button type="button" className="btn-trash" onClick={() => {
+                              const next = checklistItems.filter(r => r.id !== row.id);
+                              setChecklistItems(next);
+                              localStorage.setItem("designready.checklist-v2", JSON.stringify(next));
+                            }}>🗑</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {setupModalTab === 2 && (
+                  <div className="setup-tab-connections">
+                    <div className="setup-connection-card">
+                      <div className="connection-icon figma">F</div>
+                      <div>
+                        <h5>Figma MCP</h5>
+                        <p>Kết nối đọc dữ liệu Figma — generate_figma_design</p>
+                      </div>
+                      <span className="connection-status disconnected">● Chưa kết nối</span>
+                    </div>
+                    <div className="setup-connection-card">
+                      <div className="connection-icon playwright">P</div>
+                      <div>
+                        <h5>Playwright MCP</h5>
+                        <p>Chụp màn hình web tự động để so sánh</p>
+                      </div>
+                      <span className="connection-status disconnected">● Chưa kết nối</span>
+                    </div>
+                    <div className="setup-connection-card">
+                      <div className="connection-icon db">D</div>
+                      <div>
+                        <h5>Supabase / Airtable</h5>
+                        <p>Lưu trữ kết quả checklist, lịch sử review</p>
+                      </div>
+                      <span className="connection-status connected">✓ Đã kết nối (demo)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="setup-modal-footer">
+                <button type="button" className="btn-outline" onClick={() => setSetupModalOpen(false)}>Hủy</button>
+                <button type="button" className="btn-primary" onClick={() => {
+                  localStorage.setItem("designready.setup-datasource", JSON.stringify(setupDatasource));
+                  setSetupModalOpen(false);
+                }}>Lưu cài đặt</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <section className={`chat-workspace builder-workspace${chatTheme === "light" ? " theme-light" : ""}${workspaceTab === "checklist" ? " hidden-panel" : ""}`}>
           <input
             ref={analyzeImageInputRef}
             type="file"
