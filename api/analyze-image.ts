@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { checkRateLimit, getClientIp } from "./lib/rateLimit";
 
 export const config = { api: { bodyParser: true } };
 
@@ -36,6 +37,7 @@ interface AnalyzeImageBody {
 interface VercelRequest {
   method?: string;
   body?: AnalyzeImageBody;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 interface VercelResponse {
@@ -104,6 +106,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
   if (request.method === "OPTIONS") { response.status(200).end(); return; }
   if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
+
+  // Rate limiting
+  const ip = getClientIp(request.headers ?? {});
+  const rl = checkRateLimit(`analyze-image:${ip}`);
+  if (!rl.allowed) { response.setHeader("Retry-After", String(Math.ceil(rl.resetMs / 1000))); response.status(429).json({ error: "Too many requests. Try again later." }); return; }
 
   const { base64Image, mimeType, contextSummary = "", templateMeta = [] } = request.body ?? {};
   if (!base64Image || !isMimeType(mimeType) || templateMeta.length === 0) {

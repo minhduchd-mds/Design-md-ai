@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { sanitizeLong } from "./lib/sanitize";
 import { GROQ_MODEL, SCREEN_GEN_MAX_TOKENS } from "../shared/constants";
+import { checkRateLimit, getClientIp } from "./lib/rateLimit";
 
 export const config = { api: { bodyParser: true } };
 
@@ -21,6 +22,7 @@ interface GenerateScreensBody {
 interface VercelRequest {
   method?: string;
   body?: GenerateScreensBody;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 interface VercelResponse {
@@ -114,6 +116,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
   if (request.method === "OPTIONS") { response.status(200).end(); return; }
   if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
+
+  // Rate limiting
+  const ip = getClientIp(request.headers ?? {});
+  const rl = checkRateLimit(`generate-screens:${ip}`);
+  if (!rl.allowed) { response.setHeader("Retry-After", String(Math.ceil(rl.resetMs / 1000))); response.status(429).json({ error: "Too many requests. Try again later." }); return; }
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) { response.status(500).json({ error: "GROQ_API_KEY is not configured." }); return; }

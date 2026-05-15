@@ -9,6 +9,7 @@ import {
   parseBody,
   resolveModel,
 } from "./lib/chat-shared";
+import { checkRateLimit, getClientIp } from "./lib/rateLimit";
 
 export const config = { runtime: "edge", maxDuration: 30 };
 
@@ -17,6 +18,17 @@ export default async function handler(req: Request): Promise<Response> {
   if (preflight) return preflight;
 
   const cors = buildCorsHeaders(req);
+
+  // Rate limiting
+  const ip = getClientIp(Object.fromEntries(req.headers.entries()));
+  const rl = checkRateLimit(`chat:${ip}`);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests. Try again later." }), {
+      status: 429,
+      headers: { ...cors, "Content-Type": "application/json", "Retry-After": String(Math.ceil(rl.resetMs / 1000)) },
+    });
+  }
+
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return errorResponse("GROQ_API_KEY not configured.", 500, req);
 

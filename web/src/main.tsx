@@ -1,7 +1,12 @@
-﻿import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { StrictMode, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createEmptyContext, type DesignContext, type ValidationReport } from "../../shared/designContext";
-import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser, UserRecord } from "./app/types";
+import type { AccountPlan, AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser } from "./app/types";
+import {
+  register, login, updatePlan, getSessionUser, saveSessionUser, clearSessionUser,
+  getProjectHistory, saveProjectHistory, getChatHistoryKey, encryptChatMessages,
+  decryptChatMessages, createMessage, CHAT_HISTORY_LIMIT, CHAT_HISTORY_PREFIX, SESSION_TTL_MS,
+} from "./app/auth";
 import { buildContext, parseFileSources } from "./design/contextBuilder";
 import { BA_TEMPLATE_CONTENT } from "./design/constants";
 import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "./design/designParser";
@@ -14,9 +19,13 @@ import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { analyzeImage } from "./workspace/imageAnalyzer";
 import { sendClaudeChat } from "./workspace/claudeChat";
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
-import { SplitView } from "./workspace/SplitView";
 import { DEFAULT_CHECKLIST_ROWS, DESIGN_SOURCES, CHECKLIST_CATEGORIES, PROJECT_PRESETS, type ChecklistRow, type ChecklistStatus, type DesignSource } from "./workspace/checklistData";
-import { HtmlPreviewModal, type HtmlPreviewState } from "./workspace/HtmlPreviewModal";
+import { ComparePanel, type BugMarker } from "./workspace/ComparePanel";
+import type { HtmlPreviewState } from "./workspace/HtmlPreviewModal";
+
+// React.lazy — heavy components loaded on demand (Sprint 3 code splitting)
+const SplitView = lazy(() => import("./workspace/SplitView").then(m => ({ default: m.SplitView })));
+const HtmlPreviewModal = lazy(() => import("./workspace/HtmlPreviewModal").then(m => ({ default: m.HtmlPreviewModal })));
 import { Marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js/lib/core";
@@ -66,16 +75,7 @@ type PreviewTheme = "light" | "dark";
 type TemplatePriorityFilter = "All" | "Product" | "Technical";
 type TemplateCategoryFilter = "All" | DesignMdTemplateCategory;
 
-const USER_STORE_KEY = "ai-design-agent.users.v1";
-const SESSION_STORE_KEY = "ai-design-agent.session.v1";
-const AUTH_ATTEMPT_PREFIX = "ai-design-agent.auth-attempt.v1";
-const PROJECT_HISTORY_KEY = "ai-design-agent.project-history.v1";
-const CHAT_HISTORY_PREFIX = "ai-design-agent.chat-history.v1";
 const DESIGN_MD_EDIT_PREFIX = "design-md-ai.design-md-edit.v1";
-const CHAT_HISTORY_LIMIT = 40;
-const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
-const MAX_AUTH_ATTEMPTS = 5;
-const AUTH_LOCK_MS = 1000 * 60 * 15;
 const PRODUCT_NAME = "Design-md-ai";
 const REPOSITORY_URL = "https://github.com/minhduchd-mds/Design-md-ai";
 const CUSTOM_USAGE_TEXT = "Download DESIGN.md, then place it at ./DESIGN.md";
@@ -277,13 +277,6 @@ const COMPETITOR_BENCHMARKS = [
   { name: "Cursor", focus: "Code implementation", gap: "Needs curated Design.md context", score: 80 },
 ];
 
-const PROJECT_HISTORY = [
-  { name: "Modern SaaS Landing Page", date: "07/05/2024, 09:45 AM", prompt: "Create a modern SaaS landing page with login, dashboard, and Pro upgrade page.", category: "SaaS", openDesign: "openai" as const, target: "React + Vite" },
-  { name: "AI Chat Dashboard", date: "08/05/2024, 09:45 AM", prompt: "Create an AI chat dashboard with sidebar, billing, prompt composer, and preview output.", category: "AI tool", openDesign: "openai" as const, target: "React + Vite" },
-  { name: "E-commerce Website", date: "09/05/2024, 11:15 AM", prompt: "Create an e-commerce website with product page, cart, checkout, and admin view.", category: "E-commerce", openDesign: "shopify" as const, target: "React + Vite" },
-];
-
-
 const LANDING_FEATURES = [
   ["Figma context first", "Use component names, variables, layout intent, and imported Design.md files before asking an AI agent to write code."],
   ["Design.md handoff", "Package screens, tokens, component rules, responsive behavior, and implementation guardrails into one readable spec."],
@@ -325,289 +318,12 @@ const CODE_LINES = [
   "- Verify responsive states",
 ];
 
-const encoder = new TextEncoder();
-
-interface AuthAttemptRecord {
-  count: number;
-  lockedUntil: number;
-}
-
 interface MarkdownSection {
   id: string;
   title: string;
   content: string;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let value = "";
-  bytes.forEach((byte) => {
-    value += String.fromCharCode(byte);
-  });
-  return btoa(value);
-}
-
-function base64ToBytes(value: string): Uint8Array {
-  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-}
-
-function validatePasswordStrength(password: string) {
-  if (password.length < 12) throw new Error("Password must be at least 12 characters.");
-  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-    throw new Error("Password must include uppercase, lowercase, number, and special characters.");
-  }
-}
-
-function timingSafeEqual(left: string, right: string) {
-  const leftBytes = encoder.encode(left);
-  const rightBytes = encoder.encode(right);
-  let diff = leftBytes.length ^ rightBytes.length;
-  const length = Math.max(leftBytes.length, rightBytes.length);
-  for (let index = 0; index < length; index += 1) {
-    diff |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
-  }
-  return diff === 0;
-}
-
-function getAuthAttemptKey(emailHash: string) {
-  return `${AUTH_ATTEMPT_PREFIX}.${emailHash}`;
-}
-
-function getAuthAttempt(emailHash: string): AuthAttemptRecord {
-  try {
-    return JSON.parse(localStorage.getItem(getAuthAttemptKey(emailHash)) ?? "null") as AuthAttemptRecord | null ?? { count: 0, lockedUntil: 0 };
-  } catch {
-    return { count: 0, lockedUntil: 0 };
-  }
-}
-
-function assertAuthNotLocked(emailHash: string) {
-  const attempt = getAuthAttempt(emailHash);
-  if (attempt.lockedUntil > Date.now()) {
-    const minutes = Math.ceil((attempt.lockedUntil - Date.now()) / 60000);
-    throw new Error(`This account is temporarily locked. Try again in ${minutes} minutes.`);
-  }
-}
-
-function recordFailedAuthAttempt(emailHash: string) {
-  const attempt = getAuthAttempt(emailHash);
-  const count = attempt.lockedUntil > Date.now() ? attempt.count : attempt.count + 1;
-  const lockedUntil = count >= MAX_AUTH_ATTEMPTS ? Date.now() + AUTH_LOCK_MS : 0;
-  localStorage.setItem(getAuthAttemptKey(emailHash), JSON.stringify({ count, lockedUntil }));
-}
-
-function clearAuthAttempt(emailHash: string) {
-  localStorage.removeItem(getAuthAttemptKey(emailHash));
-}
-
-async function deriveKey(password: string, salt: Uint8Array, usages: KeyUsage[]) {
-  const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: toArrayBuffer(salt),
-      iterations: 310000,
-      hash: "SHA-256",
-    },
-    material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    usages,
-  );
-}
-
-async function hashPassword(password: string, salt: Uint8Array): Promise<string> {
-  const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt: toArrayBuffer(salt),
-      iterations: 310000,
-      hash: "SHA-256",
-    },
-    material,
-    256,
-  );
-  return bytesToBase64(new Uint8Array(bits));
-}
-
-async function hashEmail(email: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`ai-design-agent.email.v1:${email.trim().toLowerCase()}`));
-  return bytesToBase64(new Uint8Array(digest));
-}
-
-async function encryptProfile(password: string, salt: Uint8Array, data: unknown): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(password, salt, ["encrypt"]);
-  const payload = encoder.encode(JSON.stringify(data));
-  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload);
-  return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipher))}`;
-}
-
-async function decryptProfile<T>(password: string, salt: Uint8Array, payload: string): Promise<T> {
-  const [ivValue, cipherValue] = payload.split(".");
-  if (!ivValue || !cipherValue) throw new Error("Invalid encrypted data.");
-  const key = await deriveKey(password, salt, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: toArrayBuffer(base64ToBytes(ivValue)) }, key, toArrayBuffer(base64ToBytes(cipherValue)));
-  return JSON.parse(new TextDecoder().decode(plain)) as T;
-}
-
-function getUsers(): UserRecord[] {
-  try {
-    return JSON.parse(localStorage.getItem(USER_STORE_KEY) ?? "[]") as UserRecord[];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: UserRecord[]) {
-  localStorage.setItem(USER_STORE_KEY, JSON.stringify(users));
-}
-
-async function register(email: string, password: string): Promise<SessionUser> {
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) throw new Error("A valid email is required.");
-  validatePasswordStrength(password);
-  const users = getUsers();
-  const emailHash = await hashEmail(normalized);
-  if (users.some((user) => user.emailHash === emailHash || user.email === normalized)) throw new Error("This account already exists.");
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const record: UserRecord = {
-    emailHash,
-    encryptedEmail: await encryptProfile(password, salt, normalized),
-    salt: bytesToBase64(salt),
-    verifier: await hashPassword(password, salt),
-    encryptedProfile: await encryptProfile(password, salt, { email: normalized, projects: [], plan: "free" }),
-    plan: "free",
-    createdAt: new Date().toISOString(),
-  };
-  saveUsers([...users, record]);
-  clearAuthAttempt(emailHash);
-  return { emailHash, displayEmail: normalized, plan: "free", expiresAt: Date.now() + SESSION_TTL_MS };
-}
-
-async function login(email: string, password: string): Promise<SessionUser> {
-  const normalized = email.trim().toLowerCase();
-  const emailHash = await hashEmail(normalized);
-  assertAuthNotLocked(emailHash);
-  const users = getUsers();
-  const record = users.find((user) => user.emailHash === emailHash || user.email === normalized);
-  if (!record) {
-    recordFailedAuthAttempt(emailHash);
-    throw new Error("Email or password is incorrect.");
-  }
-  const verifier = await hashPassword(password, base64ToBytes(record.salt));
-  if (!timingSafeEqual(verifier, record.verifier)) {
-    recordFailedAuthAttempt(emailHash);
-    throw new Error("Email or password is incorrect.");
-  }
-  clearAuthAttempt(emailHash);
-  const salt = base64ToBytes(record.salt);
-  let displayEmail = normalized;
-  if (record.encryptedEmail) {
-    try {
-      displayEmail = await decryptProfile<string>(password, salt, record.encryptedEmail);
-    } catch {
-      displayEmail = record.email ?? normalized;
-    }
-  }
-  if (!record.emailHash || !record.encryptedEmail || record.email) {
-    const encryptedEmail = record.encryptedEmail || await encryptProfile(password, salt, displayEmail);
-    saveUsers(users.map((user) => (
-      user === record
-        ? {
-            ...user,
-            email: undefined,
-            emailHash,
-            encryptedEmail,
-          }
-        : user
-    )));
-  }
-  return { emailHash, displayEmail, plan: record.plan, expiresAt: Date.now() + SESSION_TTL_MS };
-}
-
-function updatePlan(emailHash: string, plan: AccountPlan) {
-  saveUsers(getUsers().map((user) => (user.emailHash === emailHash ? { ...user, plan } : user)));
-}
-
-function getSessionUser(): SessionUser | null {
-  try {
-    const session = JSON.parse(localStorage.getItem(SESSION_STORE_KEY) ?? "null") as (SessionUser & { email?: string }) | null;
-    if (!session?.emailHash) return null;
-    if (!session.expiresAt || session.expiresAt <= Date.now()) {
-      clearSessionUser();
-      return null;
-    }
-    const record = getUsers().find((user) => user.emailHash === session.emailHash);
-    return record
-      ? {
-          emailHash: record.emailHash ?? session.emailHash,
-          displayEmail: session.displayEmail || "Encrypted account",
-          plan: record.plan,
-          expiresAt: session.expiresAt,
-        }
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveSessionUser(user: SessionUser) {
-  localStorage.setItem(SESSION_STORE_KEY, JSON.stringify({ ...user, expiresAt: Date.now() + SESSION_TTL_MS }));
-}
-
-function clearSessionUser() {
-  localStorage.removeItem(SESSION_STORE_KEY);
-}
-
-function getProjectHistory(): ProjectHistoryItem[] {
-  try {
-    const items = JSON.parse(localStorage.getItem(PROJECT_HISTORY_KEY) ?? "null") as ProjectHistoryItem[] | null;
-    return items?.length ? items : PROJECT_HISTORY;
-  } catch {
-    return PROJECT_HISTORY;
-  }
-}
-
-function saveProjectHistory(items: ProjectHistoryItem[]) {
-  localStorage.setItem(PROJECT_HISTORY_KEY, JSON.stringify(items.slice(0, 12)));
-}
-
-function getChatHistoryKey(emailHash: string) {
-  return `${CHAT_HISTORY_PREFIX}.${emailHash}`;
-}
-
-async function encryptChatMessages(emailHash: string, messages: ChatMessage[]): Promise<string> {
-  const salt = encoder.encode(`chat:${emailHash}:v1`);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(emailHash, salt, ["encrypt"]);
-  const payload = encoder.encode(JSON.stringify(messages.slice(-CHAT_HISTORY_LIMIT)));
-  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload);
-  return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipher))}`;
-}
-
-async function decryptChatMessages(emailHash: string, payload: string): Promise<ChatMessage[]> {
-  const [ivValue, cipherValue] = payload.split(".");
-  if (!ivValue || !cipherValue) return [];
-  const salt = encoder.encode(`chat:${emailHash}:v1`);
-  const key = await deriveKey(emailHash, salt, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: toArrayBuffer(base64ToBytes(ivValue)) }, key, toArrayBuffer(base64ToBytes(cipherValue)));
-  return JSON.parse(new TextDecoder().decode(plain)) as ChatMessage[];
-}
-
-function createMessage(role: ChatMessage["role"], content: string, title?: string, htmlCode?: string): ChatMessage {
-  return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    role,
-    title,
-    content,
-    htmlCode,
-  };
-}
 
 function stableHash(value: string): string {
   let hash = 0;
@@ -810,6 +526,18 @@ function App() {
   const [pwHeight, setPwHeight] = useState(900);
   const [pwStatus, setPwStatus] = useState<"pending" | "checking" | "ok" | "error">("pending");
 
+  // Detail Modal
+  const [detailRow, setDetailRow] = useState<ChecklistRow | null>(null);
+  const [detailTab, setDetailTab] = useState<0 | 1>(0);
+
+  // Report Modal
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+
+  // Compare Panel — Sprint 4
+  const [bugMarkers, setBugMarkers] = useState<BugMarker[]>([]);
+  const [compareDesignUrl, setCompareDesignUrl] = useState<string | null>(null);
+  const [compareWebUrl, setCompareWebUrl] = useState<string | null>(null);
+
   // Toast notification system
   const [toasts, setToasts] = useState<Array<{ id: number; msg: string; type: "success" | "error" | "warn" | "info" }>>([]);
   const toastIdRef = useRef(0);
@@ -929,7 +657,9 @@ function App() {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (setupModalOpen) setSetupModalOpen(false);
+        if (detailRow) setDetailRow(null);
+        else if (reportModalOpen) setReportModalOpen(false);
+        else if (setupModalOpen) setSetupModalOpen(false);
         else if (templatePopupOpen) setTemplatePopupOpen(false);
         else if (htmlPreview) setHtmlPreview(null);
         else if (settingsOpen) setSettingsOpen(false);
@@ -937,7 +667,7 @@ function App() {
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [setupModalOpen, templatePopupOpen, htmlPreview, settingsOpen]);
+  }, [detailRow, reportModalOpen, setupModalOpen, templatePopupOpen, htmlPreview, settingsOpen]);
 
   useEffect(() => {
     if (!user) return;
@@ -2006,7 +1736,7 @@ function App() {
                 <button type="button" className="btn-setup" onClick={() => { setSetupModalOpen(true); setSetupModalTab(0); }}>
                   ⚙ Cài đặt nguồn dữ liệu
                 </button>
-                <button type="button" className="btn-setup" style={{ background: "#ef4444" }} onClick={() => {/* TODO: report modal */}}>
+                <button type="button" className="btn-setup" style={{ background: "#ef4444" }} onClick={() => setReportModalOpen(true)}>
                   📊 Xuất báo cáo
                 </button>
               </div>
@@ -2088,7 +1818,7 @@ function App() {
                   {paginatedChecklistRows.map((row, idx) => {
                     const globalIdx = (Math.min(checklistPage, checklistTotalPages) - 1) * checklistPerPage + idx;
                     return (
-                      <tr key={row.id} className={row.status === "untested" ? "row-untested" : ""}>
+                      <tr key={row.id} className={row.status === "untested" ? "row-untested" : ""} onClick={() => { setDetailRow(row); setDetailTab(0); }}>
                         <td className="col-stt">{String(globalIdx + 1).padStart(2, "0")}</td>
                         <td className="col-cat">
                           <strong>{row.category}</strong>
@@ -2118,7 +1848,7 @@ function App() {
                             }}/>
                         </td>
                         <td className="col-desc">{row.expected || row.note}</td>
-                        <td><button type="button" className="btn-detail" onClick={() => {/* TODO: detail modal */}}>Chi tiết</button></td>
+                        <td><button type="button" className="btn-detail" onClick={(e) => { e.stopPropagation(); setDetailRow(row); setDetailTab(0); }}>Chi tiết</button></td>
                       </tr>
                     );
                   })}
@@ -2334,6 +2064,267 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* Detail Modal — Sprint 2 */}
+        {detailRow && (() => {
+          const srcMeta = DESIGN_SOURCES.find(d => d.id === detailRow.source);
+          return (
+            <div className="template-popup-overlay" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setDetailRow(null); }}>
+              <div className="detail-modal">
+                <div className="detail-modal-header">
+                  <h3>Chi tiết: {detailRow.section || detailRow.component || detailRow.category}</h3>
+                  <button type="button" className="template-popup-close" onClick={() => setDetailRow(null)}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div className="setup-mtabs" style={{ margin: "12px 20px 0" }}>
+                  <button type="button" className={detailTab === 0 ? "active" : ""} onClick={() => setDetailTab(0)}>ⓘ Thông tin</button>
+                  <button type="button" className={detailTab === 1 ? "active" : ""} onClick={() => setDetailTab(1)}>⇔ So sánh</button>
+                </div>
+                <div className="setup-modal-body">
+                  {detailTab === 0 && (
+                    <div className="detail-info-grid">
+                      <div className="detail-img-placeholder">
+                        <div style={{ fontSize: 32, marginBottom: 8 }}>🖼</div>
+                        <div style={{ fontSize: 12, color: "#5c6378" }}>Design preview</div>
+                        <div style={{ fontSize: 11, color: "#5c6378", marginTop: 4 }}>Kết nối Figma để xem frame</div>
+                      </div>
+                      <div className="detail-info-table">
+                        <div className="detail-info-row"><span>Nguồn</span><span className="source-badge" style={{ background: `${srcMeta?.color ?? "#666"}22`, color: srcMeta?.color }}>{detailRow.source.toUpperCase()}</span></div>
+                        <div className="detail-info-row"><span>Danh mục</span><strong>{detailRow.category}</strong></div>
+                        <div className="detail-info-row"><span>Section</span><span>{detailRow.section || detailRow.component}</span></div>
+                        <div className="detail-info-row"><span>Loại</span><span className={`badge-type badge-${detailRow.type.toLowerCase()}`}>{detailRow.type}</span></div>
+                        <div className="detail-info-row"><span>Tag</span><span className={detailRow.tag === "req" ? "tag-req" : "tag-opt"}>{detailRow.tag === "req" ? "Bắt buộc" : "Tuỳ chọn"}</span></div>
+                        <div className="detail-info-row"><span>Trạng thái</span><span className={`status-${detailRow.status}`} style={{ fontWeight: 600 }}>
+                          {detailRow.status === "pass" && "✓ Pass"}{detailRow.status === "fail" && "✗ Fail"}{detailRow.status === "warn" && "⚠ Warn"}{detailRow.status === "untested" && "— Chưa test"}
+                        </span></div>
+                        <div className="detail-info-row"><span>Điểm</span><strong style={{ fontSize: 18 }}>{detailRow.score}/10</strong></div>
+                        <div className="detail-info-row"><span>Tiêu chí</span><span>{detailRow.criterion}</span></div>
+                        <div className="detail-info-row"><span>Expected</span><span>{detailRow.expected}</span></div>
+                        {detailRow.note && <div className="detail-info-row"><span>Ghi chú</span><span style={{ color: "#9aa0b8" }}>{detailRow.note}</span></div>}
+                        {figmaStatus === "ok" && (
+                          <>
+                            <div className="detail-info-row" style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 10 }}><span>Figma Frame</span><span>{detailRow.section || "N/A"}</span></div>
+                            <div className="detail-info-row"><span>Figma Score</span><span>{detailRow.score * 10}/100</span></div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {detailTab === 1 && (
+                    <div>
+                      <ComparePanel
+                        designImageUrl={compareDesignUrl}
+                        webImageUrl={compareWebUrl}
+                        onCaptureFigma={() => showToast("Kết nối Figma để chụp frame", "info")}
+                        onCaptureWeb={() => showToast("Kết nối Playwright để chụp web", "info")}
+                        markers={bugMarkers}
+                        onAddMarker={(m) => setBugMarkers(prev => [...prev, m])}
+                        onRemoveMarker={(id) => setBugMarkers(prev => prev.filter(m => m.id !== id))}
+                      />
+                      <table className="setup-criteria-table" style={{ marginTop: 12 }}>
+                        <thead><tr><th>Icon</th><th>Hạng mục</th><th>Giá trị</th><th>Kết quả</th></tr></thead>
+                        <tbody>
+                          <tr><td>📏</td><td>Spacing</td><td>{detailRow.expected || "N/A"}</td><td className={`status-${detailRow.status}`}>{detailRow.status === "pass" ? "✓" : detailRow.status === "fail" ? "✗" : "⚠"}</td></tr>
+                          <tr><td>🔤</td><td>Typography</td><td>Theo design system</td><td className="status-pass">✓</td></tr>
+                          <tr><td>🎨</td><td>Màu / Token</td><td>Đối chiếu token</td><td className="status-pass">✓</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="setup-modal-footer">
+                  <button type="button" className="btn-outline" onClick={() => setDetailRow(null)}>Đóng</button>
+                  <button type="button" className="btn-primary" style={{ background: "#ef4444" }} onClick={() => { showToast("Đã báo cáo issue: " + detailRow.criterion, "info"); setDetailRow(null); }}>🚩 Báo cáo issue này</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Report Modal — Sprint 2 */}
+        {reportModalOpen && (() => {
+          const failItems = checklistItems.filter(r => r.status === "fail");
+          const warnItems = checklistItems.filter(r => r.status === "warn");
+          const passItems = checklistItems.filter(r => r.status === "pass");
+          const tested = checklistItems.filter(r => r.status !== "untested");
+          const avgScore = tested.length ? Math.round(tested.reduce((s, r) => s + r.score, 0) / tested.length * 10) : 0;
+          return (
+            <div className="template-popup-overlay" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setReportModalOpen(false); }}>
+              <div className="setup-modal" style={{ width: "min(760px, 94vw)" }}>
+                <div className="setup-modal-header">
+                  <h3>📊 Báo cáo UI/UX Review</h3>
+                  <button type="button" className="template-popup-close" onClick={() => setReportModalOpen(false)}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div className="setup-modal-body">
+                  {/* Summary Metrics */}
+                  <div className="report-metrics">
+                    <div className="report-metric"><div className="report-metric-val" style={{ color: "#00c9a7" }}>{avgScore}</div><div className="report-metric-label">Điểm tổng /100</div></div>
+                    <div className="report-metric"><div className="report-metric-val" style={{ color: "#22c55e" }}>{passItems.length}</div><div className="report-metric-label">Pass</div></div>
+                    <div className="report-metric"><div className="report-metric-val" style={{ color: "#ef4444" }}>{failItems.length}</div><div className="report-metric-label">Fail</div></div>
+                    <div className="report-metric"><div className="report-metric-val" style={{ color: "#f59e0b" }}>{warnItems.length}</div><div className="report-metric-label">Warn</div></div>
+                    <div className="report-metric"><div className="report-metric-val" style={{ color: "#9aa0b8" }}>{checklistItems.length - tested.length}</div><div className="report-metric-label">Chưa test</div></div>
+                  </div>
+
+                  {/* Fail list */}
+                  {failItems.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <h4 style={{ fontSize: 13, color: "#ef4444", marginBottom: 8 }}>✗ Vấn đề nghiêm trọng ({failItems.length})</h4>
+                      {failItems.map(r => (
+                        <div key={r.id} className="report-issue-row">
+                          <span className={`badge-type badge-${r.type.toLowerCase()}`}>{r.type}</span>
+                          <span style={{ flex: 1 }}><strong>{r.category}</strong> — {r.criterion}</span>
+                          <span style={{ color: "#5c6378", fontSize: 11 }}>{r.source.toUpperCase()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Warn list */}
+                  {warnItems.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <h4 style={{ fontSize: 13, color: "#f59e0b", marginBottom: 8 }}>⚠ Cảnh báo ({warnItems.length})</h4>
+                      {warnItems.map(r => (
+                        <div key={r.id} className="report-issue-row">
+                          <span className={`badge-type badge-${r.type.toLowerCase()}`}>{r.type}</span>
+                          <span style={{ flex: 1 }}><strong>{r.category}</strong> — {r.criterion}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Source breakdown */}
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ fontSize: 13, color: "#f1f3f5", marginBottom: 8 }}>📋 Theo nguồn</h4>
+                    <div className="report-metrics">
+                      {DESIGN_SOURCES.map(ds => {
+                        const items = checklistItems.filter(r => r.source === ds.id);
+                        const dsPass = items.filter(r => r.status === "pass").length;
+                        return (
+                          <div key={ds.id} className="report-metric" style={{ borderLeft: `3px solid ${ds.color}` }}>
+                            <div className="report-metric-val" style={{ color: ds.color }}>{dsPass}/{items.length}</div>
+                            <div className="report-metric-label">{ds.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* AI recommendations */}
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ fontSize: 13, color: "#6c63ff", marginBottom: 8 }}>🤖 Khuyến nghị AI</h4>
+                    <ul style={{ fontSize: 12, color: "#9aa0b8", paddingLeft: 18, lineHeight: 1.8 }}>
+                      {failItems.length > 3 && <li>Nhiều tiêu chí fail — ưu tiên fix {failItems[0]?.category} và {failItems[1]?.category} trước</li>}
+                      {warnItems.length > 0 && <li>Có {warnItems.length} cảnh báo cần review lại trước khi release</li>}
+                      <li>Kết nối Figma MCP để tự động đối chiếu design tokens</li>
+                      <li>Chạy Playwright screenshot để so sánh pixel-perfect</li>
+                      {avgScore < 70 && <li>Điểm tổng dưới 70 — cần rà soát toàn diện trước production</li>}
+                    </ul>
+                  </div>
+
+                  {/* AI Auto-Scoring — Sprint 4 */}
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ fontSize: 13, color: "#00c9a7", marginBottom: 8 }}>🤖 AI Auto-Scoring</h4>
+                    <p style={{ fontSize: 12, color: "#7a829e", marginBottom: 10 }}>Upload ảnh screenshot để AI tự động chấm điểm UI/UX theo checklist.</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button type="button" className="btn-outline" onClick={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
+                        input.onchange = async () => {
+                          const file = input.files?.[0];
+                          if (!file) return;
+                          showToast("Đang phân tích screenshot với AI…", "info");
+                          try {
+                            const reader = new FileReader();
+                            reader.onload = async () => {
+                              const base64 = (reader.result as string).split(",")[1];
+                              const resp = await fetch("/api/analyze-image", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  base64Image: base64,
+                                  mimeType: file.type,
+                                  contextSummary: "UI/UX auto-scoring from screenshot",
+                                  templateMeta: [{ id: "auto-score", category: "UI", priority: "high", keywords: ["layout", "color", "typography", "spacing"] }],
+                                }),
+                              });
+                              if (resp.ok) {
+                                const data = await resp.json();
+                                showToast(`AI phân tích xong: Layout=${data.layoutPattern?.columns ?? "?"} col, ${data.layoutPattern?.colorScheme ?? "?"} theme`, "success");
+                              } else {
+                                showToast("AI scoring thất bại — kiểm tra API key", "error");
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          } catch { showToast("Lỗi kết nối AI scoring", "error"); }
+                        };
+                        input.click();
+                      }}>📸 Upload Screenshot</button>
+                      <button type="button" className="btn-outline" onClick={() => showToast("Sẽ kết nối Figma MCP để auto-score", "info")}>🎨 Từ Figma</button>
+                      <button type="button" className="btn-outline" onClick={() => showToast("Sẽ chụp Playwright để auto-score", "info")}>🌐 Từ Playwright</button>
+                    </div>
+                  </div>
+
+                  {/* Export options */}
+                  <div style={{ marginTop: 16, display: "flex", gap: 12, alignItems: "center" }}>
+                    <label className="setup-field" style={{ flex: 1, marginBottom: 0 }}>
+                      <span>Định dạng xuất</span>
+                      <select><option>CSV</option><option>JSON</option><option>PDF</option></select>
+                    </label>
+                  </div>
+                </div>
+                <div className="setup-modal-footer">
+                  <button type="button" className="btn-outline" onClick={() => setReportModalOpen(false)}>Đóng</button>
+                  <button type="button" className="btn-export-pdf" onClick={() => {
+                    // PDF export via browser print
+                    const printWin = window.open("", "_blank");
+                    if (!printWin) { showToast("Popup bị chặn — cho phép popup để xuất PDF", "warn"); return; }
+                    const failItems2 = checklistItems.filter(r => r.status === "fail");
+                    const warnItems2 = checklistItems.filter(r => r.status === "warn");
+                    const passItems2 = checklistItems.filter(r => r.status === "pass");
+                    const tested2 = checklistItems.filter(r => r.status !== "untested");
+                    const avgScore2 = tested2.length ? Math.round(tested2.reduce((s, r) => s + r.score, 0) / tested2.length * 10) : 0;
+                    printWin.document.write(`<!DOCTYPE html><html><head><title>UI/UX Report - ${new Date().toISOString().slice(0,10)}</title>
+                      <style>body{font-family:system-ui,sans-serif;max-width:800px;margin:0 auto;padding:24px;color:#1a1a1a}h1{font-size:22px}h2{font-size:16px;margin-top:24px;border-bottom:1px solid #ddd;padding-bottom:4px}.metric{display:inline-block;text-align:center;margin:0 16px 12px 0;padding:12px 16px;border:1px solid #ddd;border-radius:8px;min-width:80px}.metric strong{display:block;font-size:24px}.metric span{font-size:11px;color:#666}table{width:100%;border-collapse:collapse;margin:8px 0}th,td{padding:6px 10px;border:1px solid #ddd;font-size:12px;text-align:left}th{background:#f5f5f5;font-weight:600}.pass{color:#22c55e}.fail{color:#ef4444}.warn{color:#f59e0b}@media print{body{padding:12px}}</style>
+                    </head><body>
+                      <h1>📊 Báo cáo UI/UX Review</h1>
+                      <p style="color:#666;font-size:13px">${PRODUCT_NAME} — ${new Date().toLocaleDateString("vi-VN")} — ${checklistItems.length} tiêu chí</p>
+                      <div>
+                        <div class="metric"><strong style="color:#00c9a7">${avgScore2}</strong><span>Điểm /100</span></div>
+                        <div class="metric"><strong style="color:#22c55e">${passItems2.length}</strong><span>Pass</span></div>
+                        <div class="metric"><strong style="color:#ef4444">${failItems2.length}</strong><span>Fail</span></div>
+                        <div class="metric"><strong style="color:#f59e0b">${warnItems2.length}</strong><span>Warn</span></div>
+                      </div>
+                      ${failItems2.length ? `<h2>✗ Vấn đề nghiêm trọng (${failItems2.length})</h2><table><tr><th>Source</th><th>Category</th><th>Criterion</th><th>Score</th></tr>${failItems2.map(r=>`<tr><td>${r.source.toUpperCase()}</td><td>${r.category}</td><td>${r.criterion}</td><td>${r.score}/10</td></tr>`).join("")}</table>` : ""}
+                      ${warnItems2.length ? `<h2>⚠ Cảnh báo (${warnItems2.length})</h2><table><tr><th>Source</th><th>Category</th><th>Criterion</th><th>Score</th></tr>${warnItems2.map(r=>`<tr><td>${r.source.toUpperCase()}</td><td>${r.category}</td><td>${r.criterion}</td><td>${r.score}/10</td></tr>`).join("")}</table>` : ""}
+                      <h2>📋 Chi tiết toàn bộ</h2>
+                      <table><tr><th>#</th><th>Source</th><th>Category</th><th>Criterion</th><th>Type</th><th>Status</th><th>Score</th></tr>
+                      ${checklistItems.map((r,i)=>`<tr><td>${i+1}</td><td>${r.source.toUpperCase()}</td><td>${r.category}</td><td>${r.criterion}</td><td>${r.type}</td><td class="${r.status}">${r.status}</td><td>${r.score}/10</td></tr>`).join("")}
+                      </table>
+                      <p style="margin-top:24px;font-size:11px;color:#999">Generated by ${PRODUCT_NAME}</p>
+                    </body></html>`);
+                    printWin.document.close();
+                    setTimeout(() => { printWin.print(); }, 500);
+                    showToast("Đang mở PDF export…", "success");
+                  }}>📄 Xuất PDF</button>
+                  <button type="button" className="btn-primary" style={{ background: "#ef4444" }} onClick={() => {
+                    const tested2 = checklistItems.filter(r => r.status !== "untested");
+                    const csvHeader = "ID,Source,Category,Section,Criterion,Type,Tag,Status,Score,Expected,Note";
+                    const csvRows = tested2.map(r => `${r.id},${r.source},${r.category},"${r.section}","${r.criterion}",${r.type},${r.tag},${r.status},${r.score},"${r.expected}","${r.note}"`);
+                    const blob = new Blob([csvHeader + "\n" + csvRows.join("\n")], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a"); a.href = url; a.download = `uiux-report-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+                    URL.revokeObjectURL(url);
+                    showToast("Đã xuất báo cáo CSV!", "success");
+                  }}>📊 Xuất CSV</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <section className={`chat-workspace builder-workspace${chatTheme === "light" ? " theme-light" : ""}${workspaceTab === "checklist" ? " hidden-panel" : ""}`}>
           <input
@@ -2578,16 +2569,18 @@ function App() {
                     )}
                     <div className="output-panel">
                       {previewMode === "split" && generatedScreens.length > 0 ? (
-                        <SplitView
-                          key={`${templateCommandSlug(outputRequest.projectName)}-${generatedScreens.map((screen) => screen.name).join("|")}`}
-                          initialScreens={generatedScreens}
-                          projectId={templateCommandSlug(outputRequest.projectName)}
-                          onExport={(markdown) => {
-                            setSavedDesignMd(markdown);
-                            setEditDraft(markdown);
-                            setPreviewMode("edit");
-                          }}
-                        />
+                        <Suspense fallback={<div style={{ padding: 24, color: "#5c6378" }}>Loading SplitView…</div>}>
+                          <SplitView
+                            key={`${templateCommandSlug(outputRequest.projectName)}-${generatedScreens.map((screen) => screen.name).join("|")}`}
+                            initialScreens={generatedScreens}
+                            projectId={templateCommandSlug(outputRequest.projectName)}
+                            onExport={(markdown) => {
+                              setSavedDesignMd(markdown);
+                              setEditDraft(markdown);
+                              setPreviewMode("edit");
+                            }}
+                          />
+                        </Suspense>
                       ) : previewMode === "prompt" ? (
                         <pre>{designMd}</pre>
                       ) : previewMode === "edit" ? (
@@ -2753,11 +2746,13 @@ function App() {
         </section>
       </main>
       {htmlPreview && (
-        <HtmlPreviewModal
-          state={htmlPreview}
-          onClose={() => setHtmlPreview(null)}
-          onHtmlChange={(html) => setHtmlPreview((prev) => prev ? { ...prev, html } : null)}
-        />
+        <Suspense fallback={null}>
+          <HtmlPreviewModal
+            state={htmlPreview}
+            onClose={() => setHtmlPreview(null)}
+            onHtmlChange={(html) => setHtmlPreview((prev) => prev ? { ...prev, html } : null)}
+          />
+        </Suspense>
       )}
       </>
     );
