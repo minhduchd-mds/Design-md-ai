@@ -30,6 +30,7 @@ function evaluate(
 ): EvalCriterion[] {
   const results: EvalCriterion[] = [];
   const compCount = components.length;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _varCount = variables.length;
   const catScore = (dim: string) => scanResult?.categories.find(c => c.id === dim)?.score ?? 0;
 

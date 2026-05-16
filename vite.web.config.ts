@@ -94,7 +94,25 @@ export default defineConfig(({ mode }) => {
       outDir: "../public",
       emptyOutDir: true,
       target: "es2020",
-      chunkSizeWarningLimit: 700,
+      chunkSizeWarningLimit: 500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Heavy markdown/highlight vendors → separate chunk (loads lazily)
+            if (id.includes("highlight.js") || id.includes("marked") || id.includes("marked-highlight")) {
+              return "markdown-vendor";
+            }
+            // DOMPurify → separate chunk
+            if (id.includes("dompurify")) {
+              return "dom-vendor";
+            }
+            // React ecosystem → single stable chunk
+            if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+              return "react-vendor";
+            }
+          },
+        },
+      },
     },
     server: {
       host: "127.0.0.1",
