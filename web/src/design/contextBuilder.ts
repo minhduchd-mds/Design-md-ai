@@ -3,7 +3,7 @@ import type { SerializedNode } from "../../../shared/types";
 import type { DesignContext, DocSource } from "../../../shared/designContext";
 import { createEmptyContext } from "../../../shared/designContext";
 import { sanitize } from "../../../shared/sanitize";
-import { getCached, setCached } from "../lib/requestCache";
+import { getCacheEntry, setCacheEntry } from "../lib/queryStore";
 
 export interface InputSources {
   pluginScanResult: SerializedNode[] | null;
@@ -75,8 +75,8 @@ function parseBootstrapSuggestions(value: unknown): string[] {
 
 async function fetchBootstrapSuggestions(prompt: string, docs: DocSource[]): Promise<string[]> {
   const sanitizedPrompt = sanitize(prompt);
-  const cacheKey = { prompt: sanitizedPrompt, docs };
-  const cached = getCached<string[]>(cacheKey);
+  const cacheKey = JSON.stringify({ prompt: sanitizedPrompt, docs });
+  const cached = getCacheEntry<string[]>(cacheKey)?.data;
   if (cached) return cached;
 
   const response = await fetch("/api/bootstrap-context", {
@@ -89,7 +89,7 @@ async function fetchBootstrapSuggestions(prompt: string, docs: DocSource[]): Pro
 
   const result = await response.json() as { components?: unknown };
   const suggestions = parseBootstrapSuggestions(result.components);
-  setCached(cacheKey, suggestions);
+  setCacheEntry(cacheKey, suggestions);
   return suggestions;
 }
 
