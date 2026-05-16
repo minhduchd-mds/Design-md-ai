@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useI18n } from "../i18n/I18nContext";
-import styles from "./BADocumentPanel.module.css";
+import styles from "./BADocumentPanel.module.scss";
 
 interface BADocumentPanelProps {
   onDocumentChange: (doc: BADocument) => void;

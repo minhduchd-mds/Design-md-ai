@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useI18n } from "../i18n/I18nContext";
-import styles from "./StandardsChecklist.module.css";
+import styles from "./StandardsChecklist.module.scss";
 
 export interface StandardItem {
   id: string;

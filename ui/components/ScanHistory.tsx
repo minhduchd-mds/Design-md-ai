@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ScanHistoryEntry } from "../hooks/useScanHistory";
-import styles from "./ScanHistory.module.css";
+import styles from "./ScanHistory.module.scss";
 
 interface ScanHistoryProps {
   history: ScanHistoryEntry[];

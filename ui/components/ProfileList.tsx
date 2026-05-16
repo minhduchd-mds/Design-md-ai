@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { PluginProfile } from "../../shared/types";
 import { EditIcon } from "./EditIcon";
 import { DeleteIcon } from "./DeleteIcon";
-import styles from "./ProfileList.module.css";
+import styles from "./ProfileList.module.scss";
 
 interface ProfileListProps {
   profiles: PluginProfile[];

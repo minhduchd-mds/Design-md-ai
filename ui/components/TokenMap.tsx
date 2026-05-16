@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { ColorMapping } from "../../shared/types";
-import styles from "./TokenMap.module.css";
+import styles from "./TokenMap.module.scss";
 import { TOKEN_MAP_DISPLAY_LIMIT } from "../../shared/constants";
 
 interface TokenMapProps {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import styles from "./HtmlPreviewModal.module.css";
+import styles from "./HtmlPreviewModal.module.scss";
 
 export interface HtmlPreviewState {
   html: string;

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import type { DesignSystemComponentInfo, DesignSystemVariableInfo, ScanResult } from "../../shared/types";
 import { useI18n } from "../i18n/I18nContext";
-import styles from "./UiUxEvaluationPanel.module.css";
+import styles from "./UiUxEvaluationPanel.module.scss";
 
 interface UiUxEvaluationPanelProps {
   components: DesignSystemComponentInfo[];

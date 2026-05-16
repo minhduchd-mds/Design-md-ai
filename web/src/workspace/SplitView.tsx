@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import type { Screen } from "../design/screenGenerator";
 import { parseScreensFromMarkdown } from "../design/screenGenerator";
 import { AUTOSAVE_INTERVAL_MS, BA_TEMPLATE_CONTENT, DEBOUNCE_MS } from "../design/constants";
-import styles from "./SplitView.module.css";
+import styles from "./SplitView.module.scss";
 
 interface SplitViewProps {
   initialScreens: Screen[];

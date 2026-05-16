@@ -4,7 +4,7 @@ import type { BADocument } from "./BADocumentPanel";
 import type { StandardItem } from "./StandardsChecklist";
 import { sendPluginMessage } from "../lib/pluginMessage";
 import { useI18n } from "../i18n/I18nContext";
-import styles from "./ScreenGenPanel.module.css";
+import styles from "./ScreenGenPanel.module.scss";
 
 interface ScreenGenPanelProps {
   components: DesignSystemComponentInfo[];

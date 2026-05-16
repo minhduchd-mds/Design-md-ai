@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { PluginProfile, ComponentRef, FigmaImportSource } from "../../shared/types";
 import { FigmaIcon } from "./FigmaIcon";
 import { SkillIcon } from "./SkillIcon";
-import styles from "./FigmaImportPanel.module.css";
+import styles from "./FigmaImportPanel.module.scss";
 
 interface FigmaImportPanelProps {
   editProfile: PluginProfile;

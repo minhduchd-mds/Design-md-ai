@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "../i18n/I18nContext";
-import styles from "./ExportHub.module.css";
+import styles from "./ExportHub.module.scss";
 
 interface ExportHubProps {
   onDownloadProject: () => void;

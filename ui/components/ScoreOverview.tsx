@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { ScanCategory } from "../../shared/types";
 import { SCORE_WEIGHTS } from "../../shared/types";
-import styles from "./ScoreOverview.module.css";
+import styles from "./ScoreOverview.module.scss";
 import { RING_COLORS } from "../../shared/constants";
 
 interface ScoreOverviewProps {

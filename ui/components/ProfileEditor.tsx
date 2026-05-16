@@ -1,6 +1,6 @@
 import type { PluginProfile } from "../../shared/types";
 import { FigmaImportPanel } from "./FigmaImportPanel";
-import styles from "./ProfileEditor.module.css";
+import styles from "./ProfileEditor.module.scss";
 
 interface ProfileEditorProps {
   profile: PluginProfile;

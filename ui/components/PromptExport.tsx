@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import styles from "./PromptExport.module.css";
+import styles from "./PromptExport.module.scss";
 
 interface PromptExportProps {
   promptCompact: string;

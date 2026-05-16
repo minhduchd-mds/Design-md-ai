@@ -1,6 +1,6 @@
 import type { AtomicInfo, ExportPlanItem, DependencyNode } from "../../shared/types";
 import { LocateIcon } from "./LocateIcon";
-import styles from "./AtomicBadge.module.css";
+import styles from "./AtomicBadge.module.scss";
 
 interface AtomicBadgeProps {
   info: AtomicInfo;

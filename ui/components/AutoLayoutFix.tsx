@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { AutoLayoutCandidate, AutoLayoutSkipped } from "../../shared/types";
-import styles from "./AutoLayoutFix.module.css";
+import styles from "./AutoLayoutFix.module.scss";
 
 interface AutoLayoutFixProps {
   hasSelection: boolean;

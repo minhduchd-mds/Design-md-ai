@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { RenameEntry, ScanIssue } from "../../shared/types";
 import { sendPluginMessage } from "../lib/pluginMessage";
 import { DeleteIcon } from "./DeleteIcon";
-import styles from "./FixPanel.module.css";
+import styles from "./FixPanel.module.scss";
 
 interface FixPanelProps {
   issues: ScanIssue[];

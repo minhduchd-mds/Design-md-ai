@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, memo } from "react";
 import type { BatchScanResult, BatchItemResult } from "../../shared/types";
 import { LevelIcon, LEVEL_CONFIG } from "./AtomicBadge";
-import styles from "./BatchPanel.module.css";
+import styles from "./BatchPanel.module.scss";
 
 interface BatchPanelProps {
   result: BatchScanResult;
