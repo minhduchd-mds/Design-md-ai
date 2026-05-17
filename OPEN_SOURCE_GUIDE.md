@@ -1,10 +1,10 @@
 # Open Source Guide
 
-Welcome to DesignReady.ai — the open-source Design Intelligence Engine.
+Welcome to **Desygn AI** — the open-source Design Intelligence Engine.
 
-## What is DesignReady.ai?
+## What is Desygn AI?
 
-DesignReady.ai is a Figma plugin and web workspace that transforms design files into production-ready code using AI-powered multi-agent pipelines. It bridges the gap between design and development with automated quality validation.
+Desygn AI is a Figma plugin and web workspace that transforms design files into production-ready code using AI-powered multi-agent pipelines. It bridges the gap between design and development with automated quality validation.
 
 ## Architecture Overview
 

@@ -1,6 +1,6 @@
-# Contributing to DesignReady.ai
+# Contributing to Desygn AI
 
-Thank you for your interest in contributing to DesignReady.ai! This guide will help you get started.
+Thank you for your interest in contributing to Desygn AI! This guide will help you get started.
 
 ## Prerequisites
 

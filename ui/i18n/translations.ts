@@ -148,7 +148,7 @@ export interface Translations {
 }
 
 export const en: Translations = {
-  appName: "DesignReady",
+  appName: "Desygn AI",
   selected: "Selected",
   rescan: "Rescan",
   tabScan: "Scan",
@@ -279,7 +279,7 @@ export const en: Translations = {
 };
 
 export const vi: Translations = {
-  appName: "DesignReady",
+  appName: "Desygn AI",
   selected: "Đã chọn",
   rescan: "Quét lại",
   tabScan: "Quét",

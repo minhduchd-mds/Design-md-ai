@@ -1634,7 +1634,7 @@ function App() {
         <aside className="workspace-sidebar">
           <div className="sidebar-brand-header">
             <div className="sidebar-brand-logo">
-              <img src={logoWebp} width="30" height="30" alt="DesignReady" style={{ borderRadius: 6 }} />
+              <img src={logoWebp} width="30" height="30" alt="Desygn AI" style={{ borderRadius: 6 }} />
               <span className="sidebar-brand-name">{PRODUCT_NAME}</span>
             </div>
             <button

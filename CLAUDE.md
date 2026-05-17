@@ -1,4 +1,4 @@
-# DesignReady.ai — Dev Guide
+# Desygn AI — Dev Guide
 
 ## Commands
 ```

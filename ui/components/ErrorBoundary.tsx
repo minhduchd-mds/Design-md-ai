@@ -17,7 +17,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[DesignReady] render crash:", error, info.componentStack);
+    console.error("[Desygn AI] render crash:", error, info.componentStack);
   }
 
   render() {
