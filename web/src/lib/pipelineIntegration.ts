@@ -1,6 +1,12 @@
 /**
- * Pipeline Integration — E2E orchestrator wiring all 7 architecture layers.
- * Input → Memory → Analysis → Shannon Engine → Provider Router → Generation → Platform
+ * Pipeline Integration v3 — E2E orchestrator wiring all architecture layers.
+ * Input → PII Scan → Memory → GOAP Plan → Shannon Engine → Evidence → Output
+ *
+ * v3 upgrades:
+ *   • PII scanning before storage
+ *   • GOAP-driven stage planning
+ *   • Evidence-based memory recall (HNSW vector search)
+ *   • Usage analytics tracking per stage
  */
 
 import type { ChatMessage } from "./aiProviderClient";
