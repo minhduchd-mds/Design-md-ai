@@ -1,18 +1,48 @@
 /**
- * collaborationEngine — CRDT-based real-time collaboration.
+ * collaborationEngine v3 — CRDT-based real-time collaboration.
  *
- * Provides:
+ * v3 upgrades:
  *   • Last-Writer-Wins Register (LWW) for token values
  *   • Grow-Only Set (G-Set) for component additions
  *   • Observed-Remove Set (OR-Set) for components with deletion
  *   • Vector clocks for causal ordering
  *   • Conflict detection & resolution
  *   • Peer presence tracking
+ *   • Evidence-aware: changes generate evidence records for memory
+ *   • PII protection on collaborative content
  *
  * Architecture:
- *   Local mutation → CRDT operation → Broadcast → Remote merge
+ *   Local mutation → PII scan → CRDT operation → Broadcast → Remote merge → Evidence store
  *   All operations are commutative, associative, idempotent.
  */
+
+// ── v3 Types ────────────────────────────────────────────────────
+
+/** v3: PII scan result for collaborative content */
+export interface PIIScanResult {
+  hasPII: boolean;
+  category?: string;
+  redacted?: string;
+}
+
+/** v3: Evidence record generated from collaboration changes */
+export interface CollaborationEvidence {
+  id: string;
+  type: "token-change" | "component-add" | "component-remove" | "conflict-resolution";
+  peerId: string;
+  key: string;
+  timestamp: number;
+  confidence: number;
+}
+
+/** v3: Collaboration session configuration */
+export interface CollaborationConfig {
+  enablePIIProtection?: boolean;
+  piiAction?: "block" | "redact" | "warn";
+  enableEvidenceTracking?: boolean;
+  piiScanner?: (text: string) => PIIScanResult;
+  evidenceCallback?: (evidence: CollaborationEvidence) => void;
+}
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -225,9 +255,14 @@ export class CollaborationSession {
   private peers: Map<string, Peer> = new Map();
   private operations: CRDTOperation[] = [];
   private conflicts: ConflictRecord[] = [];
+  // v3: PII & Evidence
+  private config: CollaborationConfig;
+  private evidenceLog: CollaborationEvidence[] = [];
+  private piiBlocked: number = 0;
 
-  constructor(peerId: string, peerName: string) {
+  constructor(peerId: string, peerName: string, config?: CollaborationConfig) {
     this.peerId = peerId;
+    this.config = config ?? {};
     this.peers.set(peerId, {
       id: peerId,
       name: peerName,
@@ -238,7 +273,21 @@ export class CollaborationSession {
   }
 
   // Token operations (LWW)
-  setToken(key: string, value: string): CRDTOperation {
+  setToken(key: string, value: string): CRDTOperation | null {
+    // v3: PII scan before CRDT operation
+    if (this.config.enablePIIProtection && this.config.piiScanner) {
+      const scanResult = this.config.piiScanner(value);
+      if (scanResult.hasPII) {
+        this.piiBlocked++;
+        if (this.config.piiAction === "block") {
+          return null; // Block the operation entirely
+        }
+        if (this.config.piiAction === "redact" && scanResult.redacted) {
+          value = scanResult.redacted;
+        }
+      }
+    }
+
     this.clock = incrementClock(this.clock, this.peerId);
     const timestamp = Date.now();
     this.tokens.set(key, value, timestamp, this.peerId);
@@ -253,6 +302,10 @@ export class CollaborationSession {
       value,
     };
     this.operations.push(op);
+
+    // v3: Generate evidence record
+    this.recordEvidence("token-change", key);
+
     return op;
   }
 
@@ -261,7 +314,16 @@ export class CollaborationSession {
   }
 
   // Component operations (OR-Set)
-  addComponent(name: string): CRDTOperation {
+  addComponent(name: string): CRDTOperation | null {
+    // v3: PII scan on component names
+    if (this.config.enablePIIProtection && this.config.piiScanner) {
+      const scanResult = this.config.piiScanner(name);
+      if (scanResult.hasPII && this.config.piiAction === "block") {
+        this.piiBlocked++;
+        return null;
+      }
+    }
+
     this.clock = incrementClock(this.clock, this.peerId);
     const tag = `${this.peerId}-${Date.now()}`;
     this.components.add(name, name.toLowerCase(), tag);
@@ -277,6 +339,10 @@ export class CollaborationSession {
       tag,
     };
     this.operations.push(op);
+
+    // v3: Generate evidence
+    this.recordEvidence("component-add", name.toLowerCase());
+
     return op;
   }
 
@@ -298,6 +364,10 @@ export class CollaborationSession {
       value: tags,
     };
     this.operations.push(op);
+
+    // v3: Generate evidence
+    this.recordEvidence("component-remove", key);
+
     return op;
   }
 
@@ -385,6 +455,46 @@ export class CollaborationSession {
 
   getTokenCount(): number {
     return this.tokens.size;
+  }
+
+  // ── v3: Evidence & PII Methods ──────────────────────────────
+
+  private recordEvidence(type: CollaborationEvidence["type"], key: string): void {
+    if (!this.config.enableEvidenceTracking) return;
+
+    const evidence: CollaborationEvidence = {
+      id: `cev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      peerId: this.peerId,
+      key,
+      timestamp: Date.now(),
+      confidence: 1.0,
+    };
+
+    this.evidenceLog.push(evidence);
+
+    // Notify callback if configured
+    if (this.config.evidenceCallback) {
+      this.config.evidenceCallback(evidence);
+    }
+  }
+
+  /** v3: Get all evidence records generated in this session */
+  getEvidenceLog(): CollaborationEvidence[] {
+    return [...this.evidenceLog];
+  }
+
+  /** v3: Get PII protection statistics */
+  getPIIStats(): { blocked: number; enabled: boolean } {
+    return {
+      blocked: this.piiBlocked,
+      enabled: this.config.enablePIIProtection ?? false,
+    };
+  }
+
+  /** v3: Update session configuration (e.g., enable/disable PII) */
+  configure(config: Partial<CollaborationConfig>): void {
+    this.config = { ...this.config, ...config };
   }
 
   private generateColor(id: string): string {

@@ -205,7 +205,7 @@ describe("DesignAnalyzer", () => {
   describe("accessibility analysis", () => {
     it("flags small touch targets", () => {
       const nodes = [
-        createMockNode({ type: "COMPONENT", width: 24, height: 24, name: "SmallIcon" }),
+        createMockNode({ type: "COMPONENT", width: 20, height: 20, name: "SmallIcon" }), // Below WCAG 2.5.8 24×24 min
         createMockNode({ type: "COMPONENT", width: 48, height: 48, name: "LargeButton" }),
       ];
 

@@ -1,15 +1,19 @@
 /**
- * shannonEngine — Shannon-inspired Multi-Agent Design Intelligence Engine.
+ * shannonEngine v3 — Shannon-inspired Multi-Agent Design Intelligence Engine.
  *
- * Borrows from KeygraphHQ/Shannon's architecture:
+ * v3 architecture upgrades:
  *   • Temporal workflow orchestration (5-phase pipeline)
  *   • Specialized agent registry (model/prompt/tools per agent)
  *   • Parallel agent execution for batch operations
- *   • Memory-informed prompts (agentMemory integration)
+ *   • Evidence-based memory (v3 EvidenceMemoryEngine integration)
+ *   • GOAP planning for autonomous agent decision-making
  *   • "No validation pass, no output" policy
  *
  * Architecture:
  *   ┌──────────────────┐
+ *   │  GOAP Planner     │ ← decides WHAT to do
+ *   └─────┬─────────────┘
+ *   ┌─────▼────────────┐
  *   │  Orchestrator     │ ← routes tasks to specialized agents
  *   └─────┬──────┬──────┘
  *     ┌───▼──┐ ┌─▼────┐ ┌──────────┐ ┌──────────┐
@@ -17,7 +21,7 @@
  *     │Agent │ │Agent │ │  Agent   │ │  Agent   │
  *     └──────┘ └──────┘ └──────────┘ └──────────┘
  *        ▲                    ▲
- *        └────── AgentMemory ─┘
+ *        └── EvidenceMemory v3┘
  */
 
 import type { PipelineContext } from "./aiPipeline";
@@ -55,7 +59,13 @@ export type AgentCapability =
   | "token-optimization"
   | "pattern-detection"
   | "naming-analysis"
-  | "component-mapping";
+  | "component-mapping"
+  // v3 capabilities
+  | "aria-validation"
+  | "wcag-audit"
+  | "pii-detection"
+  | "evidence-storage"
+  | "goap-planning";
 
 export interface AgentMessage {
   id: string;
@@ -76,6 +86,10 @@ export interface AgentResult {
   tokensUsed: number;
   latencyMs: number;
   memoryHits: number;
+  // v3: Evidence & PII tracking
+  evidenceId?: string;
+  piiDetected?: boolean;
+  piiRedacted?: boolean;
 }
 
 export interface OrchestratorPlan {
@@ -102,6 +116,9 @@ export interface DesignIntelligenceResult {
   totalLatencyMs: number;
   messages: AgentMessage[];
   output: unknown;
+  // v3: Evidence & PII summary
+  evidenceRecords?: AgentEvidenceRecord[];
+  piiIncidents?: number;
 }
 
 // ── Agent Registry ───────────────────────────────────────────────
@@ -201,6 +218,55 @@ Return the optimized prompt with compression ratio.`,
     temperature: 0.0,
     timeout: 5000,
   },
+
+  // ── v3 Agents ─────────────────────────────────────────────────
+
+  "a11y-auditor": {
+    id: "a11y-auditor",
+    role: "validator",
+    name: "Accessibility Auditor Agent",
+    model: {
+      tier: "fast",
+      provider: "groq",
+      modelId: "llama-3.1-8b-instant",
+      costPer1kTokens: 0,
+      avgLatencyMs: 40,
+    },
+    systemPrompt: `You are a WCAG 2.2 accessibility auditor. Given a serialized design tree:
+1. Validate ARIA roles against component semantics
+2. Check touch target compliance (24×24 minimum per WCAG 2.5.8)
+3. Verify color contrast ratios (4.5:1 text, 3:1 large text)
+4. Identify missing labels, roles, and interactive states
+5. Score accessibility 0-100 with wcagLevel (A/AA/AAA/fail)
+Return structured accessibility audit.`,
+    capabilities: ["accessibility-check", "aria-validation", "wcag-audit"],
+    maxTokens: 4096,
+    temperature: 0.0,
+    timeout: 10000,
+  },
+
+  "evidence-curator": {
+    id: "evidence-curator",
+    role: "optimizer",
+    name: "Evidence Curator Agent",
+    model: {
+      tier: "fast",
+      provider: "groq",
+      modelId: "llama-3.1-8b-instant",
+      costPer1kTokens: 0,
+      avgLatencyMs: 30,
+    },
+    systemPrompt: `You are a design evidence curator. Given agent execution results:
+1. Identify patterns across multiple design analyses
+2. Score confidence based on evidence frequency and recency
+3. Flag conflicting evidence for human review
+4. Recommend evidence-based improvements with citations
+Return curated evidence summary with confidence scores.`,
+    capabilities: ["evidence-storage", "pattern-detection"],
+    maxTokens: 2048,
+    temperature: 0.1,
+    timeout: 5000,
+  },
 };
 
 // ── Agent Class ──────────────────────────────────────────────────
@@ -231,7 +297,19 @@ export class DesignAgent {
     memoryHits = memories.length;
 
     // Phase 2: Build prompt with memory context
-    const prompt = this.buildPrompt(input, memories);
+    let prompt = this.buildPrompt(input, memories);
+
+    // Phase 2.5 (v3): PII scan on prompt before sending to LLM
+    let piiDetected = false;
+    let piiRedacted = false;
+    if (context.scanPII) {
+      const piiResult = context.scanPII(prompt);
+      piiDetected = piiResult.hasPII;
+      if (piiResult.hasPII) {
+        prompt = piiResult.redacted;
+        piiRedacted = true;
+      }
+    }
 
     // Phase 3: Execute (simulate or real call)
     const output = context.executeAgent
@@ -250,7 +328,26 @@ export class DesignAgent {
       tokensUsed,
       latencyMs: latency,
       memoryHits,
+      piiDetected,
+      piiRedacted,
     };
+
+    // Phase 4.5 (v3): Store evidence record
+    if (context.storeEvidence) {
+      const evidenceRecord: AgentEvidenceRecord = {
+        agentId: this.config.id,
+        role: this.config.role,
+        traceId: context.traceId || "default",
+        confidence: result.confidence,
+        tokensUsed: result.tokensUsed,
+        latencyMs: result.latencyMs,
+        timestamp: Date.now(),
+        piiClean: !piiDetected,
+      };
+      context.storeEvidence(evidenceRecord);
+      context.evidenceRecords?.push(evidenceRecord);
+      result.evidenceId = `ev-${evidenceRecord.timestamp}-${this.config.id}`;
+    }
 
     // Log message
     this.messageLog.push({
@@ -339,6 +436,18 @@ export class DesignAgent {
 
 // ── Extended Pipeline Context ────────────────────────────────────
 
+/** v3: Evidence record from agent execution */
+export interface AgentEvidenceRecord {
+  agentId: string;
+  role: AgentRole;
+  traceId: string;
+  confidence: number;
+  tokensUsed: number;
+  latencyMs: number;
+  timestamp: number;
+  piiClean: boolean;
+}
+
 export interface DesignPipelineContext extends PipelineContext {
   traceId: string;
   tokenBudget: number;
@@ -346,6 +455,10 @@ export interface DesignPipelineContext extends PipelineContext {
   agentResults: Map<string, AgentResult>;
   queryMemory?: (role: AgentRole) => unknown[];
   executeAgent?: (config: AgentConfig, prompt: string) => Promise<unknown>;
+  // v3: Evidence & PII integration
+  storeEvidence?: (record: AgentEvidenceRecord) => void;
+  scanPII?: (text: string) => { hasPII: boolean; redacted: string };
+  evidenceRecords?: AgentEvidenceRecord[];
 }
 
 // ── Orchestrator ─────────────────────────────────────────────────
@@ -456,6 +569,9 @@ export class DesignOrchestrator {
       tokenBudget?: number;
       queryMemory?: (role: AgentRole) => unknown[];
       executeAgent?: (config: AgentConfig, prompt: string) => Promise<unknown>;
+      // v3 options
+      storeEvidence?: (record: AgentEvidenceRecord) => void;
+      scanPII?: (text: string) => { hasPII: boolean; redacted: string };
     } = {},
   ): Promise<DesignIntelligenceResult> {
     const start = Date.now();
@@ -465,6 +581,8 @@ export class DesignOrchestrator {
       components: options.components ?? 1,
       complexity: options.complexity ?? "medium",
     });
+
+    const evidenceRecords: AgentEvidenceRecord[] = [];
 
     const context: DesignPipelineContext = {
       pipelineId: plan.id,
@@ -477,6 +595,10 @@ export class DesignOrchestrator {
       agentResults: new Map(),
       queryMemory: options.queryMemory,
       executeAgent: options.executeAgent,
+      // v3
+      storeEvidence: options.storeEvidence,
+      scanPII: options.scanPII,
+      evidenceRecords,
     };
 
     const allResults: AgentResult[] = [];
@@ -535,6 +657,9 @@ export class DesignOrchestrator {
       totalLatencyMs: Date.now() - start,
       messages: allMessages,
       output: lastOutput,
+      // v3: Evidence & PII summary
+      evidenceRecords,
+      piiIncidents: allResults.filter(r => r.piiDetected).length,
     };
   }
 }

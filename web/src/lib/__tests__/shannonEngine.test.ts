@@ -130,8 +130,8 @@ describe("DesignOrchestrator", () => {
   });
 
   describe("agent registry", () => {
-    it("has 4 default agents", () => {
-      expect(orchestrator.getAgents().length).toBe(4);
+    it("has 6 default agents", () => {
+      expect(orchestrator.getAgents().length).toBe(6);
     });
 
     it("gets agent by ID", () => {
@@ -153,7 +153,7 @@ describe("DesignOrchestrator", () => {
         temperature: 0,
         timeout: 5000,
       });
-      expect(orchestrator.getAgents().length).toBe(5);
+      expect(orchestrator.getAgents().length).toBe(7);
     });
   });
 
@@ -234,13 +234,13 @@ describe("DesignOrchestrator", () => {
 });
 
 describe("Factory functions", () => {
-  it("getDefaultAgentConfigs returns 4 configs", () => {
+  it("getDefaultAgentConfigs returns 6 configs", () => {
     const configs = getDefaultAgentConfigs();
-    expect(Object.keys(configs).length).toBe(4);
+    expect(Object.keys(configs).length).toBe(6);
   });
 
   it("createOrchestrator returns working instance", async () => {
     const orch = createOrchestrator();
-    expect(orch.getAgents().length).toBe(4);
+    expect(orch.getAgents().length).toBe(6);
   });
 });

@@ -1,16 +1,19 @@
 /**
- * designAnalyzer — Design System Intelligence & Auditing.
+ * designAnalyzer v3 — Design System Intelligence & Auditing.
  *
  * Competitive Advantage vs Figma:
- *   Figma generates code. Design-md-ai AUDITS and OPTIMIZES your design system.
+ *   Figma generates code. Desygn AI AUDITS and OPTIMIZES your design system.
  *   This module provides intelligence that Figma's code gen cannot:
  *
  *   1. Cross-component pattern detection
  *   2. Design token consolidation recommendations
- *   3. Accessibility coverage scoring
+ *   3. Accessibility coverage scoring (v3: WCAG 2.2 + touch targets)
  *   4. Component reuse analysis
  *   5. Naming consistency audit
  *   6. Design debt calculation ($$ impact)
+ *   7. v3: ARIA role inference validation
+ *   8. v3: Evidence-based pattern confidence (HNSW similarity)
+ *   9. v3: PII detection in design content
  *
  * Usage:
  *   const analyzer = new DesignAnalyzer();
@@ -117,6 +120,11 @@ export interface AccessibilityReport {
   textSizing: { pass: number; fail: number };
   touchTargets: { pass: number; fail: number };
   missingLabels: string[];
+  // v3: WCAG 2.2 + ARIA
+  wcagLevel: "A" | "AA" | "AAA" | "fail";
+  ariaRoles: { covered: number; missing: number; invalid: number };
+  interactionStates: { withStates: number; withoutStates: number };
+  piiExposure: { detected: number; nodes: string[] };
 }
 
 export interface DesignDebt {
@@ -519,7 +527,30 @@ export class DesignAnalyzer {
     let textFail = 0;
     let touchPass = 0;
     let touchFail = 0;
+    let contrastPass = 0;
+    let contrastFail = 0;
+    let contrastUnknown = 0;
+    let ariaCovered = 0;
+    let ariaMissing = 0;
+    let ariaInvalid = 0;
+    let withStates = 0;
+    let withoutStates = 0;
     const missingLabels: string[] = [];
+    const piiNodes: string[] = [];
+
+    // PII patterns for design content (text nodes with sensitive data)
+    const piiPatterns = [
+      /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/,      // Phone
+      /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i, // Email
+      /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/, // Card
+    ];
+
+    // Valid ARIA roles for interactive components
+    const validInteractiveRoles = new Set([
+      "button", "link", "checkbox", "radio", "textbox", "switch",
+      "slider", "spinbutton", "combobox", "listbox", "menu", "menuitem",
+      "tab", "tabpanel", "dialog", "alertdialog", "tooltip",
+    ]);
 
     const traverse = (node: SerializedNode) => {
       // Text sizing check (min 12px)
@@ -528,13 +559,64 @@ export class DesignAnalyzer {
         else textFail++;
       }
 
-      // Touch target check (min 44x44)
+      // v3: Touch target check — WCAG 2.5.8 (24×24 minimum)
       if (node.type === "INSTANCE" || node.type === "COMPONENT") {
-        if ((node.width ?? 0) >= 44 && (node.height ?? 0) >= 44) touchPass++;
-        else {
-          touchFail++;
-          if ((node.width ?? 0) < 44 || (node.height ?? 0) < 44) {
-            missingLabels.push(`${node.name}: Touch target too small (${node.width}x${node.height})`);
+        // Use v3 touchTargetCompliant field if available, else calculate
+        if (node.touchTargetCompliant !== undefined) {
+          if (node.touchTargetCompliant) touchPass++;
+          else {
+            touchFail++;
+            missingLabels.push(`${node.name}: Touch target non-compliant (WCAG 2.5.8)`);
+          }
+        } else {
+          // Fallback: check >= 24×24 (WCAG 2.2) and flag if < 44×44 (best practice)
+          const w = node.width ?? 0;
+          const h = node.height ?? 0;
+          if (w >= 44 && h >= 44) touchPass++;
+          else if (w >= 24 && h >= 24) touchPass++; // Meets minimum
+          else {
+            touchFail++;
+            missingLabels.push(`${node.name}: Touch target too small (${w}x${h}, min 24×24)`);
+          }
+        }
+
+        // v3: Interaction states check
+        if (node.hasInteractions) withStates++;
+        else withoutStates++;
+      }
+
+      // v3: ARIA role validation
+      if (node.inferredRole) {
+        ariaCovered++;
+        // Validate that interactive elements have valid roles
+        if (node.type === "INSTANCE" || node.type === "COMPONENT") {
+          if (!validInteractiveRoles.has(node.inferredRole) && node.inferredRole !== "none") {
+            // Non-interactive role on interactive component — could be valid (e.g., "img", "navigation")
+            // Only flag truly invalid assignments
+            const structuralRoles = new Set(["navigation", "banner", "main", "complementary", "contentinfo", "region", "article", "section", "heading", "img", "list", "listitem", "table", "row", "cell", "form", "search", "progressbar", "separator", "toolbar", "status", "alert", "log", "marquee", "timer", "group", "tree", "treeitem", "grid", "figure", "note", "card"]);
+            if (!structuralRoles.has(node.inferredRole)) ariaInvalid++;
+          }
+        }
+      } else if (node.type === "INSTANCE" || node.type === "COMPONENT") {
+        ariaMissing++;
+      }
+
+      // v3: Color contrast using contrastRatio field
+      if (node.contrastRatio !== undefined) {
+        const isLargeText = (node.fontSize ?? 16) >= 18 || ((node.fontSize ?? 16) >= 14 && (node.fontWeight ?? 400) >= 700);
+        const requiredRatio = isLargeText ? 3.0 : 4.5;
+        if (node.contrastRatio >= requiredRatio) contrastPass++;
+        else contrastFail++;
+      } else if (node.characters) {
+        contrastUnknown++;
+      }
+
+      // v3: PII detection in text content
+      if (node.characters) {
+        for (const pattern of piiPatterns) {
+          if (pattern.test(node.characters)) {
+            piiNodes.push(node.name);
+            break;
           }
         }
       }
@@ -544,16 +626,33 @@ export class DesignAnalyzer {
 
     if (nodes) for (const node of nodes) traverse(node);
 
-    const total = textPass + textFail + touchPass + touchFail;
-    const passed = textPass + touchPass;
-    const score = total > 0 ? Math.round((passed / total) * 100) : 50;
+    // Calculate score with v3 dimensions
+    const textScore = (textPass + textFail) > 0 ? textPass / (textPass + textFail) : 1;
+    const touchScore = (touchPass + touchFail) > 0 ? touchPass / (touchPass + touchFail) : 1;
+    const contrastScore = (contrastPass + contrastFail) > 0 ? contrastPass / (contrastPass + contrastFail) : 0.5;
+    const ariaScore = (ariaCovered + ariaMissing) > 0 ? ariaCovered / (ariaCovered + ariaMissing) : 0.5;
+
+    const score = Math.round(
+      textScore * 25 + touchScore * 25 + contrastScore * 30 + ariaScore * 20
+    );
+
+    // Determine WCAG level
+    let wcagLevel: "A" | "AA" | "AAA" | "fail" = "fail";
+    if (score >= 90 && contrastFail === 0 && touchFail === 0) wcagLevel = "AAA";
+    else if (score >= 70 && contrastFail <= 2) wcagLevel = "AA";
+    else if (score >= 50) wcagLevel = "A";
 
     return {
       score,
-      colorContrast: { pass: 0, fail: 0, unknown: total }, // Requires contrast calculation
+      colorContrast: { pass: contrastPass, fail: contrastFail, unknown: contrastUnknown },
       textSizing: { pass: textPass, fail: textFail },
       touchTargets: { pass: touchPass, fail: touchFail },
       missingLabels: missingLabels.slice(0, 20),
+      // v3 fields
+      wcagLevel,
+      ariaRoles: { covered: ariaCovered, missing: ariaMissing, invalid: ariaInvalid },
+      interactionStates: { withStates, withoutStates },
+      piiExposure: { detected: piiNodes.length, nodes: piiNodes.slice(0, 10) },
     };
   }
 
