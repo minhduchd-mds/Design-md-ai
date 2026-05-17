@@ -67,6 +67,44 @@ function serializeLayoutGrid(grid: LayoutGrid): SerializedLayoutGrid {
   return result;
 }
 
+// ── v3: ARIA role inference from naming patterns ──
+function inferAriaRole(node: SceneNode): string | undefined {
+  const name = node.name.toLowerCase();
+  const type = node.type;
+
+  // Button patterns
+  if (name.includes("button") || name.includes("btn") || name.includes("cta")) return "button";
+  // Input patterns
+  if (name.includes("input") || name.includes("text field") || name.includes("textfield")) return "textbox";
+  if (name.includes("checkbox") || name.includes("check box")) return "checkbox";
+  if (name.includes("radio")) return "radio";
+  if (name.includes("toggle") || name.includes("switch")) return "switch";
+  if (name.includes("select") || name.includes("dropdown") || name.includes("combobox")) return "combobox";
+  // Navigation
+  if (name.includes("nav") || name.includes("menu") || name.includes("sidebar")) return "navigation";
+  if (name.includes("tab")) return "tab";
+  if (name.includes("breadcrumb")) return "navigation";
+  // Content
+  if (name.includes("modal") || name.includes("dialog") || name.includes("popup")) return "dialog";
+  if (name.includes("alert") || name.includes("toast") || name.includes("snackbar")) return "alert";
+  if (name.includes("card")) return "article";
+  if (name.includes("list")) return "list";
+  if (name.includes("table")) return "table";
+  if (name.includes("header") || name.includes("heading")) return "heading";
+  if (name.includes("image") || name.includes("avatar") || name.includes("icon")) return "img";
+  if (name.includes("link") || name.includes("anchor")) return "link";
+  if (name.includes("search")) return "search";
+  if (name.includes("form")) return "form";
+  if (name.includes("progress") || name.includes("loader") || name.includes("spinner")) return "progressbar";
+  if (name.includes("slider") || name.includes("range")) return "slider";
+  if (name.includes("tooltip")) return "tooltip";
+
+  // Text nodes
+  if (type === "TEXT") return "text";
+
+  return undefined;
+}
+
 export async function serializeNode(node: SceneNode, depth = 0): Promise<SerializedNode> {
   const result: SerializedNode = {
     id: node.id,
@@ -360,6 +398,31 @@ export async function serializeNode(node: SceneNode, depth = 0): Promise<Seriali
         result.componentProperties = props;
       }
     } catch { /* componentProperties not available on all instances */ }
+  }
+
+  // ── v3: Accessibility & Interaction Metadata ──
+
+  // Infer ARIA role from component name/type
+  result.inferredRole = inferAriaRole(node);
+
+  // Touch target compliance (WCAG 2.2: 24×24 minimum)
+  if (result.width !== undefined && result.height !== undefined) {
+    result.touchTargetCompliant = result.width >= 24 && result.height >= 24;
+  }
+
+  // Interaction state detection
+  if ("reactions" in node) {
+    const reactions = (node as SceneNode & { reactions?: unknown[] }).reactions;
+    result.hasInteractions = Array.isArray(reactions) && reactions.length > 0;
+  }
+
+  // Responsive behavior from constraints
+  if (result.layoutSizingHorizontal === "FILL" || result.layoutSizingVertical === "FILL") {
+    result.responsiveBehavior = "fluid";
+  } else if (result.constraints?.horizontal === "STRETCH" || result.constraints?.vertical === "STRETCH") {
+    result.responsiveBehavior = "adaptive";
+  } else {
+    result.responsiveBehavior = "fixed";
   }
 
   // Children — catch per child so one broken node doesn't block the parent

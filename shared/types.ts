@@ -97,6 +97,18 @@ export interface SerializedNode {
   // Step 1.1: Instance component properties (all types, not just variants)
   componentProperties?: Record<string, { type: string; value: string | boolean }>;
   children?: SerializedNode[];
+
+  // ── v3: Accessibility & Interaction Metadata ──
+  /** ARIA role inferred from component name/type */
+  inferredRole?: string;
+  /** Touch target size compliance (WCAG 2.2 — 24×24 minimum) */
+  touchTargetCompliant?: boolean;
+  /** Color contrast ratio against parent background */
+  contrastRatio?: number;
+  /** Whether node has interaction/hover states defined */
+  hasInteractions?: boolean;
+  /** Responsive behavior hints */
+  responsiveBehavior?: "fixed" | "fluid" | "adaptive";
 }
 
 export interface SerializedPropertyDef {
@@ -251,7 +263,13 @@ export type PluginMessage =
   | { type: "request-autolayout-analysis" }
   | { type: "autolayout-analysis-result"; candidates: AutoLayoutCandidate[]; skipped: AutoLayoutSkipped[] }
   | { type: "apply-autolayout"; nodeIds: string[] }
-  | { type: "autolayout-applied"; count: number };
+  | { type: "autolayout-applied"; count: number }
+  // Accessibility Audit (v3)
+  | { type: "request-a11y-audit" }
+  | { type: "a11y-audit-result"; audit: AccessibilityAudit }
+  // Evidence Memory Sync (v3)
+  | { type: "request-evidence-sync"; content: string; source: string }
+  | { type: "evidence-sync-result"; evidenceId: string; stored: boolean };
 
 export interface FigmaImportSource {
   id: string;
@@ -376,4 +394,24 @@ export interface BatchScanResult {
   exportPlan: ExportPlanItem[];
   batchPromptCompact?: string;
   averageScore: number;
+}
+
+// ── v3: Accessibility Audit ──
+
+export interface AccessibilityAudit {
+  score: number; // 0-100
+  violations: AccessibilityViolation[];
+  touchTargets: { compliant: number; total: number };
+  contrastIssues: number;
+  missingRoles: number;
+  wcagLevel: "A" | "AA" | "AAA" | "fail";
+}
+
+export interface AccessibilityViolation {
+  nodeId: string;
+  nodeName: string;
+  rule: string;
+  severity: "critical" | "serious" | "moderate" | "minor";
+  message: string;
+  wcagCriteria: string;
 }
