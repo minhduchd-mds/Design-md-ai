@@ -1,7 +1,7 @@
 /**
- * Evidence-Based Memory Integration
- * Bridges EvidenceMemoryEngine with AgentMemory 4-tier system
- * Ensures all memories in the system are properly validated before use
+ * Evidence-Based Memory Integration v2
+ * Bridges EvidenceMemoryEngine v3 with AgentMemory 4-tier system
+ * Leverages HNSW vector search, sigmoid decay, and garbage collection
  */
 
 import type { EvidenceRecord, EvidenceSource, MemoryStats } from "./evidenceMemory";
@@ -33,6 +33,9 @@ export interface MemoryValidationConfig {
   enableAutoValidation?: boolean; // default true - auto-validate high-confidence memory
   validationDecayDays?: number; // default 30 - revalidate memory older than this
   maxContradictionsAllowed?: number; // default 3 - flag memory with more contradictions
+  enableVectorSearch?: boolean; // default true - use HNSW for semantic recall
+  decayFunction?: "linear" | "sigmoid"; // default sigmoid
+  gcThreshold?: number; // default 0.05 - GC records below this confidence
 }
 
 export class MemoryValidationEngine {
@@ -50,17 +53,24 @@ export class MemoryValidationEngine {
       enableAutoValidation: true,
       validationDecayDays: 30,
       maxContradictionsAllowed: 3,
+      enableVectorSearch: true,
+      decayFunction: "sigmoid",
+      gcThreshold: 0.05,
     };
   }
 
   /**
    * Configure the validation engine
+   * Passes v3 settings (vector search, sigmoid decay, GC) to underlying engine
    */
   configure(config: MemoryValidationConfig): void {
     this.config = { ...this.config, ...config };
     this.evidenceEngine.configure({
       maxRecords: 10000,
       minConfidenceThreshold: this.config.minConfidenceForLongTerm,
+      enableVectorSearch: this.config.enableVectorSearch,
+      decayFunction: this.config.decayFunction,
+      gcThreshold: this.config.gcThreshold,
     });
   }
 
@@ -107,6 +117,33 @@ export class MemoryValidationEngine {
     });
 
     return { memoryId, evidenceId };
+  }
+
+  /**
+   * Bulk import memories with post-import embedding optimization
+   * More efficient than individual storeMemoryAsEvidence calls for batch operations
+   */
+  async bulkImport(
+    memories: Array<{ content: string; tier: "short-term" | "long-term" | "persistent"; source: EvidenceSource }>
+  ): Promise<{ imported: number; failed: number }> {
+    let imported = 0;
+    let failed = 0;
+
+    for (const mem of memories) {
+      try {
+        await this.storeMemoryAsEvidence(mem.content, mem.tier, mem.source);
+        imported++;
+      } catch {
+        failed++;
+      }
+    }
+
+    // Retrain embeddings after bulk import for better vector search accuracy
+    if (imported > 0) {
+      this.evidenceEngine.trainEmbeddings();
+    }
+
+    return { imported, failed };
   }
 
   /**
@@ -249,16 +286,24 @@ export class MemoryValidationEngine {
 
   /**
    * Run decay cycle on unvalidated memories
-   * Periodically reduces confidence of memories not recently validated
+   * Uses sigmoid decay (v3), triggers garbage collection, and retrains embeddings
    */
-  async runDecayCycle(): Promise<{ decayedCount: number; needsReviewCount: number }> {
+  async runDecayCycle(): Promise<{ decayedCount: number; needsReviewCount: number; gcCollected: number }> {
     const decayedCount = await this.evidenceEngine.decayUnvalidated();
+
+    // Garbage collect expired records (confidence ≤ gcThreshold)
+    const gcCollected = await this.evidenceEngine.garbageCollect();
+
+    // Retrain embeddings if significant changes occurred
+    if (gcCollected > 0 || decayedCount > 5) {
+      this.evidenceEngine.trainEmbeddings();
+    }
 
     // Count memories needing review
     const stats = this.evidenceEngine.getStats();
-    const needsReviewCount = stats.recordsBySource["pattern-match"] + stats.recordsBySource["ai-inference"];
+    const needsReviewCount = (stats.recordsBySource["pattern-match"] ?? 0) + (stats.recordsBySource["ai-inference"] ?? 0);
 
-    return { decayedCount, needsReviewCount };
+    return { decayedCount, needsReviewCount, gcCollected };
   }
 
   /**

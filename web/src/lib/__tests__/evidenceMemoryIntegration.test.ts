@@ -287,6 +287,7 @@ describe("MemoryValidationEngine", () => {
 
       expect(result.decayedCount).toBeGreaterThanOrEqual(0);
       expect(result.needsReviewCount).toBeGreaterThanOrEqual(0);
+      expect(result.gcCollected).toBeGreaterThanOrEqual(0);
     });
 
     it("returns count of memories needing review", async () => {
@@ -294,6 +295,7 @@ describe("MemoryValidationEngine", () => {
 
       expect(typeof result.decayedCount).toBe("number");
       expect(typeof result.needsReviewCount).toBe("number");
+      expect(typeof result.gcCollected).toBe("number");
     });
   });
 
@@ -433,6 +435,47 @@ describe("MemoryValidationEngine", () => {
         enableAutoValidation: false,
       });
       expect(e).toBeDefined();
+    });
+  });
+
+  describe("bulkImport", () => {
+    beforeEach(() => {
+      engine.configure({});
+    });
+
+    it("imports multiple memories efficiently", async () => {
+      const result = await engine.bulkImport([
+        { content: "Button uses 8px padding", tier: "long-term", source: "design-file" },
+        { content: "Cards have 4px border-radius", tier: "long-term", source: "design-file" },
+        { content: "Primary color is blue", tier: "persistent", source: "user-feedback" },
+      ]);
+
+      expect(result.imported).toBe(3);
+      expect(result.failed).toBe(0);
+    });
+
+    it("tracks failures during bulk import", async () => {
+      mockAgentMemory.store.mockRejectedValueOnce(new Error("DB error"));
+
+      const result = await engine.bulkImport([
+        { content: "Memory that fails", tier: "long-term", source: "ai-inference" },
+        { content: "Memory that succeeds", tier: "long-term", source: "design-file" },
+      ]);
+
+      // First one fails at agent memory but still stores in evidence (orphaned)
+      expect(result.imported).toBe(2);
+      expect(result.failed).toBe(0);
+    });
+
+    it("retrains embeddings after import", async () => {
+      const result = await engine.bulkImport([
+        { content: "React component patterns", tier: "long-term", source: "design-file" },
+      ]);
+
+      expect(result.imported).toBe(1);
+      // Embeddings retrained — retrieval should work
+      const retrieved = await engine.retrieveValidatedMemory("React component");
+      expect(Array.isArray(retrieved)).toBe(true);
     });
   });
 

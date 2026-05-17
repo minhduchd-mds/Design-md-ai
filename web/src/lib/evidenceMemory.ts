@@ -658,7 +658,7 @@ export class EvidenceMemoryEngine {
     this.statsCache.onRecordRemoved(record.source, record.confidence, record.validated);
   }
 
-  private async garbageCollect(): Promise<number> {
+  async garbageCollect(): Promise<number> {
     const toDelete: string[] = [];
     for (const record of this.records.values()) {
       if (!record.validated && record.confidence <= this.config.gcThreshold) {
