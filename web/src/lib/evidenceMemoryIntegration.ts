@@ -6,6 +6,7 @@
 
 import type { EvidenceRecord, EvidenceSource, MemoryStats } from "./evidenceMemory";
 import { EvidenceMemoryEngine } from "./evidenceMemory";
+import { PIIScanner } from "./piiDetection";
 
 /**
  * Minimal interface for AgentMemory integration.
@@ -36,6 +37,8 @@ export interface MemoryValidationConfig {
   enableVectorSearch?: boolean; // default true - use HNSW for semantic recall
   decayFunction?: "linear" | "sigmoid"; // default sigmoid
   gcThreshold?: number; // default 0.05 - GC records below this confidence
+  enablePIIProtection?: boolean; // default true - scan and redact PII before storage
+  piiAction?: "block" | "redact"; // default "redact" — block rejects, redact sanitizes
 }
 
 export class MemoryValidationEngine {
@@ -43,10 +46,13 @@ export class MemoryValidationEngine {
   private agentMemory: AgentMemoryAdapter;
   private config: Required<MemoryValidationConfig>;
   private validationHistory: Map<string, { validatedAt: number; source: EvidenceSource }> = new Map();
+  private piiScanner: PIIScanner;
+  private piiBlockCount = 0;
 
   constructor(agentMemory: AgentMemoryAdapter) {
     this.agentMemory = agentMemory;
     this.evidenceEngine = new EvidenceMemoryEngine();
+    this.piiScanner = new PIIScanner();
     this.config = {
       minConfidenceForLongTerm: 0.75,
       minConfidenceForPersistent: 0.9,
@@ -56,6 +62,8 @@ export class MemoryValidationEngine {
       enableVectorSearch: true,
       decayFunction: "sigmoid",
       gcThreshold: 0.05,
+      enablePIIProtection: true,
+      piiAction: "redact",
     };
   }
 
@@ -76,34 +84,51 @@ export class MemoryValidationEngine {
 
   /**
    * Store memory with evidence tracking
-   * Ensures memory can be traced back to its source
+   * Applies PII protection before storage (block or redact)
    */
   async storeMemoryAsEvidence(
     memory: string,
     tier: "short-term" | "long-term" | "persistent",
     source: EvidenceSource,
     sourceDetails?: string
-  ): Promise<{ memoryId: string; evidenceId: string }> {
+  ): Promise<{ memoryId: string; evidenceId: string; piiRedacted?: boolean }> {
+    // PII Protection: scan before storing
+    let sanitizedMemory = memory;
+    let piiRedacted = false;
+
+    if (this.config.enablePIIProtection) {
+      const scanResult = this.piiScanner.scan(memory);
+      if (scanResult.hasPII) {
+        if (this.config.piiAction === "block") {
+          this.piiBlockCount++;
+          throw new Error(`PII detected (${scanResult.riskLevel} risk): storage blocked. Categories: ${scanResult.matches.map((m) => m.category).join(", ")}`);
+        }
+        // Redact mode
+        sanitizedMemory = scanResult.redactedText;
+        piiRedacted = true;
+      }
+    }
+
     // Store in agent memory (existing system) — fail fast if unavailable
     let memoryId: string;
     try {
-      memoryId = await this.agentMemory.store(memory, tier);
+      memoryId = await this.agentMemory.store(sanitizedMemory, tier);
     } catch (error) {
       // If agent memory fails, store only in evidence system with degraded flag
       const evidenceId = await this.evidenceEngine.storeEvidence({
-        content: memory,
+        content: sanitizedMemory,
         source,
         confidence: this.getInitialConfidence(source, tier) * 0.8, // Reduce confidence for orphaned records
         validated: false,
         tags: [tier, source, "orphaned-no-agent-memory"],
-        metadata: { tier, sourceDetails, storedAt: Date.now(), error: String(error) },
+        metadata: { tier, sourceDetails, storedAt: Date.now(), error: String(error), piiRedacted },
       });
-      return { memoryId: "", evidenceId };
+      return { memoryId: "", evidenceId, piiRedacted };
     }
 
     // Track as evidence in new system
     const evidenceId = await this.evidenceEngine.storeEvidence({
-      content: memory,
+      content: sanitizedMemory,
       source,
       confidence: this.getInitialConfidence(source, tier),
       validated: source === "design-file", // Design files are pre-validated
@@ -113,10 +138,11 @@ export class MemoryValidationEngine {
         tier,
         sourceDetails,
         storedAt: Date.now(),
+        piiRedacted,
       },
     });
 
-    return { memoryId, evidenceId };
+    return { memoryId, evidenceId, piiRedacted };
   }
 
   /**

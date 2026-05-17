@@ -479,6 +479,67 @@ describe("MemoryValidationEngine", () => {
     });
   });
 
+  describe("PII protection", () => {
+    it("redacts PII by default before storing", async () => {
+      engine.configure({});
+      const result = await engine.storeMemoryAsEvidence(
+        "User email is john@example.com",
+        "long-term",
+        "user-feedback"
+      );
+
+      expect(result.piiRedacted).toBe(true);
+      expect(result.evidenceId).toMatch(/^ev_/);
+      // The stored content should be redacted
+      expect(mockAgentMemory.store).toHaveBeenCalledWith(
+        expect.not.stringContaining("john@example.com"),
+        "long-term"
+      );
+    });
+
+    it("blocks storage in block mode when PII detected", async () => {
+      engine.configure({ piiAction: "block" });
+
+      await expect(
+        engine.storeMemoryAsEvidence(
+          "Card: 4532015112830366",
+          "long-term",
+          "user-feedback"
+        )
+      ).rejects.toThrow("PII detected");
+    });
+
+    it("allows clean content through without modification", async () => {
+      engine.configure({});
+      const result = await engine.storeMemoryAsEvidence(
+        "Button uses 8px padding and blue color",
+        "long-term",
+        "design-file"
+      );
+
+      expect(result.piiRedacted).toBeFalsy();
+      expect(mockAgentMemory.store).toHaveBeenCalledWith(
+        "Button uses 8px padding and blue color",
+        "long-term"
+      );
+    });
+
+    it("can disable PII protection", async () => {
+      engine.configure({ enablePIIProtection: false });
+      const result = await engine.storeMemoryAsEvidence(
+        "User email is john@example.com",
+        "long-term",
+        "user-feedback"
+      );
+
+      // Should store without redaction
+      expect(mockAgentMemory.store).toHaveBeenCalledWith(
+        "User email is john@example.com",
+        "long-term"
+      );
+    });
+  });
+
   describe("confidence initialization", () => {
     beforeEach(() => {
       engine.configure({});
