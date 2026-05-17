@@ -6,6 +6,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-05-17
+
+Major v3 architecture upgrade: Self-Learning Agent, GOAP Planning, PII Protection, and full accessibility intelligence.
+
+### Added
+- **Self-Learning Agent v3** (`evidenceMemory.ts`) — HNSW vector search, sigmoid decay, StatsCache O(1), garbage collection
+- **GOAP Planner** (`goapPlanner.ts`) — A* search over action space, plan caching with LRU, dynamic cost functions
+- **GOAP ↔ Shannon Bridge** (`goapShannonBridge.ts`) — connects 13 GOAP actions to 10 Shannon agents with replanning
+- **PII Detection Engine** (`piiDetection.ts`) — Luhn credit card, SSN, Vietnamese CCCD/CMND/phone, smart redaction
+- **Usage Analytics** (`usageAnalytics.ts`) — 4 SaaS tiers, feature flags with rollout %, quota enforcement
+- **Shannon Engine v3** — 2 new agents (a11y-auditor, evidence-curator), PII scanning, evidence storage
+- **Collaboration Engine v3** — PII protection on CRDT ops (block/redact/warn), evidence tracking
+- **Design Analyzer v3** — WCAG 2.2 touch targets, ARIA validation, contrast ratios, PII exposure
+- **Figma Serializer v3** — `inferredRole`, `touchTargetCompliant`, `contrastRatio`, `hasInteractions`, `responsiveBehavior`
+- **E2E Pipeline Tests** — 13 integration tests + 22 GOAP bridge tests
+- 890 new tests (total: 1047 across 61 files)
+
+### Changed
+- Evidence Memory snapshot version v1 → v2 (backward-compatible)
+- Touch target threshold 44×44 → 24×24 (WCAG 2.5.8)
+- Shannon Engine agents 4 → 6
+
+### Security
+- Updated `dompurify` 3.4.3 → 3.4.4 (XSS patch)
+- Removed deprecated `@types/dompurify`
+- Updated `vite` 8.0.5 → 8.0.13, `vitest` 4.1.1 → 4.1.6
+- All dependencies at latest minor (0 npm audit vulnerabilities)
+
 ## [1.1.5] — 2026-04-28
 
 Auto Layout Fix overhaul to comply with the user-stated spec: only the outermost user-selected frame keeps FIXED sizing, everything inside must be FILL or HUG. The previous implementation set every child to FIXED pixel widths, which broke responsive intent and produced brittle layouts.

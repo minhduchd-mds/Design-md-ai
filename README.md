@@ -6,7 +6,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen.svg)]()
 [![Vercel](https://img.shields.io/badge/deploy-Vercel-black.svg)](https://design-md-ai.vercel.app/)
-[![Tests](https://img.shields.io/badge/tests-157%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1047%20passed-brightgreen.svg)]()
 
 ---
 
@@ -77,28 +77,30 @@ The project follows a strict **sandbox separation** model:
 - Web workspace uses **SCSS modules** with centralized design tokens
 - Prompt text always sanitized via `sanitize.ts` (injection risk prevention)
 
-### AI Intelligence Architecture (Shannon Engine)
+### AI Intelligence Architecture v3
 
 ```
-Input Layer          Memory Layer         Analysis Layer
-├── Figma            ├── AgentMemory      ├── DesignAnalyzer
-├── Screenshot       ├── Project Memory   ├── Accessibility Audit
-├── Manual Spec      ├── DS Memory        ├── Mobile Analyzer
-├── Git Repo         ├── BM25 Search      ├── Framework Detector
-└── DS Registry      └── IndexedDB        └── Drift Detector
+Input Layer          Memory Layer (v3)           Analysis Layer (v3)
+├── Figma            ├── EvidenceMemory          ├── DesignAnalyzer (WCAG 2.2)
+├── Screenshot       │   ├── HNSW Vector Search  ├── Accessibility Audit (ARIA)
+├── Manual Spec      │   ├── Sigmoid Decay       ├── Mobile Analyzer
+├── Git Repo         │   └── StatsCache O(1)     ├── Framework Detector
+└── DS Registry      ├── Collaboration CRDT      └── PII Scanner
+                     └── Usage Analytics
 
-Shannon Engine       Provider Router      Generation Layer
-├── Analyzer Agent   ├── Groq 8B (fast)   ├── Design.md
-├── Generator Agent  ├── GPT (struct)     ├── React TSX
-├── Validator Agent  ├── Claude (reason)  ├── Vue SFC / Svelte 5
-└── Optimizer Agent  └── Local Model      ├── Flutter / RN
-                                          └── GitHub PR
+Shannon Engine v3    GOAP Planner          Generation Layer
+├── Analyzer Agent   ├── A* Search         ├── Design.md
+├── Generator Agent  ├── Plan Caching      ├── React TSX
+├── Validator Agent  ├── Dynamic Costs     ├── Vue SFC / Svelte 5
+├── Optimizer Agent  ├── Replanning        ├── Flutter / RN
+├── A11y Auditor     └── Goal Priority     └── GitHub PR
+└── Evidence Curator
 
-Platform Layer       Enterprise Layer
-├── Marketplace      ├── SSO/SAML + RBAC
-├── Multi-DS Hub     ├── Audit Logs
-├── Plugin SDK       ├── Self-hosted
-└── CRDT Collab      └── License + Backup
+Platform Layer       Enterprise Layer      Security Layer (v3)
+├── Marketplace      ├── SSO/SAML + RBAC   ├── PII Detection (Luhn)
+├── Multi-DS Hub     ├── Audit Logs        ├── Vietnamese ID/Phone
+├── Plugin SDK       ├── Self-hosted       ├── Content Redaction
+└── CRDT Collab      └── License + Backup  └── Usage Tier Enforcement
 ```
 
 ---
@@ -195,6 +197,19 @@ Design-md-ai/
 │           ├── imageAnalyzer.ts    #   Image analysis client
 │           └── screenshotToCode.ts #   Screenshot-to-code WS client
 │
+│       ├── lib/                     #   AI Intelligence Engines (v3)
+│       │   ├── shannonEngine.ts    #     Multi-agent orchestrator (6 agents)
+│       │   ├── evidenceMemory.ts   #     HNSW vector search + sigmoid decay
+│       │   ├── evidenceMemoryIntegration.ts # Bridge layer (PII + GC)
+│       │   ├── goapPlanner.ts      #     Goal-Oriented Action Planning (A*)
+│       │   ├── goapShannonBridge.ts#     GOAP → Shannon → Evidence pipeline
+│       │   ├── piiDetection.ts     #     PII scanner (Luhn, SSN, VN IDs)
+│       │   ├── usageAnalytics.ts   #     SaaS tiers, quotas, feature flags
+│       │   ├── collaborationEngine.ts # CRDT (LWW + OR-Set) + PII
+│       │   ├── designAnalyzer.ts   #     Design system auditor (WCAG 2.2)
+│       │   ├── pipelineIntegration.ts # E2E pipeline orchestration
+│       │   └── __tests__/          #     61 test files, 1047 tests
+│       │
 ├── supabase/                       # Supabase config
 │   ├── functions/
 │   │   └── analyze-image/          #   Edge function for image analysis
@@ -227,6 +242,16 @@ Design-md-ai/
 - Export compact prompts for coding agents
 - Design project frame creation with mapped metadata
 - EN/VI internationalization
+
+### v3 Intelligence Engine
+- **Shannon Engine v3** — 6 specialized AI agents with PII-aware execution and evidence storage
+- **GOAP Planner** — A* search for autonomous decision-making, plan caching, dynamic costs
+- **Evidence Memory** — HNSW vector similarity search, sigmoid decay, garbage collection
+- **PII Detection** — Luhn credit card validation, SSN, Vietnamese CCCD/CMND/phone, email, auth tokens
+- **Usage Analytics** — 4 SaaS tiers (Free/Pro/Team/Enterprise), feature flags, quota enforcement
+- **Collaboration CRDT** — Last-Writer-Wins + Observed-Remove Sets with PII protection
+- **Design Analyzer v3** — WCAG 2.2 touch targets, ARIA role validation, contrast ratios, PII in design
+- **Figma Serializer v3** — `inferredRole`, `touchTargetCompliant`, `contrastRatio`, `hasInteractions`, `responsiveBehavior`
 
 ### Web Workspace
 - **Chat tab** — Groq AI conversation (Llama 3.3 70B), full markdown rendering with syntax highlighting
@@ -417,10 +442,10 @@ All partials use `@use "variables" as *` for access to shared tokens. The Figma 
 ## Testing & Quality
 
 ```bash
-npm test              # 157 tests across 20 files
+npm test              # 1047 tests across 61 files
 npm run test:watch    # Watch mode
 npm run test:coverage # With coverage report
-npm run lint          # ESLint 9 (0 errors, 5 warnings)
+npm run lint          # ESLint 9
 npm run format:check  # Prettier check
 npm run typecheck     # TypeScript (UI + plugin)
 npm run storybook     # Component playground
