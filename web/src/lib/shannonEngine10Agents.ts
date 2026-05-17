@@ -339,10 +339,15 @@ class TaskOrchestrator {
 export class ShannonEngine10 {
   private orchestrator: TaskOrchestrator;
   private config: AgentOrchestrationConfig;
+  private taskCounter = 0; // Monotonic counter for unique IDs
 
   constructor(config?: AgentOrchestrationConfig) {
     this.config = config ?? {};
     this.orchestrator = new TaskOrchestrator(config);
+  }
+
+  private generateTaskId(prefix: string): string {
+    return `${prefix}_${Date.now()}_${++this.taskCounter}`;
   }
 
   /**
@@ -370,9 +375,9 @@ export class ShannonEngine10 {
     const tasks: AgentTask[] = [];
 
     // Level 0: Analysis phase (can run in parallel)
-    const analyzerId = `task_analyzer_${Date.now()}`;
-    const a11yId = `task_a11y_${Date.now()}`;
-    const mobileId = `task_mobile_${Date.now()}`;
+    const analyzerId = this.generateTaskId("task_analyzer");
+    const a11yId = this.generateTaskId("task_a11y");
+    const mobileId = this.generateTaskId("task_mobile");
 
     tasks.push(
       {
@@ -405,7 +410,7 @@ export class ShannonEngine10 {
     );
 
     // Level 1: Code generation (depends on analysis)
-    const codeGenId = `task_codegen_${Date.now()}`;
+    const codeGenId = this.generateTaskId("task_codegen");
     tasks.push({
       id: codeGenId,
       type: "code-generator",
@@ -422,9 +427,9 @@ export class ShannonEngine10 {
     });
 
     // Level 2: Code validation and optimization
-    const securityId = `task_security_${Date.now()}`;
-    const perfId = `task_perf_${Date.now()}`;
-    const learningId = `task_learning_${Date.now()}`;
+    const securityId = this.generateTaskId("task_security");
+    const perfId = this.generateTaskId("task_perf");
+    const learningId = this.generateTaskId("task_learning");
 
     tasks.push(
       {
@@ -457,8 +462,8 @@ export class ShannonEngine10 {
     );
 
     // Level 3: Documentation and testing
-    const docsId = `task_docs_${Date.now()}`;
-    const testId = `task_tests_${Date.now()}`;
+    const docsId = this.generateTaskId("task_docs");
+    const testId = this.generateTaskId("task_tests");
 
     tasks.push(
       {
@@ -482,7 +487,7 @@ export class ShannonEngine10 {
     );
 
     // Level 4: Deployment
-    const deployId = `task_deploy_${Date.now()}`;
+    const deployId = this.generateTaskId("task_deploy");
     tasks.push({
       id: deployId,
       type: "deployment-orchestrator",

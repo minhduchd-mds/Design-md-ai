@@ -50,6 +50,7 @@ export interface MemoryStats {
 export class EvidenceMemoryEngine {
   private records: Map<string, EvidenceRecord> = new Map();
   private sourceIndex: Map<EvidenceSource, Set<string>> = new Map();
+  private tagIndex: Map<string, Set<string>> = new Map(); // tag → record IDs (for O(1) contradiction lookup)
   private contradictionIndex: Map<string, Contradiction[]> = new Map();
   private config: Required<EvidenceMemoryConfig>;
   private isConfigured = false;
@@ -83,7 +84,8 @@ export class EvidenceMemoryEngine {
       throw new Error(`Memory limit reached (${this.config.maxRecords} records)`);
     }
 
-    const id = `ev_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    // Use crypto-safe unique ID to prevent collisions in tight loops
+    const id = `ev_${Date.now()}_${Math.random().toString(36).slice(2, 9)}_${(this.records.size).toString(36)}`;
     const now = Date.now();
 
     const newRecord: EvidenceRecord = {
@@ -98,7 +100,15 @@ export class EvidenceMemoryEngine {
     this.records.set(id, newRecord);
     this.sourceIndex.get(record.source)?.add(id);
 
-    // Check for contradictions
+    // Update tag index for fast contradiction lookup
+    for (const tag of record.tags) {
+      if (!this.tagIndex.has(tag)) {
+        this.tagIndex.set(tag, new Set());
+      }
+      this.tagIndex.get(tag)!.add(id);
+    }
+
+    // Check for contradictions (only against records with matching tags)
     await this.detectContradictionsForRecord(id);
 
     return id;
@@ -225,6 +235,8 @@ export class EvidenceMemoryEngine {
 
   /**
    * Decay confidence of unvalidated memories
+   * Uses lastAccessedAt as decay anchor (not createdAt) to avoid double-decay
+   * when recallEvidence also applies on-the-fly decay.
    */
   async decayUnvalidated(): Promise<number> {
     let decayedCount = 0;
@@ -233,17 +245,23 @@ export class EvidenceMemoryEngine {
     for (const record of this.records.values()) {
       if (record.validated) continue; // Don't decay validated records
 
-      const ageMs = now - record.createdAt;
-      const ageDays = ageMs / (1000 * 60 * 60 * 24);
-      const decay = this.config.decayRatePerDay * ageDays;
+      // Use time since last decay (lastAccessedAt) not creation time
+      // This prevents double-decay with recallEvidence's on-the-fly calculation
+      const timeSinceLastDecay = now - record.lastAccessedAt;
+      const daysSinceLastDecay = timeSinceLastDecay / (1000 * 60 * 60 * 24);
+
+      if (daysSinceLastDecay <= 0) continue;
+
+      const decay = this.config.decayRatePerDay * daysSinceLastDecay;
       const newConfidence = Math.max(0, record.confidence - decay);
 
-      if (newConfidence !== record.confidence) {
+      if (newConfidence < record.confidence) {
         record.confidence = newConfidence;
+        record.lastAccessedAt = now; // Reset decay anchor
         decayedCount++;
 
-        // If confidence falls below threshold, mark for review
-        if (newConfidence < this.config.minConfidenceThreshold) {
+        // If confidence falls below threshold, mark for review (deduplicated)
+        if (newConfidence < this.config.minConfidenceThreshold && !record.tags.includes("needs-review")) {
           record.tags.push("needs-review");
         }
       }
@@ -286,8 +304,15 @@ export class EvidenceMemoryEngine {
 
       // Keep the one matching the desired source, discard others
       if (conflictingRecord.source !== keepSource) {
+        // Clean up all indexes for deleted record
         this.records.delete(contradiction.conflictingId);
         this.sourceIndex.get(conflictingRecord.source)?.delete(contradiction.conflictingId);
+        this.contradictionIndex.delete(contradiction.conflictingId);
+
+        // Clean up tag index
+        for (const tag of conflictingRecord.tags || []) {
+          this.tagIndex.get(tag)?.delete(contradiction.conflictingId);
+        }
       }
     }
 
@@ -344,10 +369,19 @@ export class EvidenceMemoryEngine {
     this.records.clear();
     this.contradictionIndex.clear();
     this.sourceIndex.forEach((set) => set.clear());
+    this.tagIndex.clear();
 
     for (const record of snapshot.records) {
       this.records.set(record.id, record);
       this.sourceIndex.get(record.source)?.add(record.id);
+
+      // Rebuild tag index
+      for (const tag of record.tags || []) {
+        if (!this.tagIndex.has(tag)) {
+          this.tagIndex.set(tag, new Set());
+        }
+        this.tagIndex.get(tag)!.add(record.id);
+      }
     }
 
     for (const [recordId, contradictions] of snapshot.contradictions) {
@@ -358,11 +392,16 @@ export class EvidenceMemoryEngine {
   // ========== Private Helpers ==========
 
   private contentMatches(content: string, query: string): boolean {
+    // Empty query matches everything (intentional for "get all" scenarios)
+    if (!query || query.trim().length === 0) return true;
+
     const contentLower = content.toLowerCase();
     const queryLower = query.toLowerCase();
 
-    // Simple word matching
-    const queryWords = queryLower.split(/\s+/);
+    // Tokenized word matching with minimum word length filter
+    const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 0);
+    if (queryWords.length === 0) return true;
+
     return queryWords.some((word) => contentLower.includes(word));
   }
 
@@ -429,10 +468,23 @@ export class EvidenceMemoryEngine {
 
   private async detectContradictionsForRecord(recordId: string): Promise<void> {
     const record = this.records.get(recordId);
-    if (!record) return;
+    if (!record || record.tags.length === 0) return;
 
-    for (const existingRecord of this.records.values()) {
-      if (existingRecord.id === recordId) continue;
+    // Use tag index for O(k) lookup instead of O(n) full scan
+    const candidateIds = new Set<string>();
+    for (const tag of record.tags) {
+      const tagRecords = this.tagIndex.get(tag);
+      if (tagRecords) {
+        for (const id of tagRecords) {
+          if (id !== recordId) candidateIds.add(id);
+        }
+      }
+    }
+
+    // Only check records sharing tags (much smaller set than all records)
+    for (const candidateId of candidateIds) {
+      const existingRecord = this.records.get(candidateId);
+      if (!existingRecord) continue;
       if (existingRecord.validated) continue; // Skip validated records
 
       const contradiction = this.detectContradictionBetween(record, existingRecord);

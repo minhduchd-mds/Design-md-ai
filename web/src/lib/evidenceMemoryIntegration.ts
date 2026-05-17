@@ -6,7 +6,17 @@
 
 import type { EvidenceRecord, EvidenceSource, MemoryStats } from "./evidenceMemory";
 import { EvidenceMemoryEngine } from "./evidenceMemory";
-import type { AgentMemory } from "./agentMemory";
+
+/**
+ * Minimal interface for AgentMemory integration.
+ * Using interface instead of direct import to decouple from IndexedDB dependency
+ * and allow testing with mock implementations.
+ */
+export interface AgentMemoryAdapter {
+  store(memory: string, tier: string): Promise<string>;
+  search?(query: string): Promise<unknown[]>;
+  recall?(id: string): Promise<unknown>;
+}
 
 export interface ValidationResult {
   isValid: boolean;
@@ -27,11 +37,11 @@ export interface MemoryValidationConfig {
 
 export class MemoryValidationEngine {
   private evidenceEngine: EvidenceMemoryEngine;
-  private agentMemory: AgentMemory;
+  private agentMemory: AgentMemoryAdapter;
   private config: Required<MemoryValidationConfig>;
   private validationHistory: Map<string, { validatedAt: number; source: EvidenceSource }> = new Map();
 
-  constructor(agentMemory: AgentMemory) {
+  constructor(agentMemory: AgentMemoryAdapter) {
     this.agentMemory = agentMemory;
     this.evidenceEngine = new EvidenceMemoryEngine();
     this.config = {
@@ -64,8 +74,22 @@ export class MemoryValidationEngine {
     source: EvidenceSource,
     sourceDetails?: string
   ): Promise<{ memoryId: string; evidenceId: string }> {
-    // Store in agent memory (existing system)
-    const memoryId = await this.agentMemory.store(memory, tier);
+    // Store in agent memory (existing system) — fail fast if unavailable
+    let memoryId: string;
+    try {
+      memoryId = await this.agentMemory.store(memory, tier);
+    } catch (error) {
+      // If agent memory fails, store only in evidence system with degraded flag
+      const evidenceId = await this.evidenceEngine.storeEvidence({
+        content: memory,
+        source,
+        confidence: this.getInitialConfidence(source, tier) * 0.8, // Reduce confidence for orphaned records
+        validated: false,
+        tags: [tier, source, "orphaned-no-agent-memory"],
+        metadata: { tier, sourceDetails, storedAt: Date.now(), error: String(error) },
+      });
+      return { memoryId: "", evidenceId };
+    }
 
     // Track as evidence in new system
     const evidenceId = await this.evidenceEngine.storeEvidence({
@@ -377,7 +401,7 @@ export class MemoryValidationEngine {
  * Factory function for creating memory validation engine
  */
 export function createMemoryValidation(
-  agentMemory: AgentMemory,
+  agentMemory: AgentMemoryAdapter,
   config?: MemoryValidationConfig
 ): MemoryValidationEngine {
   const engine = new MemoryValidationEngine(agentMemory);

@@ -43,7 +43,7 @@ describe("EvidenceMemoryEngine", () => {
         metadata: { variant: "primary" },
       });
 
-      expect(recordId).toMatch(/^ev_\d+_[a-z0-9]+$/);
+      expect(recordId).toMatch(/^ev_\d+_[a-z0-9]+_[a-z0-9]+$/);
     });
 
     it("stores records from different sources", async () => {
