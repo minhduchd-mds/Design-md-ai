@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { GOAPPlanner, GOAPAction, GOAPGoal, WorldState, createDesignAgentPlanner, createGOAPPlanner } from "../goapPlanner";
+import { GOAPPlanner, GOAPGoal, WorldState, createDesignAgentPlanner, createGOAPPlanner } from "../goapPlanner";
 
 describe("GOAPPlanner", () => {
   let planner: GOAPPlanner;

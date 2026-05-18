@@ -8,7 +8,7 @@
  *   AuditStream (event emitter) → StreamBuffer (16ms debounce) → useAuditStream (React hook)
  */
 
-import { useSyncExternalStore, useCallback, useRef } from "react";
+import { useSyncExternalStore, useCallback, useState } from "react";
 import type { AuditResult, AuditReport } from "./index";
 import { UXChecklistOrchestrator } from "./index";
 
@@ -467,13 +467,10 @@ export interface UseAuditStreamReturn {
  * ```
  */
 export function useAuditStream(orchestrator?: UXChecklistOrchestrator): UseAuditStreamReturn {
-  const storeRef = useRef<AuditStreamStore | null>(null);
-
-  if (storeRef.current === null) {
-    storeRef.current = new AuditStreamStore();
-  }
-
-  const store = storeRef.current;
+  // Use lazy initializer — store is created once and stays stable across renders.
+  // useState (not useRef) avoids the react-hooks/refs "access during render" lint error
+  // because subscribe/getSnapshot are read from state, not from ref.current.
+  const [store] = useState(() => new AuditStreamStore());
 
   const state = useSyncExternalStore(
     store.subscribe,

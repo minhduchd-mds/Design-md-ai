@@ -13,10 +13,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   UXChecklistOrchestrator,
   AuditAgent,
-  ScoreAgent,
   RecommendAgent,
-  LearningLoop,
-  CriteriaRegistry,
   BUILT_IN_CRITERIA,
   type AuditCriterion,
   type AuditResult,
@@ -27,7 +24,6 @@ import {
   AuditToGitHub,
   PRTemplate,
   type FixPlan,
-  type CIGateConfig,
 } from "../../ux-checklist/github";
 import { AuditStream, StreamBuffer, type AuditStreamEvent } from "../../ux-checklist/stream";
 import {
@@ -39,7 +35,6 @@ import {
   type FeedbackEntry,
   type LearningPattern,
 } from "../../ux-checklist/memory";
-import { EvidenceMemoryEngine } from "../evidenceMemory";
 import { GOAPPlanner } from "../goapPlanner";
 
 // ── Test Helpers ──────────────────────────────────────────────────────────

@@ -47,7 +47,7 @@ describe("EvidenceMemoryEngine", () => {
     });
 
     it("stores records from different sources", async () => {
-      const designId = await engine.storeEvidence({
+      const _designId = await engine.storeEvidence({
         content: "design system colors",
         source: "design-file",
         confidence: 0.9,
@@ -56,7 +56,7 @@ describe("EvidenceMemoryEngine", () => {
         metadata: {},
       });
 
-      const feedbackId = await engine.storeEvidence({
+      const _feedbackId = await engine.storeEvidence({
         content: "user says button needs hover state",
         source: "user-feedback",
         confidence: 0.7,
@@ -227,7 +227,7 @@ describe("EvidenceMemoryEngine", () => {
 
     it("clears contradictions when validating", async () => {
       // Create a contradicting record
-      const contradictionId = await engine.storeEvidence({
+      const _contradictionId = await engine.storeEvidence({
         content: "test memory conflicting",
         source: "ai-inference",
         confidence: 0.3,
@@ -308,7 +308,7 @@ describe("EvidenceMemoryEngine", () => {
     });
 
     it("decays confidence of unvalidated records", async () => {
-      const recordId = await engine.storeEvidence({
+      const _recordId = await engine.storeEvidence({
         content: "unvalidated memory",
         source: "ai-inference",
         confidence: 0.8,
@@ -319,7 +319,7 @@ describe("EvidenceMemoryEngine", () => {
 
       // Manually set created time to 1 day ago for testing
       const now = Date.now();
-      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const _oneDayAgo = now - 24 * 60 * 60 * 1000;
 
       // Decay should be called (in real system, called periodically)
       const decayedCount = await engine.decayUnvalidated();
@@ -343,7 +343,7 @@ describe("EvidenceMemoryEngine", () => {
     });
 
     it("marks records as needs-review when confidence drops", async () => {
-      const recordId = await engine.storeEvidence({
+      const _recordId = await engine.storeEvidence({
         content: "will decay below threshold",
         source: "pattern-match",
         confidence: 0.25,
@@ -417,7 +417,7 @@ describe("EvidenceMemoryEngine", () => {
 
     it("resolves contradiction by keeping preferred source", async () => {
       const stats = engine.getStats();
-      const initialCount = stats.totalRecords;
+      const _initialCount = stats.totalRecords;
 
       // In real scenario, this would be called after contradiction detected
       // For now, verify method exists and doesn't throw

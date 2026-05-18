@@ -27,8 +27,8 @@
  *   • A/B testing different audit strategies via ai-layer experiments
  */
 
-import { EvidenceMemoryEngine, type EvidenceRecord } from "../lib/evidenceMemory";
-import { GOAPPlanner, type WorldState, type GOAPGoal, type GOAPAction } from "../lib/goapPlanner";
+import { EvidenceMemoryEngine } from "../lib/evidenceMemory";
+import { GOAPPlanner, type WorldState } from "../lib/goapPlanner";
 import { DesignAnalyzer } from "../lib/designAnalyzer";
 import { eventBus } from "../lib/eventBus";
 

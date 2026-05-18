@@ -180,6 +180,7 @@ describe("WorkerPool (Phase 3: Background Computation)", () => {
     });
 
     it("rejects on unknown task type", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await expect(pool.submit("unknown-type" as any, {})).rejects.toThrow("Unknown task type");
     });
   });

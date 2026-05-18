@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { GOAPShannonBridge, createGOAPShannonBridge } from "../goapShannonBridge";
-import type { GOAPGoal, WorldState } from "../goapPlanner";
+import type { GOAPGoal } from "../goapPlanner";
 
 describe("GOAPShannonBridge", () => {
   let bridge: GOAPShannonBridge;

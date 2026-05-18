@@ -15,7 +15,7 @@
  */
 
 import { GOAPPlanner, type GOAPGoal, type Plan, type WorldState, type GOAPAction } from "./goapPlanner";
-import { ShannonEngine10, type AgentTask, type AgentType } from "./shannonEngine10Agents";
+import { ShannonEngine10, type AgentType } from "./shannonEngine10Agents";
 import { EvidenceMemoryEngine, type EvidenceSource } from "./evidenceMemory";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ export class GOAPShannonBridge {
       const step = currentPlan.steps[i];
       const agentType = this.mapActionToAgent(step.action.name);
 
-      const stepStart = Date.now();
+      const _stepStart = Date.now();
       const stepResult = await this.executeStep(step.action, agentType, i);
       agentResults.push(stepResult);
       this.stats.totalSteps++;
@@ -365,7 +365,7 @@ export class GOAPShannonBridge {
       const capability = this.shannonEngine.getAgentCapability(agentType);
 
       // Simulate success based on agent's success rate
-      const success = Math.random() < (capability?.successRate ?? 0.9);
+      const _success = Math.random() < (capability?.successRate ?? 0.9);
 
       return {
         stepIndex,

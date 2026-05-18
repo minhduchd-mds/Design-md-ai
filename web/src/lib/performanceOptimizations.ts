@@ -305,7 +305,7 @@ export class WorkerPool {
   }
 
   private handleContradictionDetection(payload: unknown): unknown {
-    const { records, tags } = payload as { records: Array<{ id: string; content: string; tags: string[] }>; tags: Map<string, string[]> };
+    const { records: _records, tags: _tags } = payload as { records: Array<{ id: string; content: string; tags: string[] }>; tags: Map<string, string[]> };
     // Contradiction detection logic (runs in worker context)
     const contradictions: Array<{ id1: string; id2: string }> = [];
     // ... would be the actual detection logic offloaded from main thread
@@ -329,7 +329,7 @@ export class WorkerPool {
   }
 
   private handleSimilaritySearch(payload: unknown): unknown {
-    const { query, candidates } = payload as { query: number[]; candidates: Array<{ id: string; vector: number[] }> };
+    const { query: _query, candidates } = payload as { query: number[]; candidates: Array<{ id: string; vector: number[] }> };
     // Simple cosine similarity (would use HNSW in production)
     return { results: candidates.slice(0, 10) };
   }

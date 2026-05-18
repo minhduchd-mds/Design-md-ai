@@ -12,7 +12,7 @@ const createMockAgentMemory = () => ({
 
 describe("MemoryValidationEngine", () => {
   let engine: MemoryValidationEngine;
-  let mockAgentMemory: any;
+  let mockAgentMemory: ReturnType<typeof createMockAgentMemory>;
 
   beforeEach(() => {
     mockAgentMemory = createMockAgentMemory();
@@ -526,7 +526,7 @@ describe("MemoryValidationEngine", () => {
 
     it("can disable PII protection", async () => {
       engine.configure({ enablePIIProtection: false });
-      const result = await engine.storeMemoryAsEvidence(
+      const _result = await engine.storeMemoryAsEvidence(
         "User email is john@example.com",
         "long-term",
         "user-feedback"

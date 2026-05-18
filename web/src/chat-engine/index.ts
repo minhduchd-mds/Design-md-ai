@@ -16,7 +16,7 @@
 import type { ChatMessage } from "../app/types";
 import { createMessage, encryptChatMessages, decryptChatMessages, getChatHistoryKey } from "../app/auth";
 import { sendClaudeChat } from "../workspace/claudeChat";
-import { eventBus } from "../lib/eventBus";
+
 
 // ── Types ──────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@
  * Leverages HNSW vector search, sigmoid decay, and garbage collection
  */
 
-import type { EvidenceRecord, EvidenceSource, MemoryStats } from "./evidenceMemory";
+import type { EvidenceRecord, EvidenceSource } from "./evidenceMemory";
 import { EvidenceMemoryEngine } from "./evidenceMemory";
 import { PIIScanner } from "./piiDetection";
 
@@ -257,7 +257,7 @@ export class MemoryValidationEngine {
    */
   async promoteToTruth(
     query: string,
-    validationSource: "design-file" | "user-feedback" | "developer"
+    _validationSource: "design-file" | "user-feedback" | "developer"
   ): Promise<string[]> {
     const evidence = await this.evidenceEngine.recallEvidence(query, {
       minConfidence: this.config.minConfidenceForPersistent,

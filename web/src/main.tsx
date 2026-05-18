@@ -598,7 +598,6 @@ function App() {
   });
   const [checklistSearch, setChecklistSearch] = useState("");
   const [checklistFilter, setChecklistFilter] = useState<"all" | "ui" | "ux" | "pass" | "fail" | "warn" | "untested">("all");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [checklistSourceFilter, _setChecklistSourceFilter] = useState<"all" | DesignSource>("all");
   const [checklistCatFilter, setChecklistCatFilter] = useState("All");
   const [checklistPage, setChecklistPage] = useState(1);
@@ -626,9 +625,7 @@ function App() {
 
   // Compare Panel — Sprint 4
   const [bugMarkers, setBugMarkers] = useState<BugMarker[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [compareDesignUrl, _setCompareDesignUrl] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [compareWebUrl, _setCompareWebUrl] = useState<string | null>(null);
 
   // Toast notification system
@@ -1334,7 +1331,6 @@ function App() {
     setEditSavedAt(null);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function _showComingSoon(label: string) {
     setMessages((current) => [
       ...current,
@@ -1433,7 +1429,6 @@ function App() {
     setHtmlPreview({ html, title });
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function _startNewProject() {
     setRequest(DEFAULT_PROJECT);
     setGeneratedRequest(null);

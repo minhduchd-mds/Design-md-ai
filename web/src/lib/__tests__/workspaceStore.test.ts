@@ -110,7 +110,7 @@ describe("projectStore", () => {
 
   it("setActive changes active project", () => {
     const id1 = projectActions.addProject("P1");
-    const id2 = projectActions.addProject("P2");
+    const _id2 = projectActions.addProject("P2");
     projectActions.setActive(id1);
     expect(projectStore.getState().activeProjectId).toBe(id1);
   });

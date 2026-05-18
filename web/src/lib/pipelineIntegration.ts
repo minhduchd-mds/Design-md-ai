@@ -266,7 +266,7 @@ export class PipelineEngine {
     };
   }
 
-  private async analyzeDesign(parsed: ParsedInput, _context: Record<string, unknown>): Promise<DesignAnalysis> {
+  private async analyzeDesign(_parsed: ParsedInput, _context: Record<string, unknown>): Promise<DesignAnalysis> {
     // In production, delegates to designAnalyzer.ts
     // Returns stub analysis — wired to real analyzer at integration time
     return {

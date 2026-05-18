@@ -15,14 +15,13 @@
  */
 
 import type { DesignContext, ValidationReport } from "../../../shared/designContext";
-import { createEmptyContext } from "../../../shared/designContext";
 import { buildContext, parseFileSources } from "../design/contextBuilder";
-import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "../design/designParser";
+import { buildDesignMd, inferProjectName, parseDesignMd } from "../design/designParser";
 import { computeValidationReport } from "../design/layoutValidator";
 import { generateScreens, type Screen } from "../design/screenGenerator";
 import { matchTemplates } from "../design/templateMatcher";
-import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate, type DesignMdTemplateCategory } from "../design/templateRegistry";
-import type { ProjectRequest, OpenDesignDefinition, OpenDesignPreset } from "../app/types";
+import { hasDesignMdTemplate, loadDesignMdTemplate } from "../design/templateRegistry";
+import type { ProjectRequest, OpenDesignDefinition } from "../app/types";
 
 // ── Types ──────────────────────────────────────────────────────
 

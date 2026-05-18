@@ -6,11 +6,8 @@ import {
   UXChecklistOrchestrator,
   CriteriaRegistry,
   AuditAgent,
-  ScoreAgent,
   RecommendAgent,
-  LearningLoop,
   BUILT_IN_CRITERIA,
-  DEFAULT_CHECKLIST_CONFIG,
   type AuditCriterion,
   type AuditResult,
 } from "../../ux-checklist";

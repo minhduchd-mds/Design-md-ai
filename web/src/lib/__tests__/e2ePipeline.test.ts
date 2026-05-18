@@ -8,7 +8,7 @@ import { GOAPShannonBridge } from "../goapShannonBridge";
 import { PIIScanner } from "../piiDetection";
 import { EvidenceMemoryEngine } from "../evidenceMemory";
 import { UsageAnalyticsEngine } from "../usageAnalytics";
-import type { GOAPGoal, WorldState } from "../goapPlanner";
+import type { GOAPGoal } from "../goapPlanner";
 
 describe("E2E Pipeline Integration", () => {
   let pipeline: PipelineEngine;

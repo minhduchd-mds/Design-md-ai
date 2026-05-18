@@ -24,8 +24,8 @@
  *   • Tool-use agents (Figma API, GitHub, Vercel)
  */
 
-import { createOrchestrator, type AgentConfig, type AgentRole, type DesignIntelligenceResult, type AgentEvidenceRecord } from "../lib/shannonEngine";
-import { GOAPPlanner, createDesignAgentPlanner, type WorldState, type GOAPGoal, type Plan } from "../lib/goapPlanner";
+import { createOrchestrator, type AgentConfig, type AgentRole, type AgentEvidenceRecord } from "../lib/shannonEngine";
+import { createDesignAgentPlanner, type WorldState, type GOAPGoal, type Plan } from "../lib/goapPlanner";
 import { PIIScanner, type PIIScanResult } from "../lib/piiDetection";
 import { UsageAnalyticsEngine } from "../lib/usageAnalytics";
 import { eventBus } from "../lib/eventBus";

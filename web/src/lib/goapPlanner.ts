@@ -297,7 +297,7 @@ export class GOAPPlanner {
 
   private buildPlan(node: SearchNode, goal: GOAPGoal, startTime: number): Plan {
     const steps: PlanStep[] = [];
-    let state = new Map(node.state);
+    const _state = new Map(node.state);
 
     // Rebuild state transitions
     let currentState = new Map<string, boolean | number | string>();
@@ -308,7 +308,7 @@ export class GOAPPlanner {
 
     // Re-simulate from what the first action saw
     // Since we don't store intermediate states, reconstruct them
-    let simulatedState = new Map(node.state);
+    const _simulatedState = new Map(node.state);
     // Undo effects in reverse to get initial, then replay forward
     // Simpler: just compute forward from effects knowledge
 
