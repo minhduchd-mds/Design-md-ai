@@ -1,0 +1,371 @@
+/**
+ * ux-checklist/github.ts — GitHub Integration Layer for the Agentic UI/UX Auditor
+ *
+ * Connects audit results to GitHub workflows:
+ * - Creates issues from audit failures with structured evidence
+ * - Generates PR descriptions from fix plans
+ * - Configures CI gate thresholds for quality enforcement
+ * - Groups and batches issues by category/severity
+ */
+
+import type {
+  AuditResult,
+  AuditCriterion,
+  AuditReport,
+  AuditSeverity,
+  AuditCategory,
+} from "./index";
+
+// ── Types ──────────────────────────────────────────────────────
+
+/** Priority levels mapped from audit severity */
+export type IssuePriority = "critical" | "high" | "medium" | "low";
+
+/** Supported CI report output formats */
+export type ReportFormat = "markdown" | "json" | "sarif";
+
+/** Configuration for CI/CD quality gates */
+export interface CIGateConfig {
+  /** Minimum overall score (0-100) to pass the gate */
+  minOverallScore: number;
+  /** Whether to block the pipeline on any critical failure */
+  blockOnCriticalFail: boolean;
+  /** Number of allowed failures by severity before blocking */
+  allowedFailures: { major: number; minor: number };
+  /** Output format for the gate report */
+  reportFormat: ReportFormat;
+}
+
+/** Structured payload for creating a GitHub issue */
+export interface GitHubIssuePayload {
+  /** Issue title */
+  title: string;
+  /** Markdown-formatted issue body */
+  body: string;
+  /** Labels to apply */
+  labels: string[];
+  /** Priority derived from severity */
+  priority: IssuePriority;
+  /** Original criterion ID for traceability */
+  criterionId: string;
+  /** Category for grouping */
+  category: AuditCategory;
+}
+
+/** A plan describing what fix to apply */
+export interface FixPlan {
+  /** Human-readable summary of the fix */
+  summary: string;
+  /** Which criteria this fix addresses */
+  criteriaIds: string[];
+  /** Detailed steps the developer should take */
+  steps: string[];
+  /** Expected before/after description */
+  before: string;
+  after: string;
+  /** Estimated effort in hours */
+  estimatedHours: number;
+}
+
+// ── GitHubBridge ──────────────────────────────────────────────
+
+/**
+ * Bridge between audit results and GitHub issue/PR workflows.
+ * Transforms structured audit data into GitHub-compatible payloads.
+ */
+export class GitHubBridge {
+  /**
+   * Create a single GitHub issue payload from an audit result and its criterion.
+   * @param result - The failing audit result
+   * @param criterion - The criterion definition that was evaluated
+   * @returns Structured issue payload ready for `gh issue create`
+   */
+  createIssueFromAudit(
+    result: AuditResult,
+    criterion: AuditCriterion
+  ): GitHubIssuePayload {
+    return {
+      title: `[UX Audit] ${criterion.title} — ${criterion.severity.toUpperCase()}`,
+      body: this.formatIssueBody(result, criterion),
+      labels: this.suggestLabels(criterion),
+      priority: this.priorityFromSeverity(criterion.severity),
+      criterionId: criterion.id,
+      category: criterion.category,
+    };
+  }
+
+  /**
+   * Create issue payloads for a batch of audit results.
+   * @param results - Array of failing audit results
+   * @param criteria - Map of criterion ID to criterion definition
+   * @returns Array of issue payloads
+   */
+  createBatchIssues(
+    results: AuditResult[],
+    criteria: Map<string, AuditCriterion>
+  ): GitHubIssuePayload[] {
+    const payloads: GitHubIssuePayload[] = [];
+
+    for (const result of results) {
+      const criterion = criteria.get(result.criterionId);
+      if (!criterion) continue;
+      payloads.push(this.createIssueFromAudit(result, criterion));
+    }
+
+    return payloads;
+  }
+
+  /**
+   * Format the issue body with structured markdown sections.
+   * Includes problem description, evidence, expected behavior, and acceptance criteria.
+   * @param result - The audit result containing findings
+   * @param criterion - The criterion that was violated
+   * @returns Markdown-formatted issue body
+   */
+  formatIssueBody(result: AuditResult, criterion: AuditCriterion): string {
+    const wcagLine = criterion.wcagRef
+      ? `\n**WCAG Reference:** ${criterion.wcagRef}`
+      : "";
+
+    return `## Problem
+
+**Criterion:** ${criterion.title}
+**Source:** ${criterion.source}
+**Category:** ${criterion.category}
+**Severity:** ${criterion.severity}
+**Score:** ${result.score}/10 (confidence: ${(result.confidence * 100).toFixed(0)}%)${wcagLine}
+
+${criterion.description}
+
+## Evidence
+
+${result.findings}
+
+- **Agent:** ${result.agentId}
+- **Evaluated at:** ${new Date(result.timestamp).toISOString()}
+${result.evidenceId ? `- **Evidence ID:** ${result.evidenceId}` : ""}
+
+## Expected
+
+${result.recommendation}
+
+## Acceptance Criteria
+
+- [ ] The identified issue is resolved
+- [ ] Score for criterion \`${criterion.id}\` is >= 7/10 on re-audit
+- [ ] No regression in related ${criterion.category} criteria
+- [ ] Visual/functional verification passes
+
+## Labels
+
+${this.suggestLabels(criterion).map((l) => `\`${l}\``).join(" ")}
+
+---
+*Auto-generated by Agentic UI/UX Auditor*`;
+  }
+
+  /**
+   * Suggest labels for a GitHub issue based on the criterion's category and severity.
+   * @param criterion - The audit criterion
+   * @returns Array of label strings
+   */
+  suggestLabels(criterion: AuditCriterion): string[] {
+    const labels: string[] = ["ux-audit"];
+
+    // Severity label
+    labels.push(`severity:${criterion.severity}`);
+
+    // Category-based labels
+    const categoryLabelMap: Partial<Record<AuditCategory, string>> = {
+      accessibility: "a11y",
+      contrast: "a11y",
+      "touch-target": "a11y",
+      aria: "a11y",
+      "screen-reader": "a11y",
+      color: "design-system",
+      typography: "design-system",
+      spacing: "design-system",
+      elevation: "design-system",
+      responsive: "responsive",
+      animation: "performance",
+      loading: "performance",
+      "error-state": "ux",
+      feedback: "ux",
+      interaction: "ux",
+    };
+
+    const mapped = categoryLabelMap[criterion.category];
+    if (mapped) {
+      labels.push(mapped);
+    }
+
+    // Source label
+    if (criterion.source === "wcag") {
+      labels.push("wcag");
+    }
+
+    // Priority flag for critical items
+    if (criterion.severity === "critical") {
+      labels.push("priority:critical");
+    }
+
+    return [...new Set(labels)];
+  }
+
+  /**
+   * Map audit severity to issue priority.
+   * @param severity - The audit severity level
+   * @returns Priority string for issue triage
+   */
+  priorityFromSeverity(severity: AuditSeverity): IssuePriority {
+    const mapping: Record<AuditSeverity, IssuePriority> = {
+      critical: "critical",
+      major: "high",
+      minor: "medium",
+      info: "low",
+    };
+    return mapping[severity];
+  }
+
+  /**
+   * Generate a PR description from a fix plan.
+   * Includes structured sections for what was fixed, criteria addressed, and before/after.
+   * @param fixPlan - The planned fix with steps and expected outcomes
+   * @returns Markdown-formatted PR body
+   */
+  generatePRDescription(fixPlan: FixPlan): string {
+    const criteriaList = fixPlan.criteriaIds
+      .map((id) => `- \`${id}\``)
+      .join("\n");
+
+    const stepsList = fixPlan.steps
+      .map((step, i) => `${i + 1}. ${step}`)
+      .join("\n");
+
+    return `## Summary
+
+${fixPlan.summary}
+
+## Criteria Addressed
+
+${criteriaList}
+
+## Changes Made
+
+${stepsList}
+
+## Before / After
+
+### Before
+${fixPlan.before}
+
+### After (Expected)
+${fixPlan.after}
+
+## Estimated Effort
+
+~${fixPlan.estimatedHours}h
+
+## Verification
+
+- [ ] Re-run UX audit on affected criteria
+- [ ] All addressed criteria score >= 7/10
+- [ ] No regressions in related categories
+- [ ] Visual review in target viewports
+
+---
+*Generated by Agentic UI/UX Auditor*`;
+  }
+
+  /**
+   * Create a CI gate configuration with the given threshold.
+   * @param threshold - Minimum overall score (0-100) to pass
+   * @returns CI gate configuration object
+   */
+  createCIGateConfig(threshold: number): CIGateConfig {
+    return {
+      minOverallScore: Math.max(0, Math.min(100, threshold)),
+      blockOnCriticalFail: true,
+      allowedFailures: { major: 2, minor: 5 },
+      reportFormat: "sarif",
+    };
+  }
+}
+
+// ── Pipeline Functions ────────────────────────────────────────
+
+/**
+ * Pipeline function that transforms an AuditReport into structured GitHub issues.
+ * Filters failures by severity, groups by category, and returns payloads
+ * ready for `gh issue create`.
+ *
+ * @param report - The complete audit report
+ * @param criteria - Map of all criteria definitions
+ * @param options - Optional filtering configuration
+ * @returns Array of issue payloads grouped by category
+ */
+export function AuditToGitHub(
+  report: AuditReport,
+  criteria: Map<string, AuditCriterion>,
+  options: {
+    /** Minimum severity to include (defaults to "minor") */
+    minSeverity?: AuditSeverity;
+    /** Only include these categories (empty = all) */
+    categories?: AuditCategory[];
+  } = {}
+): GitHubIssuePayload[] {
+  const { minSeverity = "minor", categories } = options;
+  const bridge = new GitHubBridge();
+
+  const severityOrder: Record<AuditSeverity, number> = {
+    critical: 4,
+    major: 3,
+    minor: 2,
+    info: 1,
+  };
+  const minSeverityLevel = severityOrder[minSeverity];
+
+  // Filter results: only failures above severity threshold
+  const failures = report.results.filter((result) => {
+    if (result.status !== "fail" && result.status !== "warn") return false;
+
+    const criterion = criteria.get(result.criterionId);
+    if (!criterion) return false;
+
+    // Severity filter
+    if (severityOrder[criterion.severity] < minSeverityLevel) return false;
+
+    // Category filter
+    if (categories && categories.length > 0) {
+      if (!categories.includes(criterion.category)) return false;
+    }
+
+    return true;
+  });
+
+  // Sort by severity (critical first), then by score (lowest first)
+  failures.sort((a, b) => {
+    const critA = criteria.get(a.criterionId);
+    const critB = criteria.get(b.criterionId);
+    if (!critA || !critB) return 0;
+
+    const sevDiff = severityOrder[critB.severity] - severityOrder[critA.severity];
+    if (sevDiff !== 0) return sevDiff;
+
+    return a.score - b.score;
+  });
+
+  return bridge.createBatchIssues(failures, criteria);
+}
+
+/**
+ * Generate a complete PR body from a fix plan, suitable for `gh pr create --body`.
+ * Convenience wrapper around GitHubBridge.generatePRDescription.
+ *
+ * @param fixPlan - The fix plan with steps, criteria, and before/after
+ * @returns Markdown string for the PR body
+ */
+export function PRTemplate(fixPlan: FixPlan): string {
+  const bridge = new GitHubBridge();
+  return bridge.generatePRDescription(fixPlan);
+}
