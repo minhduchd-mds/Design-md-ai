@@ -1,95 +1,81 @@
-# Open Source Guide
+# Hướng dẫn Open Source
 
-Welcome to **Desygn AI** — the open-source Design Intelligence Engine.
+Chào mừng bạn đến với **Desygn AI** — Design Intelligence Engine mã nguồn mở.
 
-## What is Desygn AI?
+## Desygn AI là gì?
 
-Desygn AI is a Figma plugin and web workspace that transforms design files into production-ready code using AI-powered multi-agent pipelines. It bridges the gap between design and development with automated quality validation.
+Desygn AI là Figma plugin và web workspace biến thiết kế thành code production-ready bằng AI multi-agent pipeline. Phiên bản v5 tích hợp hệ thống Agentic UI/UX Auditor tự học — 8 agent chuyên biệt đánh giá, sửa lỗi, và cải thiện thiết kế liên tục.
 
-## Architecture Overview
+## Kiến trúc v5
 
-The system is organized into 7 layers:
+### Figma Plugin Layer
+- Figma sandbox (no DOM, no fetch) — chỉ Figma API
+- Serializer v3: `inferredRole`, `touchTargetCompliant`, `contrastRatio`, `responsiveBehavior`
+- Giao tiếp qua typed `PluginMessage` (postMessage)
 
-### Input Layer
-- Figma (via MCP connection)
-- Screenshots (Playwright capture)
-- Manual Spec (Design.md format)
-- Git Repo (sync and PR generation)
-- Design System Registry (multi-DS hub)
-
-### Memory Layer
-- AgentMemory (4-tier persistent memory)
-- Project Memory (per-project context)
-- Design System Memory (pattern recognition)
-- BM25 Search (fast text retrieval)
-- IndexedDB / Server storage (persistence)
-
-### Analysis Layer
-- DesignAnalyzer (6-dimension scoring)
-- Accessibility Audit (WCAG 2.2 compliance)
-- Mobile Analyzer (viewport + touch targets)
-- Framework Detector (auto-detect tech stack)
-- Design-System Drift Detector (cross-system analysis)
-
-### Shannon Engine (Multi-Agent Pipeline)
-- Analyzer Agent (Groq 8B, fast pattern detection)
-- Generator Agent (Groq 70B, code synthesis)
-- Validator Agent (Groq 8B, quality gates)
-- Optimizer Agent (Groq 8B, token efficiency)
-
-### Provider Router
-- Groq Fast Validation (8B at 40ms TTFT)
-- GPT Structured Output (complex generation)
-- Claude Long Reasoning (deep analysis)
-- Local/Self-hosted Model (privacy-first)
-
-### Generation Layer
-- Design.md (structured handoff format)
-- React TSX (production components)
-- Vue SFC (Single File Components)
-- Svelte 5 (runes syntax)
-- Flutter/React Native (mobile)
-- GitHub PR (automated pull requests)
-
-### Platform Layer
-- Template Marketplace (search, install, publish)
-- Multi-DS Hub (cross-design-system management)
-- Plugin SDK (extension system)
-- Collaboration CRDT (real-time multi-user)
-
-### Enterprise Layer
-- SSO/SAML authentication
-- RBAC (role-based access control)
-- Audit Logs (compliance tracking)
-- Self-hosted editions (Community/Team/Enterprise)
-- License management
-- Encrypted backups
-
-## Getting Started
-
-```bash
-git clone https://github.com/minhduchd-mds/Design-md-ai.git
-cd Design-md-ai
-npm install
-npm run dev        # Plugin + UI dev mode
-npm run web:dev    # Web workspace
-npm test           # Run 105+ tests
+### Web Application Layer
+```
+web/src/
+├── ai-layer/           AI experiment orchestration
+├── app-shell/          Toast, theme, global config
+├── auth/               Session controller + TTL watchdog
+├── chat-engine/        AI chat + provider abstraction
+├── design-engine/      Design.md generation + validation
+├── workspace-store/    Reactive state (useSyncExternalStore)
+└── ux-checklist/       Agentic UI/UX Auditor v5
 ```
 
-## How to Help
+### Agent Pipeline
+```
+Figma Plugin ──scan──▶ DesignAuditAgent ──▶ ScoreAgent ──▶ RecommendAgent
+                            │                    │               │
+                            ▼                    ▼               ▼
+                     AccessibilityAgent   DesignSystemAgent  FixPlannerAgent
+                            │                    │               │
+                            ▼                    ▼               ▼
+                     IssueWriterAgent     MemoryAgent        CIGate
+```
 
-- **Good First Issues**: Look for the `good-first-issue` label
-- **Documentation**: Improve guides, add examples
-- **Testing**: Write tests for uncovered modules
-- **Translations**: Help localize the UI
-- **Bug Reports**: File detailed issues with reproduction steps
+### Intelligence Layer
+- **Shannon Engine** — Multi-agent orchestrator (6 agents)
+- **GOAP Planner** — A* search cho optimal audit ordering
+- **Evidence Memory** — HNSW vector search + sigmoid decay
+- **PII Detection** — Vietnamese CCCD/CMND/phone, credit cards, SSN
 
-## Community
+### Self-Learning Loop
+1. Agent đánh giá → `AuditResult`
+2. ScoreAgent hiệu chỉnh Bayesian với historical evidence
+3. LearningLoop lưu vào Evidence Memory (HNSW)
+4. User feedback điều chỉnh trọng số criterion
+5. Sigmoid decay trên evidence chưa validate
+6. Audit tiếp theo dùng calibrated weights → chính xác hơn
 
-- GitHub Issues: Bug reports and feature requests
-- GitHub Discussions: Questions and ideas
-- Pull Requests: Code contributions
+## Bắt đầu
+
+```bash
+git clone https://github.com/designready-ai/designready-ai.git
+cd designready-ai
+npm install
+npm run dev        # Plugin + UI dev mode
+npm run dev:web    # Web workspace
+npm test           # 1192 tests / 69 files
+```
+
+## Đóng góp
+
+- **Good First Issues**: Tìm label `good-first-issue`
+- **Tài liệu**: Cải thiện guides, thêm ví dụ
+- **Testing**: Viết tests cho modules chưa cover
+- **Agent mới**: Implement interface từ `agents.ts`
+- **Criteria mới**: Thêm vào `BUILT_IN_CRITERIA`
+- **Bug Reports**: Tạo issue chi tiết với reproduction steps
+
+## Cộng đồng
+
+- GitHub Issues — Bug reports và feature requests
+- GitHub Discussions — Câu hỏi và ý tưởng
+- Pull Requests — Đóng góp code
 
 ## License
 
-MIT License. See [LICENSE](./LICENSE) for details.
+MIT License. Xem [LICENSE](./LICENSE) để biết chi tiết.

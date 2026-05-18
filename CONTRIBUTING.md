@@ -1,51 +1,70 @@
-# Contributing to Desygn AI
+# Hướng dẫn đóng góp (Contributing)
 
-Thank you for your interest in contributing to Desygn AI! This guide will help you get started.
+Cảm ơn bạn đã quan tâm đến Desygn AI! Hướng dẫn này giúp bạn bắt đầu đóng góp.
 
-## Prerequisites
+## Yêu cầu
 
 - Node.js 20+
 - npm 10+
 - Git
 
-## Getting Started
+## Bắt đầu
 
 ```bash
-git clone https://github.com/minhduchd-mds/Design-md-ai.git
-cd Design-md-ai
+git clone https://github.com/designready-ai/designready-ai.git
+cd designready-ai
 npm install
-npm run dev
+npm run dev        # Watch mode (UI + plugin)
+npm run dev:web    # Web workspace dev server
 ```
 
-## Project Structure
+## Cấu trúc dự án
 
 ```
-plugin/     Figma sandbox (no DOM, no fetch). Only Figma API.
-ui/         React iframe (no figma.*). Only parent.postMessage.
-web/        Marketing site + workspace app (Vite + React)
-shared/     Shared types and utilities
+plugin/              Figma sandbox (no DOM, no fetch). Chỉ Figma API.
+ui/                  React iframe (no figma.*). Chỉ parent.postMessage.
+shared/              Shared types (PluginMessage, SerializedNode) + utilities
+web/src/
+├── ai-layer/        AI experiment orchestration (multi-model, A/B testing)
+├── app-shell/       Toast, theme, global config
+├── auth/            Session controller + TTL watchdog
+├── chat-engine/     AI chat với provider abstraction
+├── design-engine/   Design.md generation + validation
+├── workspace-store/ Reactive state (useSyncExternalStore)
+├── ux-checklist/    Agentic UI/UX Auditor v5
+│   ├── index.ts       Orchestrator + CriteriaRegistry + LearningLoop
+│   ├── agents.ts      5 specialized agents
+│   ├── github.ts      GitHub Issue/PR bridge
+│   ├── stream.ts      Real-time audit streaming + React hook
+│   ├── memory.ts      Cross-project learning + persistence
+│   └── ci.ts          CI gate + SARIF + Deploy gate
+└── lib/
+    ├── shannonEngine.ts    Multi-agent orchestrator
+    ├── evidenceMemory.ts   HNSW vector search + sigmoid decay
+    ├── goapPlanner.ts      Goal-Oriented Action Planning (A*)
+    └── designAnalyzer.ts   WCAG scoring + design debt
 ```
 
-## Development Commands
+## Lệnh phát triển
 
-| Command | Description |
-|---------|-------------|
+| Lệnh | Mô tả |
+|-------|--------|
 | `npm run dev` | Watch mode (UI + plugin) |
-| `npm run web:dev` | Web workspace dev server |
-| `npm run build` | Production build |
-| `npm test` | Run all tests (Vitest) |
+| `npm run dev:web` | Web workspace dev server |
+| `npm run build` | Production build → dist/ |
+| `npm test` | Chạy 1192 tests (Vitest) |
 | `npm run lint` | ESLint 9 |
 
-## Branch Naming
+## Quy ước đặt tên nhánh
 
-- `feat/short-description` - New features
-- `fix/short-description` - Bug fixes
-- `docs/short-description` - Documentation
-- `refactor/short-description` - Code refactoring
+- `feat/mo-ta-ngan` — Tính năng mới
+- `fix/mo-ta-ngan` — Sửa lỗi
+- `docs/mo-ta-ngan` — Tài liệu
+- `refactor/mo-ta-ngan` — Tái cấu trúc code
 
-## Commit Convention
+## Quy ước commit
 
-We use conventional commits:
+Sử dụng conventional commits:
 
 ```
 feat: add mobile viewport analysis
@@ -55,41 +74,65 @@ refactor: extract ComparePanel from main.tsx
 test: add Shannon engine unit tests
 ```
 
-## Code Style
+## Quy tắc code
 
+### Bắt buộc
 - TypeScript strict mode
-- CSS Modules (`.module.scss`) for component styles
-- Never call Figma API in loops (batch everything)
-- Never use `findAll()` (use `findAllWithCriteria()`)
-- Scoring modules: pure functions, no side effects
-- Sanitize prompt text via `sanitize.ts`
+- CSS Modules (`.module.scss`) cho component styles
+- Dark theme only, gap-based layout
+- Không gọi Figma API trong loops — batch tất cả
+- Không dùng `findAll()` — dùng `findAllWithCriteria()` trên `currentPage`
+- Scoring modules: pure functions, không side effects, không Figma API
+- Sanitize prompt text qua `sanitize.ts` (phòng chống injection)
+- Serializer: kiểm tra `isMixed()` trước khi đọc mixed properties. Max depth 15
+
+### Agent System
+- Thêm serializer field mới: `types.ts` → `serializer.ts` → `prompt-compact.ts`
+- Agent mới: implement interface từ `agents.ts`, đăng ký trong `index.ts`
+- Criteria mới: thêm vào `BUILT_IN_CRITERIA` trong `index.ts`
+- Evidence Memory: luôn gọi `configure()` trước `storeEvidence()`
 
 ## Testing
 
-All new features must include tests:
+Tất cả tính năng mới phải có tests:
 
 ```bash
-npm test              # Run all tests
+npm test              # Chạy tất cả tests
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
 
-## Pull Request Process
+Hiện tại: **1192 tests** trên **69 files** — đảm bảo không regression.
 
-1. Fork the repository
-2. Create a feature branch from `main`
-3. Make your changes with tests
-4. Ensure `npm test` and `npm run lint` pass
-5. Submit a PR with a clear description
-6. Wait for review
+## Quy trình Pull Request
 
-## Architecture Notes
+1. Fork repository
+2. Tạo feature branch từ `main`
+3. Viết code + tests
+4. Đảm bảo `npm test` và `npm run lint` pass
+5. Submit PR với mô tả rõ ràng
+6. Chờ review
 
-- **Shannon Engine**: Multi-agent pipeline (Analyzer, Generator, Validator, Optimizer)
-- **Provider Router**: Smart model selection (Groq 8B for validation, 70B for generation)
-- **Communication**: Typed `PluginMessage` via postMessage between plugin and UI
-- **State**: React hooks with localStorage persistence
+## Kiến trúc Agent Pipeline
 
-## Questions?
+```
+Figma Plugin ──scan──▶ DesignAuditAgent ──▶ ScoreAgent ──▶ RecommendAgent
+                            │                    │               │
+                            ▼                    ▼               ▼
+                     AccessibilityAgent   DesignSystemAgent  FixPlannerAgent
+                            │                    │               │
+                            ▼                    ▼               ▼
+                     IssueWriterAgent     MemoryAgent        CIGate
+```
 
-Open a GitHub Discussion or Issue for help.
+### Self-Learning Loop
+1. Agent đánh giá criterion → `AuditResult`
+2. `ScoreAgent` hiệu chỉnh với Bayesian historical evidence
+3. `LearningLoop` lưu vào Evidence Memory (HNSW)
+4. User feedback (agree/disagree/irrelevant) điều chỉnh trọng số
+5. Sigmoid decay trên evidence chưa validate
+6. Audit tiếp theo dùng calibrated weights → điểm chính xác hơn
+
+## Câu hỏi?
+
+Mở GitHub Discussion hoặc Issue để được hỗ trợ.

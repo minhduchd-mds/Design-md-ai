@@ -1,131 +1,158 @@
-# Changelog
+# Nhật ký thay đổi (Changelog)
 
-All notable changes to Desygn AI are documented in this file.
+Tất cả thay đổi quan trọng của Desygn AI được ghi nhận tại đây.
 
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Định dạng theo [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Phiên bản theo [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [5.0.0] — 2026-05-18
+
+Kiến trúc v5: Agentic UI/UX Auditor — hệ thống đa agent tự học với 8 agent chuyên biệt, tích hợp GitHub/CI, và streaming real-time.
+
+### Thêm mới
+- **Agentic UI/UX Auditor** — 8 agent chuyên biệt hoạt động theo pipeline:
+  - `DesignAuditAgent` — Phân tích thiết kế 6 chiều (Naming, Structure, Tokens, Meta, Completeness, Variants)
+  - `AccessibilityAgent` — Kiểm tra WCAG 2.2, touch targets, ARIA, contrast ratio
+  - `DesignSystemAgent` — Đánh giá tuân thủ design system (Material3, Ant Design, VTS)
+  - `ScoreAgent` — Hiệu chỉnh điểm với Bayesian + Evidence Memory
+  - `RecommendAgent` — Gợi ý cải thiện theo mức ưu tiên
+  - `FixPlannerAgent` — Tạo kế hoạch sửa lỗi chi tiết (effort, impact, dependencies)
+  - `IssueWriterAgent` — Tự động tạo GitHub Issues từ kết quả audit
+  - `MemoryAgent` — Học tập liên dự án với HNSW vector search
+- **CriteriaRegistry** — 19 tiêu chí tích hợp sẵn, hỗ trợ thêm/xóa tiêu chí động
+- **Self-Learning Loop** — Sigmoid decay, user feedback, weight adjustment tự động
+- **Real-time Streaming** (`stream.ts`) — AuditStream events, StreamBuffer 60fps, React hook `useAuditStream`
+- **GitHub Bridge** (`github.ts`) — Tạo Issues, batch issues, PR description, label suggestions
+- **CI Gate** (`ci.ts`) — Score threshold blocking, SARIF v2.1.0, GitHub Actions workflow generation
+- **Deploy Gate** — Vercel/Netlify blocking + Slack webhook notifications
+- **Cross-Project Learning** (`memory.ts`) — Weight aggregation, pattern detection, GDPR forget
+- **PR Automation** — Branch names, commit messages, merge checklists tự động
+
+### Thêm mới (Kiến trúc)
+- **Modular Architecture v5** — Tách `main.tsx` (4200+ dòng) thành 6 module:
+  - `app-shell/` — Toast, theme, global config
+  - `workspace-store/` — Reactive state (useSyncExternalStore)
+  - `chat-engine/` — AI chat với provider abstraction
+  - `design-engine/` — Design.md generation + validation
+  - `auth/` — Session controller + TTL watchdog
+  - `ai-layer/` — AI experiment orchestration (multi-model, A/B testing)
+- **SplitView upgrade** — Mobile panel switch, summary bar, word count, screen completion stats
+- **splitViewHelpers.ts** — Pure functions (slugify, combineScreens, extractHeadings, countWords)
+- 1192 tests trên 69 files (tăng từ 1047)
+
+### Thay đổi
+- Pipeline agent: Figma Plugin → DesignAudit → Score → Recommend → FixPlanner → IssueWriter → Memory → CIGate
+- Evidence Memory snapshot v1 → v2 (tương thích ngược)
+- Cấu trúc thư mục: `.claude/` configs chuyển ra `.vscode/` và `docs/`
+
 ## [2.0.0] — 2026-05-17
 
-Major v3 architecture upgrade: Self-Learning Agent, GOAP Planning, PII Protection, and full accessibility intelligence.
+Nâng cấp kiến trúc v3: Self-Learning Agent, GOAP Planning, PII Protection, và accessibility intelligence.
 
-### Added
+### Thêm mới
 - **Self-Learning Agent v3** (`evidenceMemory.ts`) — HNSW vector search, sigmoid decay, StatsCache O(1), garbage collection
-- **GOAP Planner** (`goapPlanner.ts`) — A* search over action space, plan caching with LRU, dynamic cost functions
-- **GOAP ↔ Shannon Bridge** (`goapShannonBridge.ts`) — connects 13 GOAP actions to 10 Shannon agents with replanning
+- **GOAP Planner** (`goapPlanner.ts`) — A* search over action space, plan caching với LRU, dynamic cost functions
+- **GOAP ↔ Shannon Bridge** (`goapShannonBridge.ts`) — Kết nối 13 GOAP actions với 10 Shannon agents, replanning
 - **PII Detection Engine** (`piiDetection.ts`) — Luhn credit card, SSN, Vietnamese CCCD/CMND/phone, smart redaction
-- **Usage Analytics** (`usageAnalytics.ts`) — 4 SaaS tiers, feature flags with rollout %, quota enforcement
-- **Shannon Engine v3** — 2 new agents (a11y-auditor, evidence-curator), PII scanning, evidence storage
-- **Collaboration Engine v3** — PII protection on CRDT ops (block/redact/warn), evidence tracking
+- **Usage Analytics** (`usageAnalytics.ts`) — 4 SaaS tiers, feature flags với rollout %, quota enforcement
+- **Shannon Engine v3** — 2 agent mới (a11y-auditor, evidence-curator), PII scanning, evidence storage
+- **Collaboration Engine v3** — PII protection trên CRDT ops (block/redact/warn), evidence tracking
 - **Design Analyzer v3** — WCAG 2.2 touch targets, ARIA validation, contrast ratios, PII exposure
 - **Figma Serializer v3** — `inferredRole`, `touchTargetCompliant`, `contrastRatio`, `hasInteractions`, `responsiveBehavior`
 - **E2E Pipeline Tests** — 13 integration tests + 22 GOAP bridge tests
-- 890 new tests (total: 1047 across 61 files)
+- 890 tests mới (tổng: 1047 trên 61 files)
 
-### Changed
-- Evidence Memory snapshot version v1 → v2 (backward-compatible)
+### Thay đổi
+- Evidence Memory snapshot version v1 → v2 (tương thích ngược)
 - Touch target threshold 44×44 → 24×24 (WCAG 2.5.8)
 - Shannon Engine agents 4 → 6
 
-### Security
-- Updated `dompurify` 3.4.3 → 3.4.4 (XSS patch)
-- Removed deprecated `@types/dompurify`
-- Updated `vite` 8.0.5 → 8.0.13, `vitest` 4.1.1 → 4.1.6
-- All dependencies at latest minor (0 npm audit vulnerabilities)
+### Bảo mật
+- Cập nhật `dompurify` 3.4.3 → 3.4.4 (XSS patch)
+- Xóa deprecated `@types/dompurify`
+- Cập nhật `vite` 8.0.5 → 8.0.13, `vitest` 4.1.1 → 4.1.6
+- Tất cả dependencies ở phiên bản mới nhất (0 npm audit vulnerabilities)
 
 ## [1.1.5] — 2026-04-28
 
-Auto Layout Fix overhaul to comply with the user-stated spec: only the outermost user-selected frame keeps FIXED sizing, everything inside must be FILL or HUG. The previous implementation set every child to FIXED pixel widths, which broke responsive intent and produced brittle layouts.
+Sửa lỗi Auto Layout Fix: chỉ frame ngoài cùng giữ FIXED sizing, tất cả bên trong phải là FILL hoặc HUG.
 
-### Fixed
-- **Children of converted frames are no longer set to FIXED pixel sizes.** New `decideChildSizing` helper picks FILL on the cross-axis when a child matches its parent's inner cross size, otherwise HUG. FIXED is used only as a fallback for shapes that would collapse to 0×0 (RECTANGLE/ELLIPSE/VECTOR with no children).
-- **Frame self-sizing now distinguishes outermost vs nested.** Only `selection[0]` (the user-selected outermost frame) keeps FIXED+original size. Non-outermost candidates either inherit from their parent's Auto Layout (via `decideChildSizing` relative to the parent) or default to HUG-HUG, which gets overridden when the parent's apply-step runs its own children loop. An `origSizes` map caches pre-conversion frame sizes so a parent's FILL detection uses each child's original dimensions, not its post-HUG shrunken size.
-- **Counter-axis (cross-axis) alignment is now detected correctly.** The previous `detectAlignment` mixed primary and counter axes and had a documented "simplified" `containerCross` that was wrong for VERTICAL direction. Replaced with separated `detectPrimaryAlignment` and `detectCounterAlignment` helpers that compute per-axis math correctly.
-- **"Value-pinned-right" patterns are now skipped instead of converted destructively.** When SPACE_BETWEEN is geometrically detected (first child at start, last at end) but gaps between adjacent children are very uneven (>8px spread), the conversion would reflow the children — for example, centering a label that was originally next to its icon. New `gapVariance` helper detects this; `analyzeFrame` now skips with the reason `Uneven gaps suggest a 'value-pinned-right' pattern — group related children manually first, then re-scan`.
+### Sửa lỗi
+- Children của converted frames không còn bị set FIXED pixel sizes
+- Frame self-sizing phân biệt outermost vs nested
+- Counter-axis alignment phát hiện chính xác
+- Pattern "value-pinned-right" được skip thay vì convert destructively
 
-### Changed
-- Auto Layout Fix UI description and success message set realistic expectations: *"Best effort — Cmd+Z if a layout shifts unexpectedly."* README has a matching limitations note explaining that patterns like *icon + label tightly grouped + value pinned right* need a wrapper group that this tool intentionally does not create.
-
-### Added
-- 30 pure-function unit tests covering `canHugContent`, `decideChildSizing` (HORIZONTAL + VERTICAL), `detectPrimaryAlignment` (MIN / CENTER / MAX / SPACE_BETWEEN incl. n<3 ambiguity), `detectCounterAlignment` (MIN / CENTER / MAX with padding), and `gapVariance` (equal gaps, uneven value-pinned-right, vertical direction).
+### Thêm mới
+- 30 unit tests cho `canHugContent`, `decideChildSizing`, `detectPrimaryAlignment`, `detectCounterAlignment`, `gapVariance`
 
 ## [1.1.4] — 2026-04-28
 
-Addresses the two specific issues raised in the v1.1.3 Figma Community re-review (request #1873667).
+Sửa 2 lỗi từ Figma Community re-review (request #1873667).
 
-### Fixed
-- **Rescan button did not actually rescan.** Clicking Rescan re-ran scoring on the cached `SerializedNode` instead of re-fetching the live selection from the plugin sandbox, so any Figma edits made between Scan and Rescan were invisible. Rescan now triggers `refreshSelection()` (mirroring the post-Quick-Fix flow) before re-running the scan; the initial-scan path is unchanged.
-- **"Delete N empty layers" silently reported "0 nodes deleted".** Empty frames inside Component Instances were being flagged as deletable, but instance children are read-only in Figma, so `node.remove()` threw and was silently caught. The empty-frame walk in `scoring-meta.ts` now applies the same `isInInstance` guard that hidden-layer detection already used, so instance-internal empty frames are not flagged as actionable.
+### Sửa lỗi
+- Rescan button giờ re-fetch live selection thay vì dùng cached data
+- "Delete N empty layers" không còn đếm instance children (read-only trong Figma)
 
 ## [1.1.3] — 2026-04-28
 
-Restores manifest fields required for the Figma Community publish to update the existing listing rather than create a new plugin entry.
+Khôi phục manifest fields cần thiết cho Figma Community publish.
 
-### Fixed
-- **`manifest.json` was missing the publish-side `id` and `networkAccess`.** The public repo's manifest historically used `"id": "designready-ai"` (a development identifier), but the version originally submitted to Figma Community used the numeric Community resource ID `"1619643293052051000"` plus `"networkAccess": { "allowedDomains": ["none"] }`. v1.1.2 added `documentAccess: "dynamic-page"` but did not restore the other two fields. Re-publishing without them would cause Figma to treat the upload as a new plugin instead of an update to the existing review submission. Both fields are now restored.
+### Sửa lỗi
+- `manifest.json` khôi phục `id` và `networkAccess` cho Community listing
 
 ## [1.1.2] — 2026-04-28
 
-Compatibility fix surfaced by Figma Community review: the plugin used synchronous node lookups that throw in dynamic-page documentAccess mode.
+Sửa tương thích với dynamic-page documentAccess mode.
 
-### Fixed
-- **Synchronous `figma.getNodeById()` calls broke under `documentAccess: "dynamic-page"`.** Four call sites (rename apply, divider convert, delete-nodes, jump-to-node) threw `Cannot call with documentAccess: dynamic-page. Use figma.getNodeByIdAsync instead.` when the reviewer tested the plugin in dynamic-page mode. All four migrated to `figma.getNodeByIdAsync`; `convertDividers` is now async and awaited from the message handler.
+### Sửa lỗi
+- 4 call sites migrate từ `figma.getNodeById()` → `figma.getNodeByIdAsync()`
 
-### Changed
-- `manifest.json` opts in to `"documentAccess": "dynamic-page"` so the plugin explicitly declares dynamic-page compatibility and any future regression is caught immediately.
+### Thay đổi
+- `manifest.json` khai báo `"documentAccess": "dynamic-page"`
 
 ## [1.1.1] — 2026-04-22
 
-Completion patch for v1.1.0 — a post-release audit caught that the viewport gap fix was partial.
+Hoàn thiện viewport gap fix cho v1.1.0.
 
-### Fixed
-- **Viewport gap fix was incomplete in v1.1.0.** The scoring-meta module (`ui/lib/scoring-meta.ts`) carried a third hand-duplicated copy of the viewport cascade that the P3.3 deduplication did not catch. Consequence: frames between 1025 and 1199px (iPad Pro landscape at 1180/1194, Bootstrap containers at 1128, mid-desktops at 1100) were still classified as `"unknown"` in Meta scoring and received a score penalty. Fixed by importing `detectViewport` from `shared/viewport.ts` — the shared module is now truly the single source of truth.
-- **README responsive-detection list** was missing `-phone` and `-laptop` suffixes. The code always recognised them; the list now matches.
-
-### Changed
-- Test `scoring-meta.test.ts > "detects unknown viewport"` rewritten as `"classifies mid-desktop widths (1025-1199px) as desktop, no penalty"`. Previous test asserted the buggy behaviour as correct, which is why the bug survived v1.1.0 despite the test suite being green.
+### Sửa lỗi
+- Viewport gap fix hoàn chỉnh — scoring-meta module import `detectViewport` từ `shared/viewport.ts`
+- README responsive-detection list thêm `-phone` và `-laptop` suffixes
 
 ## [1.1.0] — 2026-04-22
 
-Maintenance and quality release based on a full README-vs-code audit. One real bug fix in batch prompts, several documentation corrections, and an expanded responsive detection.
+Bảo trì và nâng chất lượng dựa trên audit README-vs-code.
 
-### Added
-- Responsive-suffix detection now recognises Tailwind-style breakpoints (`xs`, `2xl`, `3xl`) plus `phone` and `laptop` long forms, and an allowlist of common Figma frame widths (`320`, `375`, `428`, `768`, `1024`, `1194`, `1280`, `1440`, `1920`, …). Previously only `desktop|mobile|tablet|sm|md|lg|xl|xxl` were recognised. Single-letter tokens (`s`, `m`, `l`) are deliberately excluded to avoid false positives.
-- `ComponentSet Variants` section in the README documenting the current behaviour (only the Default variant is serialised as a full layout tree) and the Batch Scan workaround for structurally different variants.
-- Mention of the 60% confidence threshold for Auto Layout Fix in the README features list, plus the three possible skip reasons.
-- Dedicated tests for `extractBaseName` (plugin side) and `detectViewport` (shared), covering boundary cases and false-positive safeguards.
-- Vitest config now includes `plugin/**/__tests__/**/*.test.ts` so pure helpers on the plugin side can be covered.
+### Thêm mới
+- Responsive-suffix detection nhận diện Tailwind breakpoints (`xs`, `2xl`, `3xl`) + `phone`, `laptop`
+- Tests cho `extractBaseName` và `detectViewport`
 
-### Fixed
-- **Skill-sync block was duplicated N+1 times in batch prompts.** The block was renamed from `## skill-sync` to `# TASK 2 — Skill Sync` but the regex in `batch-scanner.ts` that stripped per-component blocks still matched the old marker. Result: the Skill Sync block appeared once per component plus once at the end. Now passed through `skipSkillSync` to `scan()` so the block is emitted exactly once, at the end of the batch prompt.
-- **Viewport detection gap for 1025–1199px frames.** Frames in this range (iPad Pro landscape at 1180/1194, Bootstrap containers at 1128, generic mid-desktops at 1100) were classified as `"unknown"` because the logic required `>= 1200` for desktop. Claude received no semantic viewport signal for these. Fixed by treating anything above 1024 as `desktop`; `"unknown"` is now reserved for zero/negative widths.
+### Sửa lỗi
+- Skill-sync block bị duplicate N+1 lần trong batch prompts
+- Viewport detection gap cho frames 1025–1199px
 
-### Changed
-- Viewport classification deduplicated into `shared/viewport.ts`. `detectViewport(width): ViewportType` is now the single source of truth for both plugin and UI sandboxes. Previous hand-duplicated copies (`detectViewportType` in the plugin, `viewportTag` in the UI) have been removed.
-- `README.md` and `CLAUDE.md` corrected for several stale references:
-  - Skill-sync block name (`## skill-sync` → `# TASK 2 — Skill Sync`)
-  - Batch prompt threshold (60+ average, separate from the 75+ standalone gate) is now documented
-  - Test count updated (84 → 105)
-  - Stale claim that `CLAUDE.md` is gitignored replaced with the actual push workflow (`official-updates` → `official/main`)
-- CLAUDE.md compact rewrite. Architecture note extended to document `shared/viewport.ts` as the pattern for pure cross-sandbox utilities.
+### Thay đổi
+- Viewport classification gom vào `shared/viewport.ts` — single source of truth
 
 ## [1.0.0] — 2026-03-26
 
-Initial public release.
+Phiên bản công khai đầu tiên.
 
 - 6-Dimension Scoring (Naming, Structure, Tokens, Meta, Completeness, Variants)
-- Compact prompt generation with self-check and state hints
-- Skill Sync block for Claude-side design system maintenance
-- Design System Profiles with import from Figma Variables, Paint Styles, and local components
-- Batch Mode with atomic build order (atoms → molecules → organisms)
-- Auto Layout Fix with confidence-based analysis
+- Compact prompt generation với self-check và state hints
+- Skill Sync block cho Claude-side design system maintenance
+- Design System Profiles với import từ Figma Variables, Paint Styles, local components
+- Batch Mode với atomic build order (atoms → molecules → organisms)
+- Auto Layout Fix với confidence-based analysis
 - Quick Fixes (rename generic layers, convert dividers, delete hidden/empty nodes)
 - Atomic Detection (atom/molecule/organism classification)
-- Responsive viewport detection from sibling frames
-- Prompt injection protection via sanitisation of layer names and text content
+- Responsive viewport detection từ sibling frames
+- Prompt injection protection qua sanitisation
 
-[Unreleased]: https://github.com/designready-ai/designready-ai/compare/v1.1.5...HEAD
+[Unreleased]: https://github.com/designready-ai/designready-ai/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/designready-ai/designready-ai/compare/v2.0.0...v5.0.0
+[2.0.0]: https://github.com/designready-ai/designready-ai/compare/v1.1.5...v2.0.0
 [1.1.5]: https://github.com/designready-ai/designready-ai/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/designready-ai/designready-ai/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/designready-ai/designready-ai/compare/v1.1.2...v1.1.3
