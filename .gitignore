@@ -17,3 +17,6 @@ public/
 # Test artifacts (should not be committed)
 playwright-report/
 test-results/
+
+# Turborepo
+.turbo/

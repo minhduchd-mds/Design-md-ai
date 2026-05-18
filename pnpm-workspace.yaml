@@ -1,0 +1,6 @@
+packages:
+  # Current single-package structure
+  - "."
+  # Future workspace packages (uncomment when ready to migrate)
+  # - "packages/*"
+  # - "packages/@desygn/*"

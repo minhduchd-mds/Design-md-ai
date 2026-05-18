@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint-staged:
+      glob: "*.{ts,tsx}"
+      run: npx eslint --max-warnings 0 {staged_files}
+    typecheck:
+      exclude: '\.(md|json|scss)$'
+      run: npx tsc --noEmit --skipLibCheck
+
+pre-push:
+  commands:
+    test-affected:
+      run: npx vitest run --reporter=dot
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: sh scripts/check-commit-msg.sh {1}

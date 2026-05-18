@@ -1,0 +1,32 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    // Disabled — ESLint handles linting for now
+    "enabled": false
+  },
+  "files": {
+    "ignore": [
+      "node_modules",
+      "dist",
+      "public",
+      "*.min.js",
+      "package-lock.json"
+    ]
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "all",
+      "semicolons": "always"
+    }
+  }
+}
