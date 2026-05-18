@@ -1,7 +1,7 @@
 {
   "buildCommand": "npm run web:build",
   "outputDirectory": "public",
-  "installCommand": "npm install --prefer-offline",
+  "installCommand": "npm ci",
   "headers": [
     {
       "source": "/(.*)",
