@@ -154,10 +154,8 @@ const { __mockRun: mockRun } = await import("../WorktreeRunner") as unknown as {
 - `RegressionGuardAgent` runs lint → build → test with 120s timeout per step
 - User must approve every patch via `FixApprovalUI` before merge
 
-## Repositories
+## Repository
 - **Origin:** github.com/minhduchd-mds/Design-md-ai
-- **Official:** github.com/designready-ai/designready-ai
-- **Dev:** github.com/Lapse18/designready-ai-plugin
 
 ## IDE Configuration
 See `.vscode/launch.json` for development server configuration.

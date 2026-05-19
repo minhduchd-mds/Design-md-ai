@@ -179,7 +179,7 @@ describe("gitSync", () => {
 
     it("includes comments header", () => {
       const yaml = serializeConfig(DEFAULT_GIT_SYNC_CONFIG);
-      expect(yaml).toContain("# DesignReady.ai Git Sync Configuration");
+      expect(yaml).toContain("# Desygn AI Git Sync Configuration");
       expect(yaml).toContain("# Docs:");
     });
 

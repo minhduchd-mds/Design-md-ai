@@ -38,7 +38,7 @@ export function ExportReportButton({ result, componentName }: ExportReportButton
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `designready-report-${componentName.replace(/\s+/g, "-").toLowerCase()}.json`;
+    a.download = `desygn-report-${componentName.replace(/\s+/g, "-").toLowerCase()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

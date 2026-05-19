@@ -795,10 +795,10 @@ function App() {
   // Projects store — full Project type with scoped context
   const [projects, setProjects] = useState<Project[]>(() => {
     try {
-      const saved = localStorage.getItem("designready.projects-v2");
+      const saved = localStorage.getItem("desygn.projects-v2");
       if (saved) return JSON.parse(saved) as Project[];
       // Migrate from v1 (old ProjectItem format)
-      const v1 = localStorage.getItem("designready.projects-v1");
+      const v1 = localStorage.getItem("desygn.projects-v1");
       if (v1) {
         const old = JSON.parse(v1) as Array<{ id: string; name: string; createdAt: string }>;
         return old.map((p) => ({ ...p, updatedAt: p.createdAt }));
@@ -816,7 +816,7 @@ function App() {
 
   function saveProjects(next: Project[]) {
     setProjects(next);
-    localStorage.setItem("designready.projects-v2", JSON.stringify(next));
+    localStorage.setItem("desygn.projects-v2", JSON.stringify(next));
   }
 
   function addProject() {
@@ -1946,12 +1946,12 @@ function App() {
           onTabChange={setSettingsTab}
           user={user}
           displayName={displayName}
-          onDisplayNameChange={(name) => { setDisplayName(name); localStorage.setItem("designready.display-name", name); }}
+          onDisplayNameChange={(name) => { setDisplayName(name); localStorage.setItem("desygn.display-name", name); }}
           onUpgradePro={upgradeToPro}
           chatTheme={chatTheme}
-          onThemeChange={(t) => { setChatTheme(t); localStorage.setItem("designready.theme", t); }}
+          onThemeChange={(t) => { setChatTheme(t); localStorage.setItem("desygn.theme", t); }}
           groqModel={groqModel}
-          onModelChange={(m) => { setGroqModel(m); localStorage.setItem("designready.model", m); }}
+          onModelChange={(m) => { setGroqModel(m); localStorage.setItem("desygn.model", m); }}
           integrations={integrations}
           onSaveIntegrations={saveIntegrations}
           figmaMcpEndpoint={figmaMcpEndpoint}
@@ -2142,7 +2142,7 @@ function App() {
                             onChange={(e) => {
                               const next = checklistItems.map(r => r.id === row.id ? { ...r, status: e.target.value as ChecklistStatus } : r);
                               setChecklistItems(next);
-                              localStorage.setItem("designready.checklist-v3", JSON.stringify(next));
+                              localStorage.setItem("desygn.checklist-v3", JSON.stringify(next));
                             }}>
                             <option value="untested">— Chưa test</option>
                             <option value="pass">✓ Pass</option>
@@ -2155,7 +2155,7 @@ function App() {
                             onChange={(e) => {
                               const next = checklistItems.map(r => r.id === row.id ? { ...r, score: Math.min(10, Math.max(0, Number(e.target.value))) } : r);
                               setChecklistItems(next);
-                              localStorage.setItem("designready.checklist-v3", JSON.stringify(next));
+                              localStorage.setItem("desygn.checklist-v3", JSON.stringify(next));
                             }}/>
                         </td>
                         <td className="col-desc">{row.expected || row.note}</td>
@@ -2264,7 +2264,7 @@ function App() {
                         const newRow: ChecklistRow = { id: `custom-${Date.now()}`, source: "vts", category: "", component: "", section: "", criterion: "", expected: "", note: "", tag: "opt", type: "UI", status: "untested", score: 0 };
                         const next = [...checklistItems, newRow];
                         setChecklistItems(next);
-                        localStorage.setItem("designready.checklist-v3", JSON.stringify(next));
+                        localStorage.setItem("desygn.checklist-v3", JSON.stringify(next));
                       }}>+ Thêm tiêu chí</button>
                     </div>
                     <div style={{ overflowY: "auto", maxHeight: 280 }}>
@@ -2278,14 +2278,14 @@ function App() {
                                 <input type="text" value={row.category} placeholder="Danh mục..." style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, padding: "2px 6px", color: "#f1f3f5", width: "100%", fontSize: 12 }} onChange={(e) => {
                                   const next = checklistItems.map(r => r.id === row.id ? { ...r, category: e.target.value } : r);
                                   setChecklistItems(next);
-                                  localStorage.setItem("designready.checklist-v3", JSON.stringify(next));
+                                  localStorage.setItem("desygn.checklist-v3", JSON.stringify(next));
                                 }} />
                               ) : row.category}</td>
                               <td>{row.id.startsWith("custom-") ? (
                                 <input type="text" value={row.criterion} placeholder="Nhập tiêu chí..." style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, padding: "2px 6px", color: "#f1f3f5", width: "100%", fontSize: 12 }} onChange={(e) => {
                                   const next = checklistItems.map(r => r.id === row.id ? { ...r, criterion: e.target.value } : r);
                                   setChecklistItems(next);
-                                  localStorage.setItem("designready.checklist-v3", JSON.stringify(next));
+                                  localStorage.setItem("desygn.checklist-v3", JSON.stringify(next));
                                 }} />
                               ) : row.criterion}</td>
                               <td><span className={`badge-type badge-${row.type.toLowerCase()}`}>{row.type}</span></td>
@@ -2293,7 +2293,7 @@ function App() {
                               <td><button type="button" className="btn-trash" onClick={() => {
                                 const next = checklistItems.filter(r => r.id !== row.id);
                                 setChecklistItems(next);
-                                localStorage.setItem("designready.checklist-v3", JSON.stringify(next));
+                                localStorage.setItem("desygn.checklist-v3", JSON.stringify(next));
                               }}>🗑</button></td>
                             </tr>
                           ))}
@@ -2379,7 +2379,7 @@ function App() {
               <div className="setup-modal-footer">
                 <button type="button" className="btn-outline" onClick={() => setSetupModalOpen(false)}>Hủy</button>
                 <button type="button" className="btn-primary" onClick={() => {
-                  localStorage.setItem("designready.setup-datasource", JSON.stringify(setupDatasource));
+                  localStorage.setItem("desygn.setup-datasource", JSON.stringify(setupDatasource));
                   setSetupModalOpen(false);
                   showToast("Đã lưu cài đặt thành công!");
                 }}>✓ Lưu cài đặt</button>
@@ -2693,7 +2693,7 @@ function App() {
               onClick={() =>
                 setChatTheme((t) => {
                   const next = t === "dark" ? "light" : "dark";
-                  localStorage.setItem("designready.theme", next);
+                  localStorage.setItem("desygn.theme", next);
                   return next;
                 })
               }
@@ -2894,7 +2894,7 @@ function App() {
             setRequest={setRequest}
             workspaceTab={workspaceTab}
             groqModel={groqModel}
-            onModelChange={(m) => { setGroqModel(m); localStorage.setItem("designready.model", m); }}
+            onModelChange={(m) => { setGroqModel(m); localStorage.setItem("desygn.model", m); }}
             onSendChat={sendChatMessage}
             onGenerateDesignMd={generateProject}
             onCreateImage={createImageFromPrompt}

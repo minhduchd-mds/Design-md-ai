@@ -244,7 +244,7 @@ export function generateCompactPrompt(node: SerializedNode, options: PromptOptio
 
   // Header
   lines.push(`# ${sanitizeName(node.name)} → ${stack}`);
-  lines.push(`# DesignReady.ai compact spec — reconstruct this component from the spec tree`);
+  lines.push(`# Desygn AI compact spec — reconstruct this component from the spec tree`);
   lines.push("");
 
   // Profile context (v1)

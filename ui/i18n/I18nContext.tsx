@@ -8,7 +8,7 @@ interface I18nContextValue {
   toggleLocale: () => void;
 }
 
-const STORAGE_KEY = "designready-locale";
+const STORAGE_KEY = "desygn-locale";
 
 function getInitialLocale(): Locale {
   try {

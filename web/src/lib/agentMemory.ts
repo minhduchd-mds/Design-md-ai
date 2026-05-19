@@ -78,7 +78,7 @@ export interface ConsolidationResult {
 
 // ── Constants ─────────────────────────────────────────────────
 
-const DB_NAME = "designready-agent-memory";
+const DB_NAME = "desygn-agent-memory";
 const DB_VERSION = 1;
 const STORE_NAME = "memories";
 const MAX_EPISODIC = 500;

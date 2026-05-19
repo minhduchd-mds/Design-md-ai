@@ -6,7 +6,7 @@
  *   Design-md-ai: Design → Auto-sync → Auto-PR → CI passes → Merge
  *
  * Features:
- *   • .designreadyrc.yml configuration format
+ *   • .desygnrc.yml configuration format
  *   • GitHub/GitLab/Bitbucket integration types
  *   • Auto-PR generation with design diffs
  *   • Design change detection → commit triggers
@@ -185,7 +185,7 @@ const DESIGN_PR_BODY_TEMPLATE = `## Design Sync
 - [ ] Accessibility requirements met
 
 ---
-Synced by [DesignReady.ai](https://designready.ai) | \${timestamp}`;
+Synced by [Desygn AI](https://github.com/minhduchd-mds/Design-md-ai) | \${timestamp}`;
 
 // ── Default Configuration ─────────────────────────────────────
 
@@ -287,12 +287,12 @@ export function generateCommitMessage(
 }
 
 /**
- * Serialize config to YAML-like format for .designreadyrc.yml
+ * Serialize config to YAML-like format for .desygnrc.yml
  */
 export function serializeConfig(config: GitSyncConfig): string {
   return [
-    `# DesignReady.ai Git Sync Configuration`,
-    `# Docs: https://designready.ai/docs/git-sync`,
+    `# Desygn AI Git Sync Configuration`,
+    `# Docs: https://github.com/minhduchd-mds/Design-md-ai/blob/main/docs/DEV_GUIDE.md`,
     ``,
     `version: ${config.version}`,
     ``,

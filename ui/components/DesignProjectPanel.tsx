@@ -811,7 +811,7 @@ function buildAiPrompt(projectName: string, industry: string, style: string, pre
     "Before editing code, read:",
     ...requiredReading,
     "",
-    "When Figma changes, ask for a fresh DesignReady export and update only the affected markdown files.",
+    "When Figma changes, ask for a fresh Desygn export and update only the affected markdown files.",
     "Preserve existing decisions, append new components, and request confirmation before renaming or deleting tokens.",
     ...figmaMakeInstructions,
     "",
@@ -1207,7 +1207,7 @@ ${formatOpenDesignPreset(args.preset)}
 | 4 | Implement atoms, then molecules, then organisms. |
 | 5 | Use tokens from \`tokens.css\`; document any intentional raw values. |
 | 6 | Add stories/tests for variants, states, accessibility, and responsive behavior. |
-| 7 | Re-run DesignReady after Figma component or token changes. |
+| 7 | Re-run Desygn after Figma component or token changes. |
 
 ## Do / Don't
 | Do | Don't |
@@ -1350,7 +1350,7 @@ function buildComponentManifest(args: {
 }) {
   return {
     schemaVersion: 1,
-    generatedBy: "DesignReady AI",
+    generatedBy: "Desygn AI",
     generatedAt: formatSyncDate(),
     project: {
       name: args.projectName,
@@ -1494,7 +1494,7 @@ function formatCodeConnectCliMd(components: DesignSystemComponentInfo[]): string
 
 This file is a practical checklist for turning the generated Code Connect plan into real Figma Code Connect mappings.
 
-## What DesignReady Already Knows
+## What Desygn Already Knows
 - Figma node IDs for synced components.
 - Suggested code paths for component implementation.
 - Variant props and states when they are available from Figma.
@@ -1504,7 +1504,7 @@ This file is a practical checklist for turning the generated Code Connect plan i
 1. Install and configure Figma Code Connect for this repo.
 2. For each component in \`design-system/code-connect.md\`, map the Figma node ID to the suggested code path.
 3. Keep component prop names aligned with Figma variant property names.
-4. Re-run DesignReady after Figma variants or component names change.
+4. Re-run Desygn after Figma variants or component names change.
 
 ## Mapping Candidates
 ${components.slice(0, MAX_EXPORT_COMPONENTS)
@@ -1558,7 +1558,7 @@ Use this file when an AI agent has access to Figma MCP.
 ## Write Mode
 - Only edit Figma nodes listed in \`component-manifest.json\`.
 - Preserve Figma component names, variant names, and token bindings.
-- After editing Figma, run DesignReady sync again and update exported docs.
+- After editing Figma, run Desygn sync again and update exported docs.
 - Never delete or rename a token/component without confirmation.
 
 ## Agent Safety
@@ -1952,7 +1952,7 @@ Use this skill when an agent has Figma MCP access and needs to inspect or edit t
 ## Write Mode
 - Only edit nodes explicitly requested by the user.
 - Preserve component names, variant properties, and token bindings.
-- After editing Figma, refresh the DesignReady export so manifests and memory stay current.
+- After editing Figma, refresh the Desygn export so manifests and memory stay current.
 
 ## Frame Export Rules
 - Prefer real local/document/library components.
@@ -2237,7 +2237,7 @@ function formatExportEvidenceSchema(args: {
   }, null, 2)}\n`;
 }
 
-function formatDesignReadyAuditScript(root: string): string {
+function formatDesygnAuditScript(root: string): string {
   return `import fs from "node:fs";
 import path from "node:path";
 
@@ -2255,7 +2255,7 @@ function readJson(filePath) {
 }
 
 function fail(message) {
-  console.error("[designready-audit] " + message);
+  console.error("[desygn-audit] " + message);
   process.exitCode = 1;
 }
 
@@ -2310,12 +2310,12 @@ const evidence = {
 
 fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
 fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + "\\n");
-console.log("[designready-audit] wrote " + evidencePath);
+console.log("[desygn-audit] wrote " + evidencePath);
 `;
 }
 
-function formatDesignReadyWorkflow(): string {
-  return `name: DesignReady Audit
+function formatDesygnWorkflow(): string {
+  return `name: Desygn Audit
 
 on:
   pull_request:
@@ -2324,7 +2324,7 @@ on:
     - cron: "0 3 * * *"
 
 jobs:
-  designready-audit:
+  desygn-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -2341,15 +2341,15 @@ jobs:
       - run: npm run test --if-present
       - run: npm run lint --if-present
       - run: npm run build --if-present
-      - run: node scripts/designready-audit.mjs
-      - run: npx playwright test -c playwright.designready.config.ts
+      - run: node scripts/desygn-audit.mjs
+      - run: npx playwright test -c playwright.desygn.config.ts
         env:
-          DESIGNREADY_PREVIEW_URL: http://localhost:5173/design-preview
+          DESYGN_PREVIEW_URL: http://localhost:5173/design-preview
         continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: designready-evidence
+          name: desygn-evidence
           path: |
             **/quality/export-evidence.json
             test-results/**
@@ -2357,13 +2357,13 @@ jobs:
 `;
 }
 
-function formatPlaywrightDesignReadyConfig(): string {
+function formatPlaywrightDesygnConfig(): string {
   return `import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
-  outputDir: "test-results/designready",
-  reporter: [["html", { outputFolder: "playwright-report/designready" }], ["list"]],
+  outputDir: "test-results/desygn",
+  reporter: [["html", { outputFolder: "playwright-report/desygn" }], ["list"]],
   use: {
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -2376,15 +2376,15 @@ export default defineConfig({
 `;
 }
 
-function formatDesignReadyVisualSpec(): string {
+function formatDesygnVisualSpec(): string {
   return `import { test, expect } from "@playwright/test";
 
-const previewUrl = process.env.DESIGNREADY_PREVIEW_URL ?? "http://localhost:5173/design-preview";
+const previewUrl = process.env.DESYGN_PREVIEW_URL ?? "http://localhost:5173/design-preview";
 
-test("designready preview has no blank render and stays visually stable", async ({ page }) => {
+test("desygn preview has no blank render and stays visually stable", async ({ page }) => {
   await page.goto(previewUrl, { waitUntil: "networkidle" });
   await expect(page.locator("body")).toBeVisible();
-  await expect(page).toHaveScreenshot("designready-preview.png", {
+  await expect(page).toHaveScreenshot("desygn-preview.png", {
     maxDiffPixelRatio: 0.02,
     fullPage: true,
   });
@@ -2580,7 +2580,7 @@ Use this when comparing generated app UI or exported Figma frames against expect
 ## Required Artifacts
 | Artifact | Source |
 | --- | --- |
-| Baseline Figma frame screenshot | Exported frame from DesignReady |
+| Baseline Figma frame screenshot | Exported frame from Desygn |
 | Candidate app screenshot | Local preview route or Storybook |
 | Component manifest | \`${args.root}/design-system/component-manifest.json\` |
 | Visual template | \`${args.root}/design-system/figma/visual-preview-templates.md\` |
@@ -2670,7 +2670,7 @@ function buildProjectFiles(args: {
   return [
     {
       path: `${root}/CLAUDE.md`,
-      content: `# ${args.projectName} Claude Code Guide\n\n${aiPrompt}\n\n## Required reading\n- design.md\n- design-system/file-structure.md\n- design-system/tokens/tokens.json\n- design-system/tokens/tokens.css\n- design-system/components/all.md\n- design-system/figma/make.md when Figma Make output is involved\n\n## Figma sync rules\n- Treat the exported Figma snapshot as current design truth.\n- Update references after each new DesignReady export.\n- Never remove components or tokens without confirmation.\n- For Figma Make output, read design-system/figma/make.md and preserve editable component hierarchy.\n${starterBlock}\n${sharedModelRules}`,
+      content: `# ${args.projectName} Claude Code Guide\n\n${aiPrompt}\n\n## Required reading\n- design.md\n- design-system/file-structure.md\n- design-system/tokens/tokens.json\n- design-system/tokens/tokens.css\n- design-system/components/all.md\n- design-system/figma/make.md when Figma Make output is involved\n\n## Figma sync rules\n- Treat the exported Figma snapshot as current design truth.\n- Update references after each new Desygn export.\n- Never remove components or tokens without confirmation.\n- For Figma Make output, read design-system/figma/make.md and preserve editable component hierarchy.\n${starterBlock}\n${sharedModelRules}`,
     },
     {
       path: `${root}/AGENTS.md`,
@@ -2793,20 +2793,20 @@ function buildProjectFiles(args: {
       }),
     },
     {
-      path: `${root}/scripts/designready-audit.mjs`,
-      content: formatDesignReadyAuditScript(root),
+      path: `${root}/scripts/desygn-audit.mjs`,
+      content: formatDesygnAuditScript(root),
     },
     {
-      path: `${root}/.github/workflows/designready-audit.yml`,
-      content: formatDesignReadyWorkflow(),
+      path: `${root}/.github/workflows/desygn-audit.yml`,
+      content: formatDesygnWorkflow(),
     },
     {
-      path: `${root}/playwright.designready.config.ts`,
-      content: formatPlaywrightDesignReadyConfig(),
+      path: `${root}/playwright.desygn.config.ts`,
+      content: formatPlaywrightDesygnConfig(),
     },
     {
-      path: `${root}/tests/designready-visual.spec.ts`,
-      content: formatDesignReadyVisualSpec(),
+      path: `${root}/tests/desygn-visual.spec.ts`,
+      content: formatDesygnVisualSpec(),
     },
     {
       path: `${root}/design-system/tokens/variables.md`,

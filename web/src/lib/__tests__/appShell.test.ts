@@ -103,13 +103,13 @@ describe("getInitialTheme", () => {
   });
 
   it("returns dark when no saved preference", () => {
-    delete mockStorage["designready.theme"];
+    delete mockStorage["desygn.theme"];
     expect(getInitialTheme()).toBe("dark");
   });
 
   it("returns light when saved as light", () => {
-    mockStorage["designready.theme"] = "light";
+    mockStorage["desygn.theme"] = "light";
     expect(getInitialTheme()).toBe("light");
-    delete mockStorage["designready.theme"];
+    delete mockStorage["desygn.theme"];
   });
 });

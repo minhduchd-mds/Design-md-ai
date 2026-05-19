@@ -120,11 +120,11 @@ export function initAppShellEvents(): () => void {
 
 export function applyTheme(theme: "dark" | "light"): void {
   document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("designready.theme", theme);
+  localStorage.setItem("desygn.theme", theme);
 }
 
 export function getInitialTheme(): "dark" | "light" {
-  const saved = localStorage.getItem("designready.theme");
+  const saved = localStorage.getItem("desygn.theme");
   return saved === "light" ? "light" : "dark";
 }
 

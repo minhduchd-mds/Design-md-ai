@@ -78,7 +78,7 @@ export function SettingsModal({
   const handleFigmaConnect = useCallback(async () => {
     if (!figmaMcpEndpoint.trim()) { onShowToast("Nhập MCP endpoint URL", "warn"); return; }
     setMcpStatus("connecting");
-    localStorage.setItem("designready.figma-mcp-endpoint", figmaMcpEndpoint);
+    localStorage.setItem("desygn.figma-mcp-endpoint", figmaMcpEndpoint);
     const result = await testFigmaMcpConnection(figmaMcpEndpoint);
     setMcpStatus(result);
     if (result === "connected") {
@@ -94,7 +94,7 @@ export function SettingsModal({
     const next = integrations.map(i => i.id === "figma-mcp" ? { ...i, status: "disconnected" as const, endpoint: undefined } : i);
     onSaveIntegrations(next);
     onFigmaMcpEndpointChange("");
-    localStorage.removeItem("designready.figma-mcp-endpoint");
+    localStorage.removeItem("desygn.figma-mcp-endpoint");
     setMcpStatus("idle");
     onShowToast("Đã ngắt kết nối Figma MCP", "info");
   }, [integrations, onSaveIntegrations, onFigmaMcpEndpointChange, onShowToast, setMcpStatus]);
@@ -210,7 +210,7 @@ export function SettingsModal({
                 </label>
                 <label className="settings-field">
                   <span>AI Model mặc định</span>
-                  <select value={groqModel} onChange={(e) => { onModelChange(e.target.value); localStorage.setItem("designready.model", e.target.value); }}>
+                  <select value={groqModel} onChange={(e) => { onModelChange(e.target.value); localStorage.setItem("desygn.model", e.target.value); }}>
                     <optgroup label="Groq (ultra-fast)">
                       <option value="llama-3.3-70b-versatile">Llama 3.3 70B (default)</option>
                       <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
@@ -402,7 +402,7 @@ export function SettingsModal({
                   <input
                     type="checkbox"
                     checked={chatMappingEnabled}
-                    onChange={(e) => { onChatMappingChange(e.target.checked); localStorage.setItem("designready.chat-mapping", String(e.target.checked)); }}
+                    onChange={(e) => { onChatMappingChange(e.target.checked); localStorage.setItem("desygn.chat-mapping", String(e.target.checked)); }}
                   />
                 </label>
 
@@ -517,7 +517,7 @@ export function SettingsModal({
                   <input
                     type="checkbox"
                     checked={shareLinksEnabled}
-                    onChange={(e) => { onShareLinksChange(e.target.checked); localStorage.setItem("designready.share-links", String(e.target.checked)); }}
+                    onChange={(e) => { onShareLinksChange(e.target.checked); localStorage.setItem("desygn.share-links", String(e.target.checked)); }}
                   />
                 </label>
                 <div className="settings-divider" />

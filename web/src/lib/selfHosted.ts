@@ -158,8 +158,8 @@ export function generateDefaultConfig(edition: Edition): SelfHostedConfig {
     database: {
       type: edition === "enterprise" ? "postgres" : "sqlite",
       connectionString: edition === "enterprise"
-        ? "postgres://designready:password@db:5432/designready"
-        : "file:./data/designready.db",
+        ? "postgres://desygn:password@db:5432/desygn"
+        : "file:./data/desygn.db",
       maxConnections: edition === "enterprise" ? 20 : 5,
       enableWAL: true,
     },
@@ -192,14 +192,14 @@ export function generateDefaultConfig(edition: Edition): SelfHostedConfig {
 
 export function generateDockerCompose(config: SelfHostedConfig): string {
   const lines: string[] = [
-    `# DesignReady.ai Self-Hosted — ${config.edition} edition`,
+    `# Desygn AI Self-Hosted — ${config.edition} edition`,
     `# Generated at ${new Date().toISOString()}`,
     `version: "3.8"`,
     ``,
     `services:`,
     `  app:`,
-    `    image: designready/designready:latest`,
-    `    container_name: designready-app`,
+    `    image: desygn/desygn:latest`,
+    `    container_name: desygn-app`,
     `    ports:`,
     `      - "${config.port}:3000"`,
     `    environment:`,
@@ -221,7 +221,7 @@ export function generateDockerCompose(config: SelfHostedConfig): string {
 
   lines.push(
     `    volumes:`,
-    `      - designready-data:/app/data`,
+    `      - desygn-data:/app/data`,
     `    restart: unless-stopped`,
     `    healthcheck:`,
     `      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]`,
@@ -236,10 +236,10 @@ export function generateDockerCompose(config: SelfHostedConfig): string {
       ``,
       `  db:`,
       `    image: postgres:16-alpine`,
-      `    container_name: designready-db`,
+      `    container_name: desygn-db`,
       `    environment:`,
-      `      - POSTGRES_DB=designready`,
-      `      - POSTGRES_USER=designready`,
+      `      - POSTGRES_DB=desygn`,
+      `      - POSTGRES_USER=desygn`,
       `      - POSTGRES_PASSWORD=\${DB_PASSWORD}`,
       `    volumes:`,
       `      - postgres-data:/var/lib/postgresql/data`,
@@ -251,7 +251,7 @@ export function generateDockerCompose(config: SelfHostedConfig): string {
   lines.push(
     ``,
     `volumes:`,
-    `  designready-data:`,
+    `  desygn-data:`,
   );
 
   if (config.database.type === "postgres") {
@@ -265,7 +265,7 @@ export function generateDockerCompose(config: SelfHostedConfig): string {
 
 export function generateEnvFile(config: SelfHostedConfig): string {
   const lines: string[] = [
-    `# DesignReady.ai — Environment Configuration`,
+    `# Desygn AI — Environment Configuration`,
     `# Edition: ${config.edition}`,
     ``,
     `# Application`,
@@ -403,13 +403,13 @@ export function validateLicense(key: string): LicenseInfo {
 export function generateBackupScript(config: BackupConfig): string {
   return [
     `#!/bin/bash`,
-    `# DesignReady.ai Backup Script`,
+    `# Desygn AI Backup Script`,
     `# Frequency: ${config.frequency}`,
     `# Retention: ${config.retentionDays} days`,
     ``,
     `TIMESTAMP=$(date +%Y%m%d_%H%M%S)`,
     `BACKUP_DIR="${config.destination}"`,
-    `BACKUP_FILE="$BACKUP_DIR/designready-$TIMESTAMP.tar.gz"`,
+    `BACKUP_FILE="$BACKUP_DIR/desygn-$TIMESTAMP.tar.gz"`,
     ``,
     `mkdir -p "$BACKUP_DIR"`,
     ``,
@@ -418,7 +418,7 @@ export function generateBackupScript(config: BackupConfig): string {
     ``,
     config.encrypt ? `# Encrypt backup\nopenssl enc -aes-256-cbc -salt -in "$BACKUP_FILE" -out "$BACKUP_FILE.enc" -pass env:BACKUP_PASSWORD\nrm "$BACKUP_FILE"\n` : "",
     `# Cleanup old backups (retention: ${config.retentionDays} days)`,
-    `find "$BACKUP_DIR" -name "designready-*.tar.gz*" -mtime +${config.retentionDays} -delete`,
+    `find "$BACKUP_DIR" -name "desygn-*.tar.gz*" -mtime +${config.retentionDays} -delete`,
     ``,
     `echo "Backup completed: $BACKUP_FILE"`,
   ].join("\n");

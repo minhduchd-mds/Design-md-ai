@@ -19,7 +19,5 @@ npm run lint      # ESLint 9
 - CSS Modules per component. Dark theme only. Gap-based layout.
 - New serializer field: types.ts → serializer.ts → prompt-compact.ts.
 
-## Repos
+## Repo
 - **Origin:** github.com/minhduchd-mds/Design-md-ai
-- **Official:** github.com/designready-ai/designready-ai (push here)
-- **Dev:** github.com/Lapse18/designready-ai-plugin

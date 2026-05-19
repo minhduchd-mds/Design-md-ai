@@ -52,7 +52,7 @@ describe("Docker Compose Generator", () => {
     const config = generateDefaultConfig("community");
     const compose = generateDockerCompose(config);
     expect(compose).toContain("services:");
-    expect(compose).toContain("designready-app");
+    expect(compose).toContain("desygn-app");
     expect(compose).toContain("EDITION=community");
     expect(compose).toContain("healthcheck:");
     expect(compose).not.toContain("postgres"); // sqlite = no db service

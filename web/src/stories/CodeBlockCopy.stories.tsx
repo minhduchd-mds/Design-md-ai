@@ -28,10 +28,10 @@ const { data, error } = await supabase
   .eq('user_id', userId)</code></pre>`;
 
 const multiBlock = `<p>Here's the setup:</p>
-<pre><code class="hljs language-bash">npm install @designready/cli
-npx designready init</code></pre>
+<pre><code class="hljs language-bash">npm install @desygn/cli
+npx desygn init</code></pre>
 <p>Then generate your Design.md:</p>
-<pre><code class="hljs language-typescript">import { generateDesignMd } from '@designready/core'
+<pre><code class="hljs language-typescript">import { generateDesignMd } from '@desygn/core'
 
 const result = await generateDesignMd({
   template: 'saas-dashboard',

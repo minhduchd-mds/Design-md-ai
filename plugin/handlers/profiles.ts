@@ -1,7 +1,7 @@
 import type { PluginMessage, PluginProfile } from "../../shared/types";
 
-const PROFILES_KEY = "designready-profiles";
-const ACTIVE_PROFILE_KEY = "designready-active-profile";
+const PROFILES_KEY = "desygn-profiles";
+const ACTIVE_PROFILE_KEY = "desygn-active-profile";
 
 export async function loadProfiles(): Promise<{ profiles: PluginProfile[]; activeId: string | null }> {
   const profiles: PluginProfile[] = (await figma.clientStorage.getAsync(PROFILES_KEY)) ?? [];

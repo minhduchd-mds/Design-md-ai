@@ -67,7 +67,7 @@ function generateBatchPromptCompact(
   const stack = profile?.stack ?? "React+TS+CSS";
   const lines: string[] = [
     `# batch → ${stack}`,
-    "# DesignReady.ai batch spec — build atoms first, then compose",
+    "# Desygn AI batch spec — build atoms first, then compose",
     "",
   ];
 

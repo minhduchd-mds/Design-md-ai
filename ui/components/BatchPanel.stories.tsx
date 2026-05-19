@@ -25,7 +25,7 @@ const mockResult: BatchScanResult = {
   ],
   exportPlan: [],
   batchPromptCompact: `# Batch → React+TS+CSS
-# DesignReady.ai compact spec
+# Desygn AI compact spec
 
 ## build-order
 1. Icon (atom)

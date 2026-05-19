@@ -9,7 +9,7 @@ export default meta;
 type Story = StoryObj<typeof PromptExport>;
 
 const samplePrompt = `# Button → React+TS+CSS
-# DesignReady.ai compact spec
+# Desygn AI compact spec
 
 ## tokens
 colors: #18a0fb(3) #e0e0e0(5)

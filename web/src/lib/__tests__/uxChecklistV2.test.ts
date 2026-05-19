@@ -764,7 +764,7 @@ describe("CIGate", () => {
       "    steps:",
       "      - uses: actions/checkout@v4",
       "      - name: Run UX Audit",
-      "        run: npx designready-audit",
+      "        run: npx desygn-audit",
       "        env:",
       `          MIN_SCORE: ${config.minOverallScore}`,
       `          BLOCK_CRITICAL: ${config.blockOnCriticalFail}`,
@@ -789,7 +789,7 @@ describe("CIGate", () => {
       version: "2.1.0",
       runs: [
         {
-          tool: { driver: { name: "designready-ux-audit", version: "5.0.0" } },
+          tool: { driver: { name: "desygn-ux-audit", version: "5.0.0" } },
           results: results.map((r) => ({
             ruleId: r.criterionId,
             level: r.status === "fail" ? "error" : "warning",

@@ -756,7 +756,7 @@ async function createProjectFrame(project: FigmaProjectFrameRequest): Promise<vo
 
   // Root frame
   const frame = figma.createFrame();
-  frame.name = `${project.projectName || "DesignReady"} / Project Layout`;
+  frame.name = `${project.projectName || "Desygn AI"} / Project Layout`;
   frame.layoutMode = "VERTICAL";
   frame.primaryAxisSizingMode = "AUTO";
   frame.counterAxisSizingMode = "FIXED";
@@ -778,7 +778,7 @@ async function createProjectFrame(project: FigmaProjectFrameRequest): Promise<vo
   header.resize(CONTENT_WIDTH, 10);
   header.fills = [];
 
-  const title = createLabel(project.projectName || "DesignReady Project", semiBoldFont, 36, COLORS.title, CONTENT_WIDTH);
+  const title = createLabel(project.projectName || "Desygn AI Project", semiBoldFont, 36, COLORS.title, CONTENT_WIDTH);
   header.appendChild(title);
 
   const subtitle = createLabel(

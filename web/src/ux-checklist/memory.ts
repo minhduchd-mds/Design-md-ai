@@ -75,7 +75,7 @@ export interface AuditCriterion {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STORAGE_PREFIX = "designready.memory.";
+const STORAGE_PREFIX = "desygn.memory.";
 const KNOWLEDGE_VERSION = 1;
 
 // ─────────────────────────────────────────────────────────────────────────────

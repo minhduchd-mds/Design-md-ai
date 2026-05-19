@@ -175,7 +175,7 @@ export function useWorkspace(
 
   // ── Model ───────────────────────────────────────────────────
   const [groqModel, setGroqModel] = useState<string>(
-    () => localStorage.getItem("designready.model") ?? "llama-3.3-70b-versatile",
+    () => localStorage.getItem("desygn.model") ?? "llama-3.3-70b-versatile",
   );
 
   // ── Template state ──────────────────────────────────────────
@@ -194,17 +194,17 @@ export function useWorkspace(
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [brandHelpOpen, setBrandHelpOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"profile" | "appearance" | "behavior" | "notifications" | "extensions" | "document" | "other">("profile");
-  const [shareLinksEnabled, setShareLinksEnabled] = useState(() => localStorage.getItem("designready.share-links") === "true");
-  const [displayName, setDisplayName] = useState(() => localStorage.getItem("designready.display-name") ?? "");
+  const [shareLinksEnabled, setShareLinksEnabled] = useState(() => localStorage.getItem("desygn.share-links") === "true");
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem("desygn.display-name") ?? "");
   const [chatTheme, setChatTheme] = useState<"dark" | "light">(() => {
-    const saved = localStorage.getItem("designready.theme");
+    const saved = localStorage.getItem("desygn.theme");
     return saved === "light" ? "light" : "dark";
   });
 
   // ── Integrations ────────────────────────────────────────────
   const [integrations, setIntegrations] = useState<IntegrationItem[]>(() => {
     try {
-      const saved = localStorage.getItem("designready.integrations");
+      const saved = localStorage.getItem("desygn.integrations");
       return saved
         ? (JSON.parse(saved) as IntegrationItem[])
         : [
@@ -221,20 +221,20 @@ export function useWorkspace(
 
   const saveIntegrations = useCallback((next: IntegrationItem[]) => {
     setIntegrations(next);
-    localStorage.setItem("designready.integrations", JSON.stringify(next));
+    localStorage.setItem("desygn.integrations", JSON.stringify(next));
   }, []);
 
   const [figmaMcpEndpoint, setFigmaMcpEndpoint] = useState(
-    () => localStorage.getItem("designready.figma-mcp-endpoint") ?? "",
+    () => localStorage.getItem("desygn.figma-mcp-endpoint") ?? "",
   );
   const [chatMappingEnabled, setChatMappingEnabled] = useState(
-    () => localStorage.getItem("designready.chat-mapping") === "true",
+    () => localStorage.getItem("desygn.chat-mapping") === "true",
   );
 
   // ── Checklist ───────────────────────────────────────────────
   const [checklistItems, setChecklistItems] = useState<ChecklistRow[]>(() => {
     try {
-      const saved = localStorage.getItem("designready.checklist-v3");
+      const saved = localStorage.getItem("desygn.checklist-v3");
       return saved ? (JSON.parse(saved) as ChecklistRow[]) : DEFAULT_CHECKLIST_ROWS;
     } catch {
       return DEFAULT_CHECKLIST_ROWS;
@@ -255,7 +255,7 @@ export function useWorkspace(
     headerRow: number;
   }>(() => {
     try {
-      const s = localStorage.getItem("designready.setup-datasource");
+      const s = localStorage.getItem("desygn.setup-datasource");
       return s
         ? (JSON.parse(s) as { type: string; url: string; sheet: string; headerRow: number })
         : { type: "excel", url: "", sheet: "", headerRow: 1 };

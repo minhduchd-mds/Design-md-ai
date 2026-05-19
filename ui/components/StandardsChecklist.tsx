@@ -14,7 +14,7 @@ interface StandardsChecklistProps {
   onStandardsChange: (items: StandardItem[]) => void;
 }
 
-const STORAGE_KEY = "designready-standards";
+const STORAGE_KEY = "desygn-standards";
 
 const DEFAULT_STANDARDS: StandardItem[] = [
   // UI/UX Standards

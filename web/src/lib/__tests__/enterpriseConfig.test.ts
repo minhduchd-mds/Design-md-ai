@@ -21,7 +21,7 @@ describe("EnterpriseManager", () => {
   describe("SSO configuration", () => {
     const validSSO: SSOConfig = {
       provider: "okta",
-      entityId: "https://app.designready.ai",
+      entityId: "https://app.desygn.ai",
       ssoUrl: "https://company.okta.com/sso/saml",
       certificate: "MIICpDCCAYwCCQDU...",
       allowedDomains: ["company.com"],

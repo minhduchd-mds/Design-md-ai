@@ -14,7 +14,7 @@
 
 import { eventBus } from "./eventBus";
 
-const DB_NAME = "designready-offline-v1";
+const DB_NAME = "desygn-offline-v1";
 const DB_VERSION = 1;
 const STORE = "queue";
 const MAX_ATTEMPTS = 5;

@@ -3,7 +3,7 @@
  *
  * Competitive Advantage vs Figma:
  *   Figma manages 1 file at a time. Enterprises have 10-50 Figma files
- *   across brands, products, and platforms. DesignReady.ai unifies them:
+ *   across brands, products, and platforms. Desygn AI unifies them:
  *
  *   • Aggregate multiple Figma files into a unified system view
  *   • Cross-system pattern detection (find "Button" across 10 brands)

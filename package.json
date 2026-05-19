@@ -2,15 +2,15 @@
   "name": "design-md-ai",
   "version": "5.1.1",
   "description": "Figma to Design.md handoff workspace for AI coding agents.",
-  "author": "Stefan Holzheu <design@stefan-holzheu.de>",
+  "author": "Minh Đức <ducdmd00410@fpt.edu.vn>",
   "license": "MIT",
-  "homepage": "https://github.com/designready-ai/designready-ai",
+  "homepage": "https://github.com/minhduchd-mds/Design-md-ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/designready-ai/designready-ai.git"
+    "url": "https://github.com/minhduchd-mds/Design-md-ai.git"
   },
   "bugs": {
-    "url": "https://github.com/designready-ai/designready-ai/issues"
+    "url": "https://github.com/minhduchd-mds/Design-md-ai/issues"
   },
   "keywords": [
     "figma",

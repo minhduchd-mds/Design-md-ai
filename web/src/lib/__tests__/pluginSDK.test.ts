@@ -288,7 +288,7 @@ describe("Plugin Helpers", () => {
       name: "Flutter Adapter",
       frameworkId: "flutter",
       frameworkName: "Flutter",
-      author: "DesignReady",
+      author: "Desygn",
       generate: () => ({ files: [{ path: "widget.dart", content: "class MyWidget {}" }] }),
     });
 
@@ -303,7 +303,7 @@ describe("Plugin Helpers", () => {
     const { manifest, api } = createAnalyzerPlugin({
       id: "a11y-analyzer",
       name: "Accessibility Analyzer",
-      author: "DesignReady",
+      author: "Desygn",
       analyze: () => ({ score: 85, issues: ["Low contrast"], suggestions: ["Increase contrast ratio"] }),
     });
 

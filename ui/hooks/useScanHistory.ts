@@ -9,7 +9,7 @@ export interface ScanHistoryEntry {
   scannedAt: string;
 }
 
-const STORAGE_KEY = "designready-scan-history";
+const STORAGE_KEY = "desygn-scan-history";
 const MAX_ENTRIES = 20;
 
 function loadHistory(): ScanHistoryEntry[] {

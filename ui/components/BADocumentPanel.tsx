@@ -22,7 +22,7 @@ export interface BAScreen {
   acceptanceCriteria: string[];
 }
 
-const STORAGE_KEY = "designready-ba-document";
+const STORAGE_KEY = "desygn-ba-document";
 
 const BA_TEMPLATE = `# Business Analysis Document
 

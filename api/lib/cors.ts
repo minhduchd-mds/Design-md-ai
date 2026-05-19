@@ -5,7 +5,7 @@
 
 const ALLOWED_ORIGINS = [
   "https://design-md-ai.vercel.app",
-  "https://designready.ai",
+  "https://design-md-ai-yd6r.vercel.app",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5173",

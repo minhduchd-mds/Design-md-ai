@@ -111,10 +111,10 @@ export const uiStore = new Store<UIState>(DEFAULT_UI);
 // ── Hydrate from localStorage ─────────────────────────────────
 
 export function hydrateStores(): void {
-  const theme = localStorage.getItem("designready.theme") as Theme | null;
+  const theme = localStorage.getItem("desygn.theme") as Theme | null;
   if (theme) workspaceStore.setState({ theme });
 
-  const projects = localStorage.getItem("designready.projects-v1");
+  const projects = localStorage.getItem("desygn.projects-v1");
   if (projects) {
     try {
       projectStore.setState({ projects: JSON.parse(projects) });
@@ -126,11 +126,11 @@ export function hydrateStores(): void {
 
 export function setupPersistence(): () => void {
   const unsub1 = workspaceStore.subscribe((state) => {
-    localStorage.setItem("designready.theme", state.theme);
+    localStorage.setItem("desygn.theme", state.theme);
   });
 
   const unsub2 = projectStore.subscribe((state) => {
-    localStorage.setItem("designready.projects-v1", JSON.stringify(state.projects));
+    localStorage.setItem("desygn.projects-v1", JSON.stringify(state.projects));
   });
 
   return () => { unsub1(); unsub2(); };
