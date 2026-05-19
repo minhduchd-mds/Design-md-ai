@@ -1,38 +1,5 @@
 @use "variables" as *;
 
-// ─── Sidebar Projects Section ───────────────────────────
-
-.sidebar-projects-section {
-  padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.sidebar-section-label {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  color: $text-dim;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  margin-bottom: 2px;
-}
-
-.sidebar-project-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: $radius-xs;
-  font-size: 13px;
-  color: $text-sidebar-light;
-  text-decoration: none;
-  transition: background 0.12s;
-
-  &:hover { background: rgba(255, 255, 255, 0.05); }
-  &.add-project { color: $checklist-purple; }
-}
-
 // ─── Checklist Content Panel ────────────────────────────
 
 .hidden-panel { display: none !important; }
