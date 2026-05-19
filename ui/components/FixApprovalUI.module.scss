@@ -1,0 +1,422 @@
+/* FixApprovalUI — diff preview + approve/reject for Agent Fleet v6 proposals */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-lg);
+  padding: var(--dr-space-xl);
+  background: var(--figma-color-bg, #2c2c2c);
+  border-radius: var(--dr-radius-lg);
+  border: 1px solid var(--figma-color-border, #444);
+}
+
+/* ── Header ── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dr-space-md);
+}
+
+.title {
+  font-weight: var(--dr-weight-bold);
+  font-size: var(--dr-text-lg);
+  line-height: 100%;
+}
+
+.counts {
+  display: flex;
+  gap: var(--dr-space-md);
+  font-size: var(--dr-text-sm);
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.countBadge {
+  padding: 2px var(--dr-space-sm);
+  border-radius: var(--dr-radius-xs, 4px);
+  font-weight: var(--dr-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.countPending {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.countApproved {
+  background: rgba(126, 231, 135, 0.1);
+  color: var(--dr-score-green, #7ee787);
+}
+
+.countRejected {
+  background: rgba(242, 72, 34, 0.1);
+  color: var(--dr-error);
+}
+
+/* ── Bulk actions ── */
+
+.bulkActions {
+  display: flex;
+  gap: var(--dr-space-md);
+}
+
+.bulkBtn {
+  padding: var(--dr-space-sm) var(--dr-space-md);
+  background: none;
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-sm);
+  color: var(--figma-color-text, #ccc);
+  font-size: var(--dr-text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--dr-transition);
+}
+
+.bulkBtn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bulkBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Diff viewer ── */
+
+.diffViewer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-sm);
+}
+
+.diffToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-sm);
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--dr-brand);
+  font-size: var(--dr-text-sm);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.diffToggle:hover {
+  text-decoration: underline;
+}
+
+.diffPre {
+  margin: 0;
+  padding: var(--dr-space-md);
+  background: var(--figma-color-bg-secondary, #1e1e1e);
+  border: 1px solid var(--figma-color-border, #333);
+  border-radius: var(--dr-radius-md);
+  font-family: "Fira Code", "JetBrains Mono", "Cascadia Code", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-x: auto;
+  max-height: 360px;
+  overflow-y: auto;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.diffLineRemoved {
+  color: var(--dr-error, #f24822);
+  background: rgba(242, 72, 34, 0.06);
+  display: block;
+}
+
+.diffLineAdded {
+  color: var(--dr-score-green, #7ee787);
+  background: rgba(126, 231, 135, 0.06);
+  display: block;
+}
+
+.diffLineHunk {
+  color: var(--dr-brand, #18a0fb);
+  display: block;
+}
+
+.diffLineContext {
+  color: var(--figma-color-text-secondary, #777);
+  display: block;
+}
+
+.diffLineMeta {
+  color: var(--figma-color-text-secondary, #666);
+  font-style: italic;
+  display: block;
+}
+
+/* ── Proposal cards ── */
+
+.proposals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-md);
+}
+
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-sm);
+  padding: var(--dr-space-lg);
+  background: var(--figma-color-bg-secondary, #383838);
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-md);
+  transition: border-color 0.15s;
+}
+
+.proposalApproved {
+  border-color: var(--dr-score-green, #7ee787);
+}
+
+.proposalRejected {
+  border-color: var(--dr-error);
+  opacity: 0.65;
+}
+
+.proposalMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--dr-space-md);
+  font-size: var(--dr-text-sm);
+}
+
+.kindBadge {
+  padding: 2px var(--dr-space-sm);
+  border-radius: var(--dr-radius-xs, 4px);
+  background: rgba(24, 160, 251, 0.12);
+  color: var(--dr-brand);
+  font-size: var(--dr-text-xs, 11px);
+  font-weight: var(--dr-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.riskLow {
+  color: var(--dr-score-green, #7ee787);
+}
+
+.riskMedium {
+  color: var(--dr-warning, #ffb020);
+}
+
+.riskHigh {
+  color: var(--dr-error, #f24822);
+}
+
+.fileLoc {
+  color: var(--figma-color-text-secondary, #999);
+  font-family: "Fira Code", monospace;
+  font-size: var(--dr-text-xs, 11px);
+  margin-left: auto;
+}
+
+.rationale {
+  font-size: var(--dr-text-md);
+  color: var(--figma-color-text, #ccc);
+  line-height: 150%;
+}
+
+.codeDiff {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.codeBefore {
+  padding: var(--dr-space-xs) var(--dr-space-sm);
+  background: rgba(242, 72, 34, 0.06);
+  border-radius: 3px;
+  color: var(--dr-error, #f24822);
+}
+
+.codeAfter {
+  padding: var(--dr-space-xs) var(--dr-space-sm);
+  background: rgba(126, 231, 135, 0.06);
+  border-radius: 3px;
+  color: var(--dr-score-green, #7ee787);
+}
+
+.actions {
+  display: flex;
+  gap: var(--dr-space-md);
+  margin-top: var(--dr-space-xs);
+}
+
+.approveBtn,
+.rejectBtn {
+  flex: 1;
+  padding: var(--dr-space-sm) var(--dr-space-md);
+  border-radius: var(--dr-radius-sm);
+  font-size: var(--dr-text-sm);
+  font-family: inherit;
+  font-weight: var(--dr-weight-semibold);
+  cursor: pointer;
+  transition: background var(--dr-transition), opacity var(--dr-transition);
+  border: none;
+}
+
+.approveBtn {
+  background: var(--dr-score-green, #7ee787);
+  color: #1b1f23;
+}
+
+.approveBtn:hover {
+  opacity: 0.9;
+}
+
+.rejectBtn {
+  background: none;
+  border: 1px solid var(--dr-error);
+  color: var(--dr-error);
+}
+
+.rejectBtn:hover {
+  background: rgba(242, 72, 34, 0.08);
+}
+
+.approveBtn:disabled,
+.rejectBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.decidedLabel {
+  flex: 1;
+  text-align: center;
+  font-size: var(--dr-text-sm);
+  font-weight: var(--dr-weight-semibold);
+  padding: var(--dr-space-sm) 0;
+}
+
+.decidedApproved {
+  color: var(--dr-score-green, #7ee787);
+}
+
+.decidedRejected {
+  color: var(--dr-error);
+}
+
+.undoBtn {
+  padding: var(--dr-space-sm) var(--dr-space-md);
+  background: none;
+  border: 1px solid var(--figma-color-border, #444);
+  border-radius: var(--dr-radius-sm);
+  color: var(--figma-color-text-secondary, #999);
+  font-size: var(--dr-text-sm);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.undoBtn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Unappliable ── */
+
+.unappliable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-space-sm);
+}
+
+.unappliableHeader {
+  font-size: var(--dr-text-sm);
+  color: var(--dr-warning, #ffb020);
+  font-weight: var(--dr-weight-semibold);
+}
+
+.unappliableItem {
+  display: flex;
+  gap: var(--dr-space-md);
+  padding: var(--dr-space-sm) var(--dr-space-md);
+  background: rgba(255, 176, 32, 0.06);
+  border-radius: var(--dr-radius-sm);
+  font-size: var(--dr-text-sm);
+  color: var(--figma-color-text-secondary, #999);
+}
+
+.unappliableId {
+  font-family: "Fira Code", monospace;
+  color: var(--dr-warning, #ffb020);
+  flex-shrink: 0;
+}
+
+/* ── Apply bar ── */
+
+.applyBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dr-space-md);
+  padding: var(--dr-space-md) var(--dr-space-lg);
+  background: rgba(126, 231, 135, 0.04);
+  border: 1px solid var(--dr-score-green, #7ee787);
+  border-radius: var(--dr-radius-md);
+}
+
+.applyInfo {
+  font-size: var(--dr-text-md);
+  color: var(--figma-color-text, #ccc);
+}
+
+.applyCount {
+  font-weight: var(--dr-weight-bold);
+  color: var(--dr-score-green, #7ee787);
+}
+
+.applyBtn {
+  padding: var(--dr-space-md) var(--dr-space-xl);
+  background: var(--dr-score-green, #7ee787);
+  color: #1b1f23;
+  border: none;
+  border-radius: var(--dr-radius-md);
+  font-size: var(--dr-text-lg);
+  font-weight: var(--dr-weight-bold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity var(--dr-transition);
+}
+
+.applyBtn:hover {
+  opacity: 0.9;
+}
+
+.applyBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Empty state ── */
+
+.empty {
+  text-align: center;
+  padding: var(--dr-space-xl);
+  color: var(--figma-color-text-secondary, #999);
+  font-size: var(--dr-text-md);
+}
+
+/* ── Files list ── */
+
+.filesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dr-space-sm);
+}
+
+.fileTag {
+  padding: 2px var(--dr-space-sm);
+  background: rgba(24, 160, 251, 0.08);
+  border-radius: var(--dr-radius-xs, 4px);
+  font-family: "Fira Code", monospace;
+  font-size: var(--dr-text-xs, 11px);
+  color: var(--dr-brand);
+}
