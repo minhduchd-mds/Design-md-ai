@@ -10,6 +10,7 @@ export default defineConfig({
       "web/src/**/__tests__/**/*.test.ts",
       "plugin/**/__tests__/**/*.test.ts",
       "api/**/__tests__/**/*.test.ts",
+      "sdk/**/__tests__/**/*.test.ts",
     ],
     coverage: {
       provider: "v8",

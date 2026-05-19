@@ -1,0 +1,24 @@
+{
+  "name": "@desygn/sdk",
+  "version": "0.1.0",
+  "description": "Public SDK for building plugins and integrations on top of Desygn AI",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT",
+  "files": [
+    "**/*.ts",
+    "!**/__tests__/**",
+    "examples/**"
+  ],
+  "keywords": [
+    "desygn",
+    "design-audit",
+    "ai-agents",
+    "figma-plugin",
+    "design-system",
+    "accessibility"
+  ],
+  "peerDependencies": {
+    "zod": "^4.4.3"
+  }
+}

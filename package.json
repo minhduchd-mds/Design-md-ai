@@ -34,6 +34,10 @@
   },
   "private": true,
   "type": "module",
+  "workspaces": [
+    "shared",
+    "sdk"
+  ],
   "scripts": {
     "dev": "concurrently -n ui,plugin -c blue,yellow \"npm run dev:ui\" \"npm run dev:plugin\"",
     "dev:web": "vite --config vite.web.config.ts --host 127.0.0.1 --port 5173",
@@ -65,7 +69,10 @@
     "turbo:build": "turbo run build",
     "turbo:lint": "turbo run lint",
     "turbo:test": "turbo run test",
-    "bench": "npx tsx benchmarks/index.ts"
+    "bench": "npx tsx benchmarks/index.ts",
+    "workspaces:list": "npm query .workspace",
+    "workspaces:test": "npm test --workspaces --if-present",
+    "workspaces:typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
