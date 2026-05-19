@@ -1,0 +1,45 @@
+name: Feature Request
+description: Đề xuất tính năng mới / Suggest a feature
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Mô tả vấn đề / Problem Description
+      description: Mô tả rõ ràng vấn đề bạn đang gặp phải hoặc nhu cầu chưa được đáp ứng
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Giải pháp đề xuất / Proposed Solution
+      description: Mô tả rõ ràng tính năng bạn muốn thêm vào
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Các giải pháp thay thế / Alternatives Considered
+      description: Mô tả các giải pháp thay thế hoặc tính năng bạn đã xem xét
+  - type: dropdown
+    id: area
+    attributes:
+      label: Khu vực ảnh hưởng / Affected Area
+      options:
+        - Figma Plugin
+        - Web Workspace
+        - AI Chat
+        - UX Checklist Auditor
+        - API Endpoints
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Mức độ ưu tiên đề xuất / Priority Suggestion
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low

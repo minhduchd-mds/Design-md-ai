@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-web
+public
+.git
+.claude
+.vercel
+coverage
+playwright-report
+test-results
+*.md
+!README.md

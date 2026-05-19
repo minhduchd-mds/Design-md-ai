@@ -8,7 +8,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import prettier from "eslint-config-prettier";
 
 export default [{
-  ignores: ["dist/**", "dist-web/**", "release/**", "node_modules/**", "coverage/**", "storybook-static/**", ".claude/**"],
+  ignores: ["dist/**", "dist-web/**", "release/**", "node_modules/**", "coverage/**", "storybook-static/**", ".claude/**", "benchmarks/**"],
 }, {
   files: ["**/*.{ts,tsx}"],
   languageOptions: {

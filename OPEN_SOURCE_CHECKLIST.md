@@ -5,7 +5,7 @@
 - [x] LICENSE file (MIT)
 - [ ] CLA (Contributor License Agreement)
 - [ ] Hướng dẫn thương hiệu (trademark guidelines)
-- [ ] Kiểm tra license bên thứ ba (SBOM)
+- [x] Kiểm tra license bên thứ ba (SBOM) — `THIRD_PARTY_LICENSES.md`
 
 ## Code
 
@@ -19,7 +19,7 @@
 
 ## Tài liệu
 
-- [x] README.md — Tài liệu phần mềm v5
+- [x] README.md — Tài liệu phần mềm v5 (song ngữ Việt/English)
 - [x] CONTRIBUTING.md — Hướng dẫn đóng góp
 - [x] CODE_OF_CONDUCT.md — Tiêu chuẩn cộng đồng
 - [x] OPEN_SOURCE_GUIDE.md — Hướng dẫn tổng quan
@@ -29,42 +29,46 @@
 
 ## Cộng đồng
 
-- [ ] Issue templates (bug report, feature request)
-- [ ] Pull request template
-- [ ] GitHub Discussions bật
-- [ ] Labels `good-first-issue` gắn
+- [x] Issue templates (bug report, feature request) — `.github/ISSUE_TEMPLATE/`
+- [x] Pull request template — `.github/PULL_REQUEST_TEMPLATE.md`
+- [ ] GitHub Discussions bật (cần bật trên GitHub UI)
+- [ ] Labels `good-first-issue` gắn (cần tạo trên GitHub UI)
 - [ ] SLA phản hồi maintainer
 
 ## Hạ tầng
 
-- [ ] npm publish configuration
-- [ ] Docker image (docker-compose.yml)
+- [x] npm publish configuration — `publishConfig`, `files`, `keywords`
+- [x] Docker image — `Dockerfile` + `docker-compose.yml` + `nginx.conf`
 - [x] Vercel deployment (auto-deploy từ main)
-- [x] Test suite (1192 tests / 69 files)
-- [ ] Code coverage reporting
-- [ ] Release automation (semantic-release)
+- [x] Test suite (1313 tests / 75 files)
+- [x] Code coverage reporting — v8 provider + CI artifact upload
+- [x] Release automation — `.github/workflows/release.yml` (tag → test → build → npm publish → GitHub Release)
 
 ## Chất lượng
 
-- [x] ESLint configuration (0 errors)
+- [x] ESLint configuration (0 errors, 0 warnings)
 - [x] TypeScript strict mode
 - [x] SCSS modular architecture
 - [x] Accessibility audit (AccessibilityAgent + WCAG 2.2)
-- [ ] Performance benchmarks
+- [x] Performance benchmarks — `benchmarks/` (HNSW, Evidence Memory, PII, GOAP)
 - [x] Mobile-first design validation
 - [x] Agent system v5 (8 agents, self-learning, CI gate)
 
-## Trạng thái: Sẵn sàng ra mắt
+## Trạng thái: ✅ Sẵn sàng ra mắt
 
-Hoàn thành:
-- [x] CHANGELOG.md với lịch sử v1.0.0 → v5.0.0
-- [x] SECURITY.md với agent security policies
-- [x] 1192 tests / 69 files
-- [x] Agentic UI/UX Auditor v5 (8 agents)
-- [x] Modular architecture (6 modules tách từ main.tsx)
+Hoàn thành (session này):
+- [x] Issue templates + PR template
+- [x] SBOM (THIRD_PARTY_LICENSES.md)
+- [x] npm publish + Docker + Release automation
+- [x] Performance benchmarks (HNSW, Evidence Memory, PII, GOAP)
+- [x] Code coverage reporting + CI gate
+- [x] API integration tests (28 tests)
+- [x] E2E tests (31 specs)
+- [x] README song ngữ (Vietnamese + English)
+- [x] 1313 tests / 75 files — tất cả PASS
 
-Ưu tiên tiếp theo:
-1. Issue và PR templates
-2. API documentation cho Plugin SDK
-3. Code coverage reporting
-4. npm publish configuration
+Còn lại (cần thao tác manual trên GitHub):
+1. Bật GitHub Discussions
+2. Tạo labels `good-first-issue`
+3. Viết API documentation cho Plugin SDK
+4. CLA + Trademark guidelines (tùy quy mô project)

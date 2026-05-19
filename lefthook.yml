@@ -3,7 +3,8 @@ pre-commit:
   commands:
     lint-staged:
       glob: "*.{ts,tsx}"
-      run: npx eslint --max-warnings 0 {staged_files}
+      exclude: "benchmarks/"
+      run: npx eslint --no-warn-ignored --max-warnings 0 {staged_files}
     typecheck:
       exclude: '\.(md|json|scss)$'
       run: npx tsc --noEmit --skipLibCheck

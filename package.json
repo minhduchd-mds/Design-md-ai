@@ -4,23 +4,34 @@
   "description": "Figma to Design.md handoff workspace for AI coding agents.",
   "author": "Stefan Holzheu <design@stefan-holzheu.de>",
   "license": "MIT",
-  "homepage": "https://github.com/minhduchd-mds/Design-md-ai",
+  "homepage": "https://github.com/designready-ai/designready-ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/minhduchd-mds/Design-md-ai.git"
+    "url": "https://github.com/designready-ai/designready-ai.git"
   },
   "bugs": {
-    "url": "https://github.com/minhduchd-mds/Design-md-ai/issues"
+    "url": "https://github.com/designready-ai/designready-ai/issues"
   },
   "keywords": [
     "figma",
-    "figma-plugin",
-    "design-systems",
+    "design",
     "ai",
-    "code-generation",
-    "react",
-    "typescript"
+    "ux-audit",
+    "design-system",
+    "accessibility",
+    "wcag"
   ],
+  "files": [
+    "dist/",
+    "shared/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "private": true,
   "type": "module",
   "scripts": {
@@ -53,7 +64,8 @@
     "prepare": "lefthook install",
     "turbo:build": "turbo run build",
     "turbo:lint": "turbo run lint",
-    "turbo:test": "turbo run test"
+    "turbo:test": "turbo run test",
+    "bench": "npx tsx benchmarks/index.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

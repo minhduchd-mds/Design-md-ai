@@ -1,0 +1,52 @@
+name: Bug Report
+description: Báo cáo lỗi / Report a bug
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Mô tả lỗi / Bug Description
+      description: Mô tả rõ ràng lỗi gặp phải
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước tái tạo / Steps to Reproduce
+      description: "1. Go to...\n2. Click on...\n3. See error"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Hành vi mong đợi / Expected Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Hành vi thực tế / Actual Behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Khu vực ảnh hưởng / Affected Area
+      options:
+        - Figma Plugin
+        - Web Workspace
+        - AI Chat
+        - UX Checklist Auditor
+        - API Endpoints
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Môi trường / Environment
+      description: "Browser, OS, Node version, etc."
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
