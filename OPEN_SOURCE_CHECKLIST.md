@@ -31,8 +31,8 @@
 
 - [x] Issue templates (bug report, feature request) — `.github/ISSUE_TEMPLATE/`
 - [x] Pull request template — `.github/PULL_REQUEST_TEMPLATE.md`
-- [ ] GitHub Discussions bật (cần bật trên GitHub UI)
-- [ ] Labels `good-first-issue` gắn (cần tạo trên GitHub UI)
+- [x] GitHub Discussions bật
+- [x] Labels `good-first-issue` + `help-wanted` + `priority:*` gắn
 - [x] SLA phản hồi maintainer — `docs/MAINTAINER_SLA.md`
 
 ## Hạ tầng
@@ -74,6 +74,4 @@ Hoàn thành (documentation session):
 - [x] docs/SELF_HOSTING.md — Self-hosting guide (Docker, Nginx, Supabase)
 - [x] docs/MAINTAINER_SLA.md — Response SLA + labels
 
-Còn lại (cần thao tác manual trên GitHub):
-1. Bật GitHub Discussions
-2. Tạo labels `good-first-issue`, `help-wanted`, `priority:*`
+Còn lại: **Không còn mục nào** — Sẵn sàng ra mắt! 🚀
