@@ -8,9 +8,9 @@
 [![npm version](https://img.shields.io/npm/v/design-md-ai.svg)](https://www.npmjs.com/package/design-md-ai)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/tests-1313%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1529%20passed-brightgreen.svg)]()
 [![Vercel](https://img.shields.io/badge/deploy-Vercel-black.svg)](https://design-md-ai-yd6r.vercel.app/)
-[![v5 Agentic](https://img.shields.io/badge/architecture-v5%20Agentic-blueviolet.svg)]()
+[![v6 Agent Fleet](https://img.shields.io/badge/architecture-v6%20Agent%20Fleet-blueviolet.svg)]()
 [![Discussions](https://img.shields.io/github/discussions/minhduchd-mds/Design-md-ai)](https://github.com/minhduchd-mds/Design-md-ai/discussions)
 [![Storybook](https://img.shields.io/badge/Storybook-View-FF4785?logo=storybook&logoColor=white)](https://minhduchd-mds.github.io/Design-md-ai/)
 
@@ -258,7 +258,7 @@ Design-md-ai/
 - EN/VI internationalization
 
 **Infrastructure & Quality**
-- 1192 unit tests across 69 files (Vitest)
+- 1529 tests across 102 files (Vitest)
 - GitHub Actions CI (lint + test + build + E2E)
 - Vercel deployment with security headers (CSP, HSTS, X-Frame-Options)
 - Local demo auth (localStorage-based)
@@ -345,7 +345,7 @@ npm run web:build   # Web app → public/
 | `npm run web:dev` | Web workspace dev server (port 5174) |
 | `npm run web:build` | Production build for web app |
 | `npm run build` | Production build for Figma plugin |
-| `npm test` | Run 1192 unit tests (Vitest) |
+| `npm test` | Run 1529 tests (Vitest) |
 | `npm run lint` | ESLint 9 |
 | `npm run format` | Prettier format |
 | `npm run typecheck` | TypeScript type checking (UI + plugin) |
@@ -388,7 +388,7 @@ Templates are lazy-loaded — only metadata is fetched on startup; full content 
 ## Testing & Quality
 
 ```bash
-npm test              # 1192 tests / 69 files
+npm test              # 1529 tests / 102 files
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 npm run lint          # ESLint 9

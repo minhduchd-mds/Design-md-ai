@@ -8,9 +8,9 @@
 [![npm version](https://img.shields.io/npm/v/design-md-ai.svg)](https://www.npmjs.com/package/design-md-ai)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/tests-1313%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1529%20passed-brightgreen.svg)]()
 [![Vercel](https://img.shields.io/badge/deploy-Vercel-black.svg)](https://design-md-ai-yd6r.vercel.app/)
-[![v5 Agentic](https://img.shields.io/badge/architecture-v5%20Agentic-blueviolet.svg)]()
+[![v6 Agent Fleet](https://img.shields.io/badge/architecture-v6%20Agent%20Fleet-blueviolet.svg)]()
 [![Discussions](https://img.shields.io/github/discussions/minhduchd-mds/Design-md-ai)](https://github.com/minhduchd-mds/Design-md-ai/discussions)
 [![Storybook](https://img.shields.io/badge/Storybook-View-FF4785?logo=storybook&logoColor=white)](https://minhduchd-mds.github.io/Design-md-ai/)
 
@@ -21,6 +21,7 @@
 - [Tổng quan](#tổng-quan)
 - [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)
 - [Hệ thống Agent (v5)](#hệ-thống-agent-v5)
+- [Agent Fleet v6](#agent-fleet-v6)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Tính năng](#tính-năng)
 - [Cài đặt & Vận hành](#cài-đặt--vận-hành)
@@ -42,7 +43,8 @@ Desygn AI là nền tảng trí tuệ thiết kế kết nối Figma với AI co
 |---------|----------|
 | **Figma Plugin** | Quét component, variables, responsive variants — chấm điểm AI-readiness |
 | **Web Workspace** | Sinh Design.md, chat AI, preview handoff, template library, audit UI/UX |
-| **Agent System** | 6 AI agents tự động audit, scoring, fix planning, tạo GitHub Issues |
+| **Agent System v5** | 8 AI agents tự động audit, scoring, fix planning, tạo GitHub Issues |
+| **Agent Fleet v6** | 22 agents / 8 fleets — self-improving, worktree-isolated, cost-gated |
 
 ---
 
@@ -149,6 +151,52 @@ Figma Plugin ──scan──▶ DesignAuditAgent ──▶ AccessibilityAgent
 
 ---
 
+## Agent Fleet v6
+
+> Architecture Decision Record: [`docs/architecture/AGENT_FLEET_V6.md`](docs/architecture/AGENT_FLEET_V6.md)
+
+Hệ thống 22 agent / 8 fleet hoạt động tự chủ với worktree isolation, cost gating, và self-improvement loop.
+
+### Tổng quan Fleet
+
+| Fleet | Agents | Vai trò |
+|-------|--------|---------|
+| **Command** | HumanCommandAgent, IssueToTaskAgent | Parse NL commands, convert issues to tasks |
+| **Map** | RepoMapAgent, ComponentTraceAgent, DesignContextAgent | Index repo, trace components, bridge design context |
+| **Audit** | ArchitectureDriftAgent | Circular deps, naming, barrel gaps, layer breaches |
+| **Self-Improve** | SelfDiagnosticAgent, RefactorAgent, TestGenAgent, DependencyAuditAgent, SelfAuditAgent, BenchmarkAgent | Scan, refactor, generate tests, audit deps, grade health |
+| **Fix** | CodeFixAgent, DiffApplierAgent, RollbackAgent + FixApprovalUI | Generate diffs, apply in worktree, rollback, user approval |
+| **Safety** | SafetyGateAgent, RegressionGuardAgent, ConflictResolverAgent | Secret detection, lint/build/test gate, conflict resolution |
+| **Verify** | TestRunnerAgent, LintRunnerAgent, BuildVerifierAgent | CLI wrappers: vitest, eslint, tsc+build |
+
+### Self-Improvement Loop
+
+```
+User/Cron → HumanCommandAgent → SelfDiagnosticAgent → OrchestratorAgent
+  → WorktreeRunner.create() → RefactorAgent/TestGenAgent → CodeFixAgent
+  → SafetyGateAgent → DiffApplierAgent → RegressionGuardAgent
+  → ConflictResolverAgent → FixApprovalUI → User Approve/Reject
+  → SelfAuditAgent + BenchmarkAgent (health tracking)
+```
+
+### Safety Guards
+
+- **Cost gate**: `$MAX_COST_USD` budget per orchestration run
+- **Worktree isolation**: All changes in git worktrees, `main` is read-only
+- **Secret detection**: 7 regex patterns (API keys, AWS, GitHub PAT, OpenAI, JWT, private keys)
+- **Protected files**: `.env*`, `*.pem`, `credentials*`, CI workflows, lock files
+- **Regression guard**: Lint → build → test fail-fast (120s timeout per step)
+- **Conflict resolver**: Same-region, adjacent, whole-file conflict detection
+- **User approval**: Every code change requires explicit approve/reject via FixApprovalUI
+
+### Test Coverage
+
+- **25 test files**, **192 agent-specific tests** — 100% module coverage
+- E2E self-improvement pipeline test (diagnostic → refactor → diff → apply → verify)
+- Pure reducer tests for FixApprovalUI state management
+
+---
+
 ## Cấu trúc dự án
 
 ```
@@ -203,6 +251,18 @@ Design-md-ai/
 │   │   ├── usageAnalytics.ts         #     SaaS tiers, quotas, feature flags
 │   │   ├── collaborationEngine.ts    #     CRDT (LWW + OR-Set) + PII
 │   │   ├── designAnalyzer.ts         #     Design auditor (WCAG 2.2)
+│   │   ├── agents/v6/               #     Agent Fleet v6 (22 agents, 8 fleets)
+│   │   │   ├── BaseAgent.ts          #       Abstract base + FleetName type
+│   │   │   ├── OrchestratorAgent.ts  #       Multi-fleet scheduler + cost gate
+│   │   │   ├── WorktreeRunner.ts     #       Git worktree isolation
+│   │   │   ├── audit/               #       ArchitectureDriftAgent
+│   │   │   ├── command/             #       HumanCommand, IssueToTask
+│   │   │   ├── map/                 #       RepoMap, ComponentTrace, DesignContext
+│   │   │   ├── self-improve/        #       Diagnostic, Refactor, TestGen, DepAudit, SelfAudit, Benchmark
+│   │   │   ├── fix/                 #       CodeFix, DiffApplier, Rollback, useFixApproval
+│   │   │   ├── safety/             #       SafetyGate, RegressionGuard, ConflictResolver
+│   │   │   ├── verify/             #       TestRunner, LintRunner, BuildVerifier
+│   │   │   └── __tests__/          #       25 test files, 192 tests
 │   │   └── __tests__/                #     69 test files
 │   ├── design/                       #   Template registry + validators
 │   │   └── design-md-templates/      #     73 stored DESIGN.md templates
@@ -258,7 +318,7 @@ Design-md-ai/
 - EN/VI internationalization
 
 **Hạ tầng & Chất lượng**
-- 1192 unit tests / 69 files (Vitest)
+- 1529 tests / 102 files (Vitest) — bao gồm 192 agent fleet v6 tests
 - GitHub Actions CI (lint + test + build + E2E)
 - Vercel deployment với security headers (CSP, HSTS, X-Frame-Options)
 - Local demo auth (localStorage-based)
@@ -345,7 +405,7 @@ npm run web:build   # Web app → public/
 | `npm run web:dev` | Web workspace dev server (port 5174) |
 | `npm run web:build` | Production build cho web app |
 | `npm run build` | Production build cho Figma plugin |
-| `npm test` | Chạy 1192 unit tests (Vitest) |
+| `npm test` | Chạy 1529 tests (Vitest) |
 | `npm run lint` | ESLint 9 |
 | `npm run format` | Prettier format |
 | `npm run typecheck` | TypeScript type checking (UI + plugin) |
@@ -386,7 +446,7 @@ Templates lazy-loaded — chỉ tải metadata lúc khởi động, full content
 ## Kiểm thử & Chất lượng
 
 ```bash
-npm test              # 1192 tests / 69 files
+npm test              # 1529 tests / 102 files
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 npm run lint          # ESLint 9
@@ -399,6 +459,7 @@ npm run typecheck     # TypeScript (UI + plugin)
 | Module | Số tests | Mô tả |
 |--------|----------|-------|
 | Core lib (Shannon, GOAP, Evidence, PII) | ~890 | Intelligence engines |
+| **Agent Fleet v6 (22 agents)** | **192** | **Autonomous agent system** |
 | UX Checklist (agents, CI, memory, stream) | ~72 | Agentic auditor v5 |
 | Modular architecture (stores, engines) | ~68 | App modules |
 | Design (templates, parser, validator) | ~50 | Design.md |
@@ -461,6 +522,7 @@ Security headers: CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Polic
 | **ADR: Event-Driven** | [`docs/adr/002`](docs/adr/002-event-driven-architecture.md) | Event bus architecture |
 | **ADR: API Layer** | [`docs/adr/003`](docs/adr/003-api-layer-architecture.md) | API design decisions |
 | **ADR: Command Pattern** | [`docs/adr/004`](docs/adr/004-command-pattern-undo-redo.md) | Undo/redo implementation |
+| **ADR: Agent Fleet v6** | [`docs/architecture/AGENT_FLEET_V6.md`](docs/architecture/AGENT_FLEET_V6.md) | 22-agent autonomous system |
 | **Bảo mật** | [`SECURITY.md`](SECURITY.md) | Security policy + PII protection |
 | **Changelog** | [`CHANGELOG.md`](CHANGELOG.md) | Lịch sử phiên bản |
 | **Contributing** | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Hướng dẫn đóng góp |

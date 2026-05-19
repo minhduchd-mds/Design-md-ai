@@ -6,6 +6,43 @@ Tất cả thay đổi quan trọng của Desygn AI được ghi nhận tại đ
 
 ## [Unreleased]
 
+## [5.1.0] — 2026-05-19
+
+Agent Fleet v6 — 22-agent autonomous self-improving system with worktree isolation, cost gating, and safety guards.
+
+### Them moi
+
+- **Agent Fleet v6** — 22 agents across 8 fleets:
+  - **Command Fleet**: HumanCommandAgent (NL parser, 12 patterns), IssueToTaskAgent (GitHub/Figma/diagnostic issues)
+  - **Map Fleet**: RepoMapAgent (repo indexing), ComponentTraceAgent (Figma-to-code mapping), DesignContextAgent (design bridge)
+  - **Audit Fleet**: ArchitectureDriftAgent (circular deps via DFS, naming rules, barrel gaps, layer breaches, orphans)
+  - **Self-Improve Fleet**: SelfDiagnosticAgent, RefactorAgent (any->unknown, dead disables), TestGenAgent, DependencyAuditAgent, SelfAuditAgent, BenchmarkAgent
+  - **Fix Fleet**: CodeFixAgent (unified diffs), DiffApplierAgent (worktree-only), RollbackAgent (git reset+clean), FixApprovalUI (React dark-theme diff viewer)
+  - **Safety Fleet**: SafetyGateAgent (7 secret patterns, protected files, max-files policy), RegressionGuardAgent (lint/build/test fail-fast, 120s timeout), ConflictResolverAgent (same-region/adjacent/whole-file detection)
+  - **Verify Fleet**: TestRunnerAgent (vitest), LintRunnerAgent (eslint), BuildVerifierAgent (tsc+build)
+- **BaseAgentV6** — Abstract base class with FleetName type, cost estimation, worktree support
+- **OrchestratorAgentV6** — Multi-fleet scheduler with Promise.allSettled parallelism, cost gate, budget refunds
+- **WorktreeRunner** — Git worktree isolation with TTL cleanup, SIGTERM+SIGKILL timeout, AbortSignal support
+- **useFixApproval** — Pure reducer hook for proposal approval state (approve/reject/bulk/undo)
+- **FixApprovalUI** — Dark-theme diff viewer component with approve/reject/bulk actions
+- **Supabase migration 004** — agent_runs table with RLS, agent_health_summary view
+- **192 agent-specific tests** across 25 test files — 100% module coverage
+- **E2E self-improvement pipeline test** (SelfDiagnostic -> Refactor -> CodeFix -> DiffApply -> Verify)
+
+### Thay doi
+
+- OrchestratorAgent fleet list expanded from 4 to 7 fleets (added command, map, safety)
+- Total test count: 1337 -> 1529 (102 files)
+- ADR: AGENT_FLEET_V6.md documented with full architecture, implementation status, roadmap
+
+### Bao mat
+
+- SafetyGateAgent blocks `.env*`, `*.pem`, `credentials*`, CI workflows, lock files
+- 7 secret detection regex patterns: API keys, AWS AKIA, GitHub PAT ghp_, OpenAI sk-, JWT, private keys
+- WorktreeRunner: all agent changes isolated in git worktrees, `main` is read-only
+- RegressionGuardAgent: fail-fast lint/build/test gate blocks unsafe patches
+- ConflictResolverAgent: detects overlapping patches between parallel agents
+
 ## [5.0.1] — 2026-05-19
 
 ### Thay doi
@@ -168,7 +205,9 @@ Phiên bản công khai đầu tiên.
 - Responsive viewport detection từ sibling frames
 - Prompt injection protection qua sanitisation
 
-[Unreleased]: https://github.com/designready-ai/designready-ai/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/designready-ai/designready-ai/compare/v5.1.0...HEAD
+[5.1.0]: https://github.com/designready-ai/designready-ai/compare/v5.0.1...v5.1.0
+[5.0.1]: https://github.com/designready-ai/designready-ai/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/designready-ai/designready-ai/compare/v2.0.0...v5.0.0
 [2.0.0]: https://github.com/designready-ai/designready-ai/compare/v1.1.5...v2.0.0
 [1.1.5]: https://github.com/designready-ai/designready-ai/compare/v1.1.4...v1.1.5

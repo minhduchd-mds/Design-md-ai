@@ -1,11 +1,14 @@
 /**
  * OrchestratorAgent v6 — Multi-fleet scheduler with cost gate.
  *
- * Coordinates the 4 fleets:
- *   - Audit (analyze design)
- *   - Fix (apply changes in worktree)
- *   - Self-Improve (analyze + propose codebase improvements)
- *   - Verify (test/lint/build CLI wrappers)
+ * Coordinates 7 fleets in execution order:
+ *   - Command  (parse NL → missions, issue → task conversion)
+ *   - Map      (repo indexing, component tracing, design context)
+ *   - Audit    (architecture drift detection)
+ *   - Self-Improve (diagnostics, refactor, test gen, benchmarks)
+ *   - Fix      (diff generation, apply in worktree, rollback)
+ *   - Safety   (policy gate, regression guard, conflict resolver)
+ *   - Verify   (test/lint/build CLI wrappers)
  *
  * Routing rules:
  *   1. Cost gate: skip any agent whose estimateCost > remaining budget
@@ -97,7 +100,9 @@ export class OrchestratorAgentV6 {
     const skipped: string[] = [];
     let remainingBudget = input.maxCostUsd;
 
-    const fleets: FleetName[] = ["audit", "fix", "self-improve", "verify"];
+    const fleets: FleetName[] = [
+      "command", "map", "audit", "self-improve", "fix", "safety", "verify",
+    ];
     const runFleet = async (fleet: FleetName): Promise<void> => {
       const fleetInput = input.fleetInputs[fleet];
       if (fleetInput === undefined) return;
