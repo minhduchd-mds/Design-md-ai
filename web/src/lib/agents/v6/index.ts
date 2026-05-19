@@ -52,3 +52,6 @@ export * from "./map";
 
 // Safety fleet
 export * from "./safety";
+
+// Audit fleet
+export * from "./audit";

@@ -15,3 +15,11 @@ export type {
   SafetyPolicy,
   SafetyViolation,
 } from "./SafetyGateAgent";
+
+export { ConflictResolverAgent } from "./ConflictResolverAgent";
+export type {
+  ConflictResolverInput,
+  ConflictResolverOutput,
+  PatchHunk,
+  Conflict,
+} from "./ConflictResolverAgent";
