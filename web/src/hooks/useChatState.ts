@@ -21,7 +21,7 @@ import {
   loadSessionMessages,
   deleteSessionStorage,
 } from "../app/auth";
-import { sendClaudeChat } from "../workspace/claudeChat";
+import { sendChat } from "../workspace/chatApi";
 import { recordUsage } from "../lib/usageTracker";
 
 // ── Legacy placeholders to strip from persisted history ───────
@@ -337,7 +337,7 @@ export function useChatState(
 
       try {
         const [fullText, htmlCode] = await Promise.all([
-          sendClaudeChat(
+          sendChat(
             chatMessages,
             {
               projectName: context.projectName,

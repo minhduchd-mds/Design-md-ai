@@ -23,7 +23,7 @@ import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, type DesignMdTemplateCategory
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { analyzeImage } from "./workspace/imageAnalyzer";
-// sendClaudeChat now used only inside useChatState hook
+// sendChat (formerly sendClaudeChat) now used only inside useChatState hook
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
 import { DESIGN_SOURCES, CHECKLIST_CATEGORIES, type ChecklistRow, type ChecklistStatus, type DesignSource } from "./workspace/checklistData";
 import { ComparePanel, type BugMarker } from "./workspace/ComparePanel";

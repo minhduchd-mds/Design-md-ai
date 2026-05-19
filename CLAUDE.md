@@ -15,7 +15,7 @@ npm run lint      # ESLint 9
 - Never use `findAll()` — use `findAllWithCriteria()` on `currentPage` only.
 - Serializer: `isMixed()` check before reading mixed properties. Max depth 15.
 - Scoring modules: pure functions, no side effects, no Figma API.
-- Prompt text: always sanitize via `sanitize.ts` (injection risk).
+- Prompt text: always `sanitize()` via `sanitize.ts` (strips HTML + control chars). For prompt-injection defense, also use `wrapUserInput()` when embedding user text in AI prompts.
 - CSS Modules per component. Dark theme only. Gap-based layout.
 - New serializer field: types.ts → serializer.ts → prompt-compact.ts.
 

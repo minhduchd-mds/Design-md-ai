@@ -1,13 +1,13 @@
 /**
- * figmaMcpClient — real WebSocket connection test for Figma MCP.
+ * figmaMcpClient — HTTP connection test for Figma MCP.
  *
- * Figma MCP server (Model Context Protocol) listens on a WebSocket endpoint.
- * This client attempts a real WS handshake with a 5s timeout, sends a ping,
- * and waits for any valid JSON response to confirm the server is alive.
+ * Figma MCP server uses Streamable HTTP transport (POST JSON-RPC 2.0),
+ * NOT WebSocket. Known endpoints:
+ *   - Remote: https://mcp.figma.com/mcp
+ *   - Local:  http://127.0.0.1:3845/mcp
  *
- * Protocol:
- *   → { jsonrpc: "2.0", id: 1, method: "ping" }
- *   ← Any JSON message (pong, capabilities, etc.)
+ * This module sends an `initialize` JSON-RPC 2.0 request to verify the
+ * server is alive and speaks MCP protocol.
  */
 
 export type FigmaMcpStatus = "idle" | "connecting" | "connected" | "error";
@@ -15,113 +15,61 @@ export type FigmaMcpStatus = "idle" | "connecting" | "connected" | "error";
 const CONNECTION_TIMEOUT_MS = 5000;
 
 /**
- * Attempt to connect to a Figma MCP WebSocket endpoint and verify it responds.
- * Returns "connected" on success, "error" on failure.
+ * Test connection to a Figma MCP endpoint via HTTP POST (JSON-RPC 2.0).
+ * Returns "connected" on valid response, "error" on failure.
  */
 export async function testFigmaMcpConnection(endpoint: string): Promise<"connected" | "error"> {
-  // Normalise: allow http(s) → convert to ws(s)
-  const wsUrl = normaliseWsUrl(endpoint);
-  if (!wsUrl) return "error";
+  const url = normaliseHttpUrl(endpoint);
+  if (!url) return "error";
 
-  return new Promise<"connected" | "error">((resolve) => {
-    let settled = false;
-
-    const settle = (result: "connected" | "error") => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer as ReturnType<typeof setTimeout>);
-      try { ws.close(); } catch { /* ignore */ }
-      resolve(result);
-    };
-
-    const timer = setTimeout(() => settle("error"), CONNECTION_TIMEOUT_MS);
-
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(wsUrl);
-    } catch {
-      settle("error");
-      return;
-    }
-
-    ws.onopen = () => {
-      // Send JSON-RPC ping as per MCP spec
-      try {
-        ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }));
-      } catch {
-        settle("error");
-      }
-    };
-
-    ws.onmessage = () => {
-      // Any response means the server is alive
-      settle("connected");
-    };
-
-    ws.onerror = () => settle("error");
-    ws.onclose = (ev) => {
-      // If we close with code 1000/1001 before getting a message it might still be a valid server
-      // that just doesn't implement ping — treat clean close as error (need actual response)
-      if (!settled) settle(ev.wasClean && ev.code === 1000 ? "error" : "error");
-    };
-  });
-}
-
-/**
- * Create a persistent MCP session that stays open and calls onMessage for every event.
- * Returns a cleanup function to close the socket.
- */
-export function connectFigmaMcp(
-  endpoint: string,
-  onMessage: (data: unknown) => void,
-  onStatusChange: (status: FigmaMcpStatus) => void,
-): () => void {
-  const wsUrl = normaliseWsUrl(endpoint);
-  if (!wsUrl) { onStatusChange("error"); return () => {}; }
-
-  onStatusChange("connecting");
-  let ws: WebSocket;
-  let closed = false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT_MS);
 
   try {
-    ws = new WebSocket(wsUrl);
-  } catch {
-    onStatusChange("error");
-    return () => {};
-  }
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-03-26",
+          capabilities: {},
+          clientInfo: { name: "desygn-ai", version: "5.1.1" },
+        },
+      }),
+      signal: controller.signal,
+    });
 
-  ws.onopen = () => {
-    onStatusChange("connected");
-    ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }));
-  };
+    if (!response.ok) return "error";
 
-  ws.onmessage = (ev) => {
-    try {
-      const data = JSON.parse(ev.data as string) as unknown;
-      onMessage(data);
-    } catch {
-      onMessage(ev.data);
+    const data = (await response.json()) as Record<string, unknown>;
+    // Valid MCP response has jsonrpc field and either result or error
+    if (data && typeof data === "object" && "jsonrpc" in data) {
+      return "connected";
     }
-  };
-
-  ws.onerror = () => onStatusChange("error");
-  ws.onclose = () => { if (!closed) onStatusChange("idle"); };
-
-  return () => {
-    closed = true;
-    try { ws.close(); } catch { /* ignore */ }
-  };
+    return "error";
+  } catch {
+    return "error";
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ── helpers ──────────────────────────────────────────────
 
-function normaliseWsUrl(raw: string): string | null {
+function normaliseHttpUrl(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
   try {
-    // Allow ws://, wss://, http://, https://
-    const url = trimmed.startsWith("ws") ? new URL(trimmed) : new URL(trimmed.replace(/^http/, "ws"));
-    if (!["ws:", "wss:"].includes(url.protocol)) return null;
+    // Convert ws/wss to http/https for backward compat with saved endpoints
+    let normalized = trimmed;
+    if (normalized.startsWith("ws://")) normalized = normalized.replace("ws://", "http://");
+    else if (normalized.startsWith("wss://")) normalized = normalized.replace("wss://", "https://");
+
+    const url = new URL(normalized);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
     return url.toString();
   } catch {
     return null;

@@ -2,7 +2,7 @@
  * Tests for ChatEngine module — multi-provider chat orchestration.
  *
  * Validates:
- *   • ChatEngine.send() passes correct parameters to sendClaudeChat
+ *   • ChatEngine.send() passes correct parameters to sendChat
  *   • Streaming callbacks (onToken, onComplete, onError) fire correctly
  *   • Abort cancellation works
  *   • Config defaults and overrides
@@ -12,9 +12,10 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock sendClaudeChat before import
-vi.mock("../../workspace/claudeChat", () => ({
-  sendClaudeChat: vi.fn(),
+// Mock sendChat before import
+vi.mock("../../workspace/chatApi", () => ({
+  sendChat: vi.fn(),
+  sendChat: vi.fn(), // deprecated alias — kept for compat
 }));
 
 // Mock auth helpers
@@ -34,10 +35,10 @@ vi.mock("../../app/auth", () => ({
 }));
 
 import { ChatEngine, chatEngine, createUserMessage, createAssistantMessage, createSystemMessage } from "../index";
-import { sendClaudeChat } from "../../workspace/claudeChat";
+import { sendChat } from "../../workspace/chatApi";
 import type { StreamCallbacks } from "../index";
 
-const mockSendClaudeChat = sendClaudeChat as ReturnType<typeof vi.fn>;
+const mockSendChat = sendChat as ReturnType<typeof vi.fn>;
 
 describe("ChatEngine", () => {
   beforeEach(() => {
@@ -87,8 +88,8 @@ describe("ChatEngine", () => {
 
   // ── send() — Fixed Signature ───────────────────────────────────
 
-  it("calls sendClaudeChat with correct 4-argument signature", async () => {
-    mockSendClaudeChat.mockResolvedValueOnce("Hello from AI");
+  it("calls sendChat with correct 4-argument signature", async () => {
+    mockSendChat.mockResolvedValueOnce("Hello from AI");
 
     const callbacks: StreamCallbacks = {
       onToken: vi.fn(),
@@ -103,8 +104,8 @@ describe("ChatEngine", () => {
     const engine = ChatEngine.create();
     await engine.send(messages, callbacks, { projectName: "Test", category: "SaaS" });
 
-    expect(mockSendClaudeChat).toHaveBeenCalledTimes(1);
-    const [passedMessages, passedContext, passedOnToken, passedSignal] = mockSendClaudeChat.mock.calls[0];
+    expect(mockSendChat).toHaveBeenCalledTimes(1);
+    const [passedMessages, passedContext, passedOnToken, passedSignal] = mockSendChat.mock.calls[0];
 
     // Arg 1: messages array (passed through, not mapped to partial objects)
     expect(passedMessages).toBe(messages);
@@ -128,7 +129,7 @@ describe("ChatEngine", () => {
   });
 
   it("invokes onToken callback during streaming", async () => {
-    mockSendClaudeChat.mockImplementationOnce(
+    mockSendChat.mockImplementationOnce(
       async (_msgs: unknown, _ctx: unknown, onToken: (t: string) => void) => {
         onToken("Hello");
         onToken(" World");
@@ -150,9 +151,9 @@ describe("ChatEngine", () => {
     expect(onComplete).toHaveBeenCalledWith("Hello World");
   });
 
-  it("fires onError on sendClaudeChat failure", async () => {
+  it("fires onError on sendChat failure", async () => {
     const error = new Error("Network failure");
-    mockSendClaudeChat.mockRejectedValueOnce(error);
+    mockSendChat.mockRejectedValueOnce(error);
 
     const onError = vi.fn();
     const engine = ChatEngine.create();
@@ -165,7 +166,7 @@ describe("ChatEngine", () => {
   });
 
   it("fires onError for empty response", async () => {
-    mockSendClaudeChat.mockResolvedValueOnce("");
+    mockSendChat.mockResolvedValueOnce("");
 
     const onError = vi.fn();
     const onComplete = vi.fn();
@@ -181,7 +182,7 @@ describe("ChatEngine", () => {
 
   it("silently ignores AbortError", async () => {
     const abortError = new DOMException("Aborted", "AbortError");
-    mockSendClaudeChat.mockRejectedValueOnce(abortError);
+    mockSendChat.mockRejectedValueOnce(abortError);
 
     const onError = vi.fn();
     const engine = ChatEngine.create();
@@ -194,7 +195,7 @@ describe("ChatEngine", () => {
   });
 
   it("passes model from config to context", async () => {
-    mockSendClaudeChat.mockResolvedValueOnce("ok");
+    mockSendChat.mockResolvedValueOnce("ok");
 
     const engine = ChatEngine.create({ model: "mixtral-8x7b-32768" });
     await engine.send(
@@ -202,7 +203,7 @@ describe("ChatEngine", () => {
       { onToken: vi.fn(), onComplete: vi.fn(), onError: vi.fn() },
     );
 
-    const passedContext = mockSendClaudeChat.mock.calls[0][1];
+    const passedContext = mockSendChat.mock.calls[0][1];
     expect(passedContext.model).toBe("mixtral-8x7b-32768");
   });
 

@@ -1,12 +1,16 @@
 /**
- * claudeChat — chat API integration layer.
+ * chatApi — Chat API integration layer (Groq / Google Gemini via /api/chat).
  *
- * Previously called fetch() directly; now delegates to:
- *  • streamClient.postStream  (streaming path — onToken callback)
- *  • apiClient. Post           (non-streaming fallback)
+ * Delegates to:
+ *  - streamClient.postStream  (streaming path — onToken callback)
+ *  - apiClient.post           (non-streaming fallback)
  *
  * Benefits: automatic retry, AbortController lifecycle, rate-limit awareness,
  * error normalization, and error bus emission.
+ *
+ * NOTE: Despite the legacy export name `sendClaudeChat`, this calls Groq and
+ * Google Gemini via our /api/chat-stream endpoint — not the Anthropic API.
+ * The function name is kept for backward compatibility; alias `sendChat` below.
  */
 
 import type { ChatMessage } from "../app/types";
@@ -20,7 +24,7 @@ interface ChatResponse {
   error?: string;
 }
 
-export async function sendClaudeChat(
+export async function sendChat(
   messages: ChatMessage[],
   context: {
     projectName: string;
@@ -37,7 +41,7 @@ export async function sendClaudeChat(
   // Client-side rate limit guard
   if (!chatRateLimit.consume()) {
     const waitSec = chatRateLimit.waitSeconds.toFixed(1);
-    throw new Error(`Gửi quá nhanh — vui lòng đợi ${waitSec}s trước khi thử lại.`);
+    throw new Error(`Rate limited — please wait ${waitSec}s before retrying.`);
   }
 
   const body = {
@@ -61,7 +65,7 @@ export async function sendClaudeChat(
     } catch (err) {
       const message = err instanceof Error ? err.message : "Chat stream failed";
       if (message.includes("NETWORK") || message.includes("fetch")) {
-        throw new Error("Chat API không khả dụng. Khởi động dev server hoặc deploy lên Vercel.");
+        throw new Error("Chat API unavailable. Start the dev server or deploy to Vercel.");
       }
       errorBus.network(message, true);
       throw err;
@@ -75,8 +79,11 @@ export async function sendClaudeChat(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Chat request failed";
     if (message.includes("404")) {
-      throw new Error("Chat API route not found. Khởi động lại dev server để /api/chat được đăng ký.");
+      throw new Error("Chat API route not found. Restart the dev server so /api/chat is registered.");
     }
     throw err;
   }
 }
+
+/** @deprecated Use `sendChat` instead. Alias kept for backward compatibility. */
+export const sendClaudeChat = sendChat;

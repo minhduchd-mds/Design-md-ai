@@ -1,4 +1,7 @@
 /**
+ * @deprecated Use Agent Fleet v6 (`agents/v6/`) instead. This module will be
+ * removed in v6.0. See `docs/adr/AGENT_FLEET_V6.md` for migration details.
+ *
  * shannonEngine v3 — Shannon-inspired Multi-Agent Design Intelligence Engine.
  *
  * v3 architecture upgrades:

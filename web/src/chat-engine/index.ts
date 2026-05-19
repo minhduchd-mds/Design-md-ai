@@ -15,7 +15,7 @@
 
 import type { ChatMessage } from "../app/types";
 import { createMessage, encryptChatMessages, decryptChatMessages, getChatHistoryKey } from "../app/auth";
-import { sendClaudeChat } from "../workspace/claudeChat";
+import { sendChat } from "../workspace/chatApi";
 
 
 // ── Types ──────────────────────────────────────────────────────
@@ -84,7 +84,7 @@ export class ChatEngine {
 
     try {
       let fullResponse = "";
-      const response = await sendClaudeChat(
+      const response = await sendChat(
         messages,
         {
           projectName: context?.projectName ?? "",

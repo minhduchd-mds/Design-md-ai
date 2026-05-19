@@ -1,85 +1,67 @@
 /**
  * figmaMcpClient — unit tests
  *
- * Tests the WS connection logic without a real server using a mock WebSocket.
+ * Tests the HTTP-based MCP connection test using fetch mocks.
+ * Verifies JSON-RPC 2.0 `initialize` request is sent correctly.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { testFigmaMcpConnection, connectFigmaMcp } from "../figmaMcpClient";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { testFigmaMcpConnection } from "../figmaMcpClient";
 
-// ── Mock WebSocket ──────────────────────────────────────────
-class MockWebSocket {
-  url: string;
-  readyState = 0; // CONNECTING
-  onopen: (() => void) | null = null;
-  onmessage: ((ev: { data: string }) => void) | null = null;
-  onerror: (() => void) | null = null;
-  onclose: ((ev: { wasClean: boolean; code: number }) => void) | null = null;
-  sentMessages: string[] = [];
-  static instances: MockWebSocket[] = [];
+// ── Helpers ─────────────────────────────────────────────
 
-  constructor(url: string) {
-    this.url = url;
-    MockWebSocket.instances.push(this);
-  }
-
-  send(data: string) { this.sentMessages.push(data); }
-  close() { this.readyState = 3; }
-
-  // Test helpers
-  simulateOpen() { this.readyState = 1; this.onopen?.(); }
-  simulateMessage(data: unknown) { this.onmessage?.({ data: JSON.stringify(data) }); }
-  simulateError() { this.onerror?.(); }
-  simulateClose(wasClean = true, code = 1000) { this.readyState = 3; this.onclose?.({ wasClean, code }); }
+function mockFetch(response: { ok: boolean; json?: unknown }) {
+  return vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    ok: response.ok,
+    json: () => Promise.resolve(response.json ?? {}),
+  } as Response);
 }
 
 describe("figmaMcpClient", () => {
-  let originalWebSocket: typeof globalThis.WebSocket;
-
-  beforeEach(() => {
-    originalWebSocket = globalThis.WebSocket;
-    MockWebSocket.instances = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).WebSocket = MockWebSocket;
-  });
-
   afterEach(() => {
-    globalThis.WebSocket = originalWebSocket;
-    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
-
-  // ── testFigmaMcpConnection ──────────────────────────────
 
   describe("testFigmaMcpConnection", () => {
-    it("returns 'connected' when server opens and replies", async () => {
-      const promise = testFigmaMcpConnection("ws://localhost:3333");
-      // Give synchronous constructor a tick to run
-      await new Promise(r => setTimeout(r, 0));
-      const ws = MockWebSocket.instances[0];
-      expect(ws).toBeDefined();
-      ws.simulateOpen();
-      ws.simulateMessage({ jsonrpc: "2.0", id: 1, result: "pong" });
-      expect(await promise).toBe("connected");
+    it("returns 'connected' when server responds with valid JSON-RPC", async () => {
+      const spy = mockFetch({
+        ok: true,
+        json: { jsonrpc: "2.0", id: 1, result: { protocolVersion: "2025-03-26" } },
+      });
+      const result = await testFigmaMcpConnection("http://127.0.0.1:3845/mcp");
+      expect(result).toBe("connected");
+      expect(spy).toHaveBeenCalledOnce();
     });
 
-    it("sends a JSON-RPC ping on open", async () => {
-      const promise = testFigmaMcpConnection("ws://localhost:3333");
-      await new Promise(r => setTimeout(r, 0));
-      const ws = MockWebSocket.instances[0];
-      ws.simulateOpen();
-      ws.simulateMessage({});
-      await promise;
-      expect(ws.sentMessages).toHaveLength(1);
-      const msg = JSON.parse(ws.sentMessages[0]) as { method: string; jsonrpc: string };
-      expect(msg.method).toBe("ping");
-      expect(msg.jsonrpc).toBe("2.0");
+    it("sends JSON-RPC initialize request with correct structure", async () => {
+      const spy = mockFetch({
+        ok: true,
+        json: { jsonrpc: "2.0", id: 1, result: {} },
+      });
+      await testFigmaMcpConnection("http://127.0.0.1:3845/mcp");
+
+      const [url, init] = spy.mock.calls[0];
+      expect(url).toBe("http://127.0.0.1:3845/mcp");
+      expect(init?.method).toBe("POST");
+      const body = JSON.parse(init?.body as string) as Record<string, unknown>;
+      expect(body.jsonrpc).toBe("2.0");
+      expect(body.method).toBe("initialize");
+      expect(body.params).toEqual({
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "desygn-ai", version: "5.1.1" },
+      });
     });
 
-    it("returns 'error' when WebSocket emits error", async () => {
-      const promise = testFigmaMcpConnection("ws://localhost:3333");
-      await new Promise(r => setTimeout(r, 0));
-      const ws = MockWebSocket.instances[0];
-      ws.simulateError();
-      expect(await promise).toBe("error");
+    it("returns 'error' when server returns non-OK HTTP status", async () => {
+      mockFetch({ ok: false });
+      const result = await testFigmaMcpConnection("http://127.0.0.1:3845/mcp");
+      expect(result).toBe("error");
+    });
+
+    it("returns 'error' when response is not valid JSON-RPC", async () => {
+      mockFetch({ ok: true, json: { status: "up" } }); // no jsonrpc field
+      const result = await testFigmaMcpConnection("http://127.0.0.1:3845/mcp");
+      expect(result).toBe("error");
     });
 
     it("returns 'error' for empty endpoint", async () => {
@@ -87,103 +69,49 @@ describe("figmaMcpClient", () => {
       expect(result).toBe("error");
     });
 
-    it("returns 'error' for non-WS endpoint", async () => {
+    it("returns 'error' for non-HTTP protocol", async () => {
       const result = await testFigmaMcpConnection("ftp://localhost:3333");
       expect(result).toBe("error");
     });
 
-    it("normalises http:// to ws://", async () => {
-      const promise = testFigmaMcpConnection("http://localhost:3333/mcp");
-      await new Promise(r => setTimeout(r, 0));
-      const ws = MockWebSocket.instances[0];
-      expect(ws.url).toBe("ws://localhost:3333/mcp");
-      ws.simulateOpen();
-      ws.simulateMessage({});
-      await promise;
+    it("normalises ws:// to http://", async () => {
+      const spy = mockFetch({
+        ok: true,
+        json: { jsonrpc: "2.0", id: 1, result: {} },
+      });
+      await testFigmaMcpConnection("ws://localhost:3845/mcp");
+      expect(spy.mock.calls[0][0]).toBe("http://localhost:3845/mcp");
     });
 
-    it("normalises https:// to wss://", async () => {
-      const promise = testFigmaMcpConnection("https://my-server.io/mcp");
-      await new Promise(r => setTimeout(r, 0));
-      const ws = MockWebSocket.instances[0];
-      expect(ws.url).toBe("wss://my-server.io/mcp");
-      ws.simulateOpen();
-      ws.simulateMessage({});
-      await promise;
+    it("normalises wss:// to https://", async () => {
+      const spy = mockFetch({
+        ok: true,
+        json: { jsonrpc: "2.0", id: 1, result: {} },
+      });
+      await testFigmaMcpConnection("wss://mcp.figma.com/mcp");
+      expect(spy.mock.calls[0][0]).toBe("https://mcp.figma.com/mcp");
     });
 
-    it("returns 'error' on timeout (5s)", async () => {
-      vi.useFakeTimers();
-      const promise = testFigmaMcpConnection("ws://localhost:3333");
-      vi.advanceTimersByTime(5001);
-      expect(await promise).toBe("error");
+    it("returns 'error' when fetch throws (network failure)", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("NetworkError"));
+      const result = await testFigmaMcpConnection("http://127.0.0.1:3845/mcp");
+      expect(result).toBe("error");
     });
 
-    it("does not settle twice if both message and error fire", async () => {
-      const promise = testFigmaMcpConnection("ws://localhost:3333");
-      await new Promise(r => setTimeout(r, 0));
-      const ws = MockWebSocket.instances[0];
-      ws.simulateOpen();
-      ws.simulateMessage({ result: "pong" });
-      ws.simulateError(); // should be ignored — already settled
-      expect(await promise).toBe("connected");
-    });
-  });
-
-  // ── connectFigmaMcp ──────────────────────────────────────
-
-  describe("connectFigmaMcp", () => {
-    it("calls onStatusChange('connected') when socket opens", () => {
-      const onStatus = vi.fn();
-      const onMsg = vi.fn();
-      connectFigmaMcp("ws://localhost:3333", onMsg, onStatus);
-      const ws = MockWebSocket.instances[0];
-      ws.simulateOpen();
-      expect(onStatus).toHaveBeenCalledWith("connected");
+    it("returns 'error' when fetch is aborted (timeout)", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new DOMException("Aborted", "AbortError"));
+      const result = await testFigmaMcpConnection("http://127.0.0.1:3845/mcp");
+      expect(result).toBe("error");
     });
 
-    it("calls onMessage with parsed JSON", () => {
-      const onStatus = vi.fn();
-      const onMsg = vi.fn();
-      connectFigmaMcp("ws://localhost:3333", onMsg, onStatus);
-      const ws = MockWebSocket.instances[0];
-      ws.simulateOpen();
-      ws.simulateMessage({ type: "figma.variables", data: [] });
-      expect(onMsg).toHaveBeenCalledWith({ type: "figma.variables", data: [] });
-    });
-
-    it("calls onStatusChange('error') on socket error", () => {
-      const onStatus = vi.fn();
-      const onMsg = vi.fn();
-      connectFigmaMcp("ws://localhost:3333", onMsg, onStatus);
-      const ws = MockWebSocket.instances[0];
-      ws.simulateError();
-      expect(onStatus).toHaveBeenCalledWith("error");
-    });
-
-    it("returns cleanup function that closes socket", () => {
-      const onStatus = vi.fn();
-      const cleanup = connectFigmaMcp("ws://localhost:3333", vi.fn(), onStatus);
-      const ws = MockWebSocket.instances[0];
-      ws.simulateOpen();
-      cleanup();
-      expect(ws.readyState).toBe(3);
-    });
-
-    it("calls onStatusChange('idle') on close after connect", () => {
-      const onStatus = vi.fn();
-      connectFigmaMcp("ws://localhost:3333", vi.fn(), onStatus);
-      const ws = MockWebSocket.instances[0];
-      ws.simulateOpen();
-      ws.simulateClose(true, 1000);
-      expect(onStatus).toHaveBeenLastCalledWith("idle");
-    });
-
-    it("returns error status immediately for invalid endpoint", () => {
-      const onStatus = vi.fn();
-      connectFigmaMcp("", vi.fn(), onStatus);
-      expect(onStatus).toHaveBeenCalledWith("error");
-      expect(MockWebSocket.instances).toHaveLength(0);
+    it("accepts https://mcp.figma.com/mcp as valid endpoint", async () => {
+      const spy = mockFetch({
+        ok: true,
+        json: { jsonrpc: "2.0", id: 1, result: { protocolVersion: "2025-03-26" } },
+      });
+      const result = await testFigmaMcpConnection("https://mcp.figma.com/mcp");
+      expect(result).toBe("connected");
+      expect(spy.mock.calls[0][0]).toBe("https://mcp.figma.com/mcp");
     });
   });
 });

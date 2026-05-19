@@ -1,4 +1,7 @@
 /**
+ * @deprecated Use Agent Fleet v6 (`agents/v6/`) instead. This module will be
+ * removed in v6.0. See `docs/adr/AGENT_FLEET_V6.md` for migration details.
+ *
  * Shannon Engine 10-Agent Architecture
  * Extends the 4-agent pipeline to a comprehensive 10-agent system
  * Each agent has specialized responsibility with clear input/output contracts
