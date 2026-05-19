@@ -4,12 +4,17 @@ const config: StorybookConfig = {
   stories: [
     '../ui/docs/**/*.mdx',
     '../ui/components/**/*.stories.@(ts|tsx)',
+    '../web/src/stories/**/*.stories.@(ts|tsx)',
   ],
   addons: [
     '@storybook/addon-docs',
     '@storybook/addon-a11y',
   ],
   framework: '@storybook/react-vite',
+  docs: {
+    defaultName: 'Documentation',
+  },
+  staticDirs: ['../public'],
 };
 
 export default config;

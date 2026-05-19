@@ -12,6 +12,7 @@
 [![Vercel](https://img.shields.io/badge/deploy-Vercel-black.svg)](https://design-md-ai-yd6r.vercel.app/)
 [![v5 Agentic](https://img.shields.io/badge/architecture-v5%20Agentic-blueviolet.svg)]()
 [![Discussions](https://img.shields.io/github/discussions/minhduchd-mds/Design-md-ai)](https://github.com/minhduchd-mds/Design-md-ai/discussions)
+[![Storybook](https://img.shields.io/badge/Storybook-View-FF4785?logo=storybook&logoColor=white)](https://minhduchd-mds.github.io/Design-md-ai/)
 
 ---
 

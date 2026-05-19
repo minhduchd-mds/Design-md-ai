@@ -2,16 +2,27 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 <Meta title="Overview/Introduction" />
 
-# DesignReady.ai Component Library
+# Desygn AI Component Library
 
-UI components for the DesignReady.ai Figma Plugin — an AI-readiness scanner and prompt generator for design-to-code workflows.
+UI components for **Desygn AI v5** — the agentic UI/UX auditor connecting Figma to AI coding agents.
 
-## What this plugin does
+> 📦 [GitHub](https://github.com/minhduchd-mds/Design-md-ai) · 🌐 [Live App](https://design-md-ai-yd6r.vercel.app) · 📖 [Docs](https://github.com/minhduchd-mds/Design-md-ai/tree/main/docs)
 
-1. **Scans** Figma components across 6 quality dimensions
-2. **Scores** them (0–100) to surface what needs fixing
-3. **Generates** a compact, token-optimized prompt for Claude/ChatGPT
-4. **Syncs** design system knowledge via Skill Sync (cumulative learning)
+## Three surfaces
+
+| Surface | Stories location |
+|---------|------------------|
+| **Figma Plugin** — `ui/components/*` | Components/* |
+| **Web Workspace** — `web/src/stories/*` | Web/* |
+| **Plugin SDK** — coming soon | Plugin/* |
+
+## What Desygn AI does
+
+1. **Scans** Figma designs across 6 quality dimensions (naming, structure, tokens, meta, completeness, variants)
+2. **Audits** UI/UX with 8 specialized AI agents (Design Audit, Accessibility, Design System, Score, Recommend, Fix Planner, Issue Writer, Memory)
+3. **Self-learns** with HNSW vector search + sigmoid decay across projects
+4. **Integrates** with GitHub (issues, PRs, CI gate, deploy gate)
+5. **Streams** real-time audit events at 60fps
 
 ## Components
 
