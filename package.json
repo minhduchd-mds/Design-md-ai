@@ -89,6 +89,7 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.59.4-alpha.4",
     "@typescript-eslint/parser": "^8.59.4-alpha.4",
+    "@vercel/node": "^5.8.2",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/browser-playwright": "^4.1.6",
     "@vitest/coverage-v8": "^4.1.6",
@@ -125,5 +126,12 @@
     "marked-highlight": "^2.2.4",
     "openai": "^6.38.0",
     "zod": "^4.4.3"
+  },
+  "overrides": {
+    "ajv": "8.20.0",
+    "minimatch": "10.2.5",
+    "path-to-regexp": "8.4.2",
+    "smol-toml": "1.6.1",
+    "undici": "7.25.0"
   }
 }
