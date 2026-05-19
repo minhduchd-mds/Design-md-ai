@@ -12,12 +12,13 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:5174",
 ];
 
-export function getAllowedOrigin(req: { headers?: { get?: (name: string) => string | null }; method?: string } | { headers?: Record<string, string | undefined> }): string {
+export function getAllowedOrigin(req: { headers?: { get?: (name: string) => string | null }; method?: string } | { headers?: Record<string, string | string[] | undefined> }): string {
   let origin: string | null | undefined;
   if ("get" in (req.headers ?? {})) {
     origin = (req.headers as { get: (n: string) => string | null }).get("origin");
   } else {
-    origin = (req.headers as Record<string, string | undefined> | undefined)?.origin;
+    const raw = (req.headers as Record<string, string | string[] | undefined> | undefined)?.origin;
+    origin = Array.isArray(raw) ? raw[0] : raw;
   }
   if (origin && ALLOWED_ORIGINS.some((o) => origin!.startsWith(o))) return origin;
   if (process.env.NODE_ENV === "development") return origin ?? "*";

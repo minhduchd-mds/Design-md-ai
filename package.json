@@ -128,10 +128,16 @@
     "zod": "^4.4.3"
   },
   "overrides": {
-    "ajv": "8.20.0",
-    "minimatch": "10.2.5",
-    "path-to-regexp": "8.4.2",
-    "smol-toml": "1.6.1",
-    "undici": "7.25.0"
+    "@vercel/static-config": {
+      "ajv": "8.20.0"
+    },
+    "@vercel/python-analysis": {
+      "minimatch": "10.2.5",
+      "smol-toml": "1.6.1"
+    },
+    "@vercel/node": {
+      "path-to-regexp": "8.4.2",
+      "undici": "7.25.0"
+    }
   }
 }
