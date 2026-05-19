@@ -2754,6 +2754,59 @@ function App() {
         </div>
       </section>
 
+      {/* ── Install App Section (PWA + QR) ──────────────── */}
+      <section id="install-app" className="landing-section install-app-section">
+        <div className="install-app-card">
+          <span className="install-app-eyebrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Install app
+          </span>
+          <h2 className="install-app-title">Use Desygn AI anywhere.</h2>
+          <p className="install-app-desc">
+            Install as a standalone app on your phone, tablet, or desktop. Works offline with full workspace access — no app store needed.
+          </p>
+          <div className="install-devices">
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+              Android
+            </span>
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+              iOS
+            </span>
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Desktop
+            </span>
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+              Surface
+            </span>
+          </div>
+          <div className="install-btn-row">
+            {pwa.canInstall && (
+              <button type="button" className="install-btn install-btn-primary" onClick={() => void pwa.promptInstall()}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Install now
+              </button>
+            )}
+            <button type="button" className="install-btn install-btn-outline" onClick={() => openLandingAuth("register")}>
+              Open in browser
+            </button>
+          </div>
+          {pwa.platform === "ios" && (
+            <div className="install-ios-hint">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              On iOS: tap the Share button, then "Add to Home Screen" to install.
+            </div>
+          )}
+        </div>
+        <div className="install-qr-wrap">
+          <div className="install-qr-card" dangerouslySetInnerHTML={{ __html: generateQRCodeSVG("https://design-md-ai-yd6r.vercel.app", 5, 3) }} />
+          <span className="install-qr-label">Scan to open on your device</span>
+        </div>
+      </section>
+
       <section id="features" className="landing-section feature-section">
         <div className="section-heading">
           <span>Production handoff</span>
@@ -2916,59 +2969,6 @@ function App() {
               <p>Ready for handoff with clear product and design-system context.</p>
             </article>
           ))}
-        </div>
-      </section>
-
-      {/* ── Install App Section (PWA + QR) ──────────────── */}
-      <section id="install-app" className="landing-section install-app-section">
-        <div className="install-app-card">
-          <span className="install-app-eyebrow">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Install app
-          </span>
-          <h2 className="install-app-title">Use Desygn AI anywhere.</h2>
-          <p className="install-app-desc">
-            Install as a standalone app on your phone, tablet, or desktop. Works offline with full workspace access — no app store needed.
-          </p>
-          <div className="install-devices">
-            <span className="install-device-chip">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
-              Android
-            </span>
-            <span className="install-device-chip">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
-              iOS
-            </span>
-            <span className="install-device-chip">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              Desktop
-            </span>
-            <span className="install-device-chip">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
-              Surface
-            </span>
-          </div>
-          <div className="install-btn-row">
-            {pwa.canInstall && (
-              <button type="button" className="install-btn install-btn-primary" onClick={() => void pwa.promptInstall()}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Install now
-              </button>
-            )}
-            <button type="button" className="install-btn install-btn-outline" onClick={() => openLandingAuth("register")}>
-              Open in browser
-            </button>
-          </div>
-          {pwa.platform === "ios" && (
-            <div className="install-ios-hint">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-              On iOS: tap the Share button, then "Add to Home Screen" to install.
-            </div>
-          )}
-        </div>
-        <div className="install-qr-wrap">
-          <div className="install-qr-card" dangerouslySetInnerHTML={{ __html: generateQRCodeSVG("https://design-md-ai-yd6r.vercel.app", 5, 3) }} />
-          <span className="install-qr-label">Scan to open on your device</span>
         </div>
       </section>
 
