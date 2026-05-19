@@ -73,51 +73,52 @@ async function handler(req: Request): Promise<Response> {
       temperature: 0.7,
     });
 
-    // Manually consume textStream with error handling.
-    // toTextStreamResponse() sends 200 before the provider responds, so if
-    // the provider fails (AI_RetryError, quota, bad key) the error is swallowed
-    // and the client sees an empty stream.  Instead, iterate textStream ourselves
-    // and emit the error as visible text so the user gets feedback.
+    // Use TransformStream so the writable side runs in a detached async
+    // context.  ReadableStream({ async start }) silently drops data on some
+    // edge runtimes; TransformStream is the proven pattern for Vercel Edge.
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
+    const { readable, writable } = new TransformStream();
+
+    // Fire-and-forget: pump textStream → writable, catch errors as visible text
+    void (async () => {
+      const writer = writable.getWriter();
+      try {
+        for await (const chunk of result.textStream) {
+          await writer.write(encoder.encode(chunk));
+        }
+        // Append token usage metadata (hidden HTML comment — stripped by client)
         try {
-          for await (const chunk of result.textStream) {
-            controller.enqueue(encoder.encode(chunk));
+          const usage = await result.usage;
+          if (usage) {
+            const meta = JSON.stringify({
+              p: usage.promptTokens ?? 0,
+              c: usage.completionTokens ?? 0,
+              m: modelDef.id,
+            });
+            await writer.write(encoder.encode(`\n<!--USAGE:${meta}-->`));
           }
-          // Append token usage metadata (hidden HTML comment — stripped by client)
-          try {
-            const usage = await result.usage;
-            if (usage) {
-              const meta = JSON.stringify({
-                p: usage.promptTokens ?? 0,
-                c: usage.completionTokens ?? 0,
-                m: modelDef.id,
-              });
-              controller.enqueue(encoder.encode(`\n<!--USAGE:${meta}-->`));
-            }
-          } catch { /* usage unavailable — skip */ }
-        } catch (err) {
-          // AI SDK wraps provider errors in AI_RetryError — dig out the root cause
-          const lastErr = (err as { lastError?: unknown }).lastError;
-          const rootMsg = lastErr instanceof Error ? lastErr.message : undefined;
-          const topMsg = err instanceof Error ? err.message : String(err);
-          const raw = rootMsg || topMsg;
-          // Strip verbose retry boilerplate — keep actionable detail
-          const short = raw
-            .replace(/Failed after \d+ attempt[s]?\.\s*Last error:\s*/i, "")
-            .slice(0, 300);
-          console.error("[chat-stream] AI provider error:", short);
-          controller.enqueue(
+        } catch { /* usage unavailable — skip */ }
+      } catch (err) {
+        // AI SDK wraps provider errors in AI_RetryError — dig out the root cause
+        const lastErr = (err as { lastError?: unknown }).lastError;
+        const rootMsg = lastErr instanceof Error ? lastErr.message : undefined;
+        const topMsg = err instanceof Error ? err.message : String(err);
+        const raw = rootMsg || topMsg;
+        const short = raw
+          .replace(/Failed after \d+ attempt[s]?\.\s*Last error:\s*/i, "")
+          .slice(0, 300);
+        console.error("[chat-stream] AI provider error:", short);
+        try {
+          await writer.write(
             encoder.encode(`\n\n⚠️ **AI Error**: ${short || "Model không phản hồi — thử lại nhé."}`),
           );
-        } finally {
-          controller.close();
-        }
-      },
-    });
+        } catch { /* writer may already be closed */ }
+      } finally {
+        try { await writer.close(); } catch { /* already closed */ }
+      }
+    })();
 
-    return new Response(stream, {
+    return new Response(readable, {
       status: 200,
       headers: { ...cors, "Content-Type": "text/plain; charset=utf-8" },
     });
