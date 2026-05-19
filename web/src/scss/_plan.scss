@@ -386,13 +386,34 @@
     position: absolute;
     bottom: calc(100% + 6px);
     right: 0;
-    min-width: 180px;
+    min-width: 200px;
     background: #1e293b;
     border: 1px solid rgba(148, 163, 184, 0.15);
     border-radius: 10px;
     padding: 6px;
     z-index: 100;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    .model-group-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px 4px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      user-select: none;
+
+      &:not(:first-child) {
+        margin-top: 4px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+      }
+
+      svg { color: #8b5cf6; }
+    }
 
     button {
       display: flex;

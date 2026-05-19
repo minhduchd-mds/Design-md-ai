@@ -15,14 +15,30 @@ export interface ChatBody {
   context?: ChatContextPayload;
 }
 
-export const ALLOWED_MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-  "mixtral-8x7b-32768",
-  "gemma2-9b-it",
+// ── Model registry ───────────────────────────────────────────────
+export type ModelProvider = "groq" | "google";
+
+export interface ModelDef {
+  id: string;
+  provider: ModelProvider;
+  providerModelId: string;
+}
+
+export const MODEL_REGISTRY: ModelDef[] = [
+  // Groq models
+  { id: "llama-3.3-70b-versatile",  provider: "groq",   providerModelId: "llama-3.3-70b-versatile" },
+  { id: "llama-3.1-8b-instant",     provider: "groq",   providerModelId: "llama-3.1-8b-instant" },
+  { id: "mixtral-8x7b-32768",       provider: "groq",   providerModelId: "mixtral-8x7b-32768" },
+  { id: "gemma2-9b-it",             provider: "groq",   providerModelId: "gemma2-9b-it" },
+  // Google Gemini models
+  { id: "gemini-2.0-flash",         provider: "google",  providerModelId: "gemini-2.0-flash" },
+  { id: "gemini-2.5-flash",         provider: "google",  providerModelId: "gemini-2.5-flash-preview-05-20" },
+  { id: "gemini-2.0-flash-lite",    provider: "google",  providerModelId: "gemini-2.0-flash-lite" },
 ];
 
-const CHAT_SYSTEM = `You are a friendly, knowledgeable AI assistant powered by Groq.
+export const ALLOWED_MODELS = MODEL_REGISTRY.map((m) => m.id);
+
+const CHAT_SYSTEM = `You are a friendly, knowledgeable AI assistant.
 
 Guidelines:
 - Respond naturally in the same language the user writes in (Vietnamese, English, etc.)
@@ -100,6 +116,11 @@ export const corsHeaders: Record<string, string> = {
 export function resolveModel(context: ChatContextPayload | undefined): string {
   const requestedModel = context?.model ?? "llama-3.3-70b-versatile";
   return ALLOWED_MODELS.includes(requestedModel) ? requestedModel : "llama-3.3-70b-versatile";
+}
+
+export function resolveModelDef(context: ChatContextPayload | undefined): ModelDef {
+  const id = resolveModel(context);
+  return MODEL_REGISTRY.find((m) => m.id === id) ?? MODEL_REGISTRY[0];
 }
 
 export function handlePreflight(req: Request): Response | null {

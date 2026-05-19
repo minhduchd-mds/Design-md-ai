@@ -1,5 +1,7 @@
 import { createGroq } from "@ai-sdk/groq";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
+import type { LanguageModelV1 } from "ai";
 import {
   buildCorsHeaders,
   buildSystemPrompt,
@@ -7,7 +9,7 @@ import {
   handlePreflight,
   normalizeMessages,
   parseBody,
-  resolveModel,
+  resolveModelDef,
 } from "./lib/chat-shared";
 import { checkRateLimit, getClientIp } from "./lib/rateLimit";
 
@@ -29,9 +31,6 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return errorResponse("GROQ_API_KEY not configured.", 500, req);
-
   let body;
   try {
     body = await parseBody(req);
@@ -44,11 +43,25 @@ export default async function handler(req: Request): Promise<Response> {
     return errorResponse("A user message is required.", 400, req);
   }
 
-  try {
-    const groq = createGroq({ apiKey });
+  // ── Resolve model & provider ──────────────────────────────────
+  const modelDef = resolveModelDef(body.context);
+  let model: LanguageModelV1;
 
+  if (modelDef.provider === "google") {
+    const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!googleKey) return errorResponse("GOOGLE_GENERATIVE_AI_API_KEY not configured.", 500, req);
+    const google = createGoogleGenerativeAI({ apiKey: googleKey });
+    model = google(modelDef.providerModelId);
+  } else {
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) return errorResponse("GROQ_API_KEY not configured.", 500, req);
+    const groq = createGroq({ apiKey: groqKey });
+    model = groq(modelDef.providerModelId);
+  }
+
+  try {
     const { text } = await generateText({
-      model: groq(resolveModel(body.context)),
+      model,
       system: buildSystemPrompt(body.context),
       messages,
       maxOutputTokens: 8192,

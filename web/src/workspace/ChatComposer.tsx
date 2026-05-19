@@ -7,11 +7,23 @@ type ComposerDropdown = "tools" | "category" | "design" | "model" | null;
 
 const PROJECT_CATEGORIES = ["SaaS", "AI tool", "E-commerce", "Landing page", "Dashboard"];
 
-const AI_MODELS: { value: string; label: string; desc: string }[] = [
-  { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", desc: "Default" },
-  { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B", desc: "Fast" },
-  { value: "mixtral-8x7b-32768", label: "Mixtral 8x7B", desc: "32K context" },
-  { value: "gemma2-9b-it", label: "Gemma 2 9B", desc: "Compact" },
+interface AIModelOption {
+  value: string;
+  label: string;
+  desc: string;
+  provider: "groq" | "google";
+}
+
+const AI_MODELS: AIModelOption[] = [
+  // Groq (ultra-fast open models)
+  { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", desc: "Default", provider: "groq" },
+  { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B", desc: "Fast", provider: "groq" },
+  { value: "mixtral-8x7b-32768", label: "Mixtral 8x7B", desc: "32K ctx", provider: "groq" },
+  { value: "gemma2-9b-it", label: "Gemma 2 9B", desc: "Compact", provider: "groq" },
+  // Google Gemini (multimodal, long context)
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash", desc: "Multimodal", provider: "google" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", desc: "Best quality", provider: "google" },
+  { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Lite", desc: "Fastest", provider: "google" },
 ];
 
 /** Convert a File to a ChatAttachment with data URL. */
@@ -411,7 +423,31 @@ export function ChatComposer({
               </button>
               {composerDropdown === "model" && (
                 <div className="composer-menu model-menu" role="listbox">
-                  {AI_MODELS.map((m) => (
+                  <div className="model-group-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Groq
+                  </div>
+                  {AI_MODELS.filter((m) => m.provider === "groq").map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      className={groqModel === m.value ? "selected" : ""}
+                      role="option"
+                      aria-selected={groqModel === m.value}
+                      onClick={() => {
+                        onModelChange(m.value);
+                        setComposerDropdown(null);
+                      }}
+                    >
+                      <span>{m.label}</span>
+                      <small>{m.desc}</small>
+                    </button>
+                  ))}
+                  <div className="model-group-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    Google Gemini
+                  </div>
+                  {AI_MODELS.filter((m) => m.provider === "google").map((m) => (
                     <button
                       key={m.value}
                       type="button"

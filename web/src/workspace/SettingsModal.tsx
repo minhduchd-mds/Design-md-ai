@@ -211,10 +211,17 @@ export function SettingsModal({
                 <label className="settings-field">
                   <span>AI Model mặc định</span>
                   <select value={groqModel} onChange={(e) => { onModelChange(e.target.value); localStorage.setItem("designready.model", e.target.value); }}>
-                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B (default)</option>
-                    <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
-                    <option value="mixtral-8x7b-32768">Mixtral 8x7B (32K ctx)</option>
-                    <option value="gemma2-9b-it">Gemma 2 9B</option>
+                    <optgroup label="Groq (ultra-fast)">
+                      <option value="llama-3.3-70b-versatile">Llama 3.3 70B (default)</option>
+                      <option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option>
+                      <option value="mixtral-8x7b-32768">Mixtral 8x7B (32K ctx)</option>
+                      <option value="gemma2-9b-it">Gemma 2 9B</option>
+                    </optgroup>
+                    <optgroup label="Google Gemini (multimodal)">
+                      <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                      <option value="gemini-2.5-flash">Gemini 2.5 Flash (best)</option>
+                      <option value="gemini-2.0-flash-lite">Gemini 2.0 Lite (fastest)</option>
+                    </optgroup>
                   </select>
                 </label>
               </div>
