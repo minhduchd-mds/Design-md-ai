@@ -41,7 +41,16 @@ export async function sendClaudeChat(
   }
 
   const body = {
-    messages: messages.map((m) => ({ role: m.role, title: m.title, content: m.content })),
+    messages: messages.map((m) => {
+      const base: Record<string, unknown> = { role: m.role, title: m.title, content: m.content };
+      // Include image attachments so the AI model can see uploaded images
+      if (m.attachments && m.attachments.length > 0) {
+        base.attachments = m.attachments
+          .filter((a) => a.type.startsWith("image/"))
+          .map((a) => ({ type: a.type, name: a.name, url: a.url }));
+      }
+      return base;
+    }),
     context,
   };
 

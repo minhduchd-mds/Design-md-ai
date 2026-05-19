@@ -109,6 +109,24 @@
     }
   }
 
+  // Broken image fallback chip
+  .img-error-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    margin: 6px 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    color: $text-muted-alt;
+    font-size: 12px;
+
+    &::before {
+      content: "🖼";
+    }
+  }
+
   p {
     margin: 0 0 12px;
 

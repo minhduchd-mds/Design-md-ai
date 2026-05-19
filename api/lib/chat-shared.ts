@@ -10,8 +10,14 @@ export interface ChatContextPayload {
   model?: string;
 }
 
+export interface ChatAttachmentPayload {
+  type: string;
+  name: string;
+  url: string; // data URL (base64)
+}
+
 export interface ChatBody {
-  messages?: Array<{ role?: string; content?: string; title?: string }>;
+  messages?: Array<{ role?: string; content?: string; title?: string; attachments?: ChatAttachmentPayload[] }>;
   context?: ChatContextPayload;
 }
 
@@ -93,15 +99,48 @@ export function buildSystemPrompt(context: ChatContextPayload | undefined): stri
   return `${base}\n\nWorkspace context:\n${lines.join("\n")}`;
 }
 
+/**
+ * Maximum size for a single inline image (base64 data URL).
+ * Larger images are described by name only to avoid blowing up the context.
+ */
+const MAX_IMAGE_DATA_URL_LEN = 2_000_000; // ~1.5 MB decoded
+
 export function normalizeMessages(raw: ChatBody["messages"]): ModelMessage[] {
   return (raw ?? [])
     .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: sanitize([m.title, m.content].filter(Boolean).join("\n")),
-    }))
-    .filter((m) => m.content)
-    .slice(-20);
+    .map((m) => {
+      const text = sanitize([m.title, m.content].filter(Boolean).join("\n"));
+      const images = (m.attachments ?? []).filter(
+        (a) => a.type.startsWith("image/") && a.url.startsWith("data:") && a.url.length <= MAX_IMAGE_DATA_URL_LEN,
+      );
+
+      // If no images, keep simple text content (works with all providers)
+      if (images.length === 0) {
+        return { role: m.role as "user" | "assistant", content: text };
+      }
+
+      // Multimodal: build content parts array for vision models
+      // SDK ImagePart: { type: "image", image: DataContent | URL, mediaType?: string }
+      const parts: Array<{ type: string; text?: string; image?: URL; mediaType?: string }> = [];
+      if (text) {
+        parts.push({ type: "text", text });
+      }
+      for (const img of images) {
+        try {
+          parts.push({ type: "image", image: new URL(img.url), mediaType: img.type });
+        } catch {
+          // Invalid data URL — describe instead
+          parts.push({ type: "text", text: `[Attached image: ${sanitize(img.name)}]` });
+        }
+      }
+
+      return { role: m.role as "user" | "assistant", content: parts };
+    })
+    .filter((m) => {
+      if (typeof m.content === "string") return m.content.length > 0;
+      return Array.isArray(m.content) && m.content.length > 0;
+    })
+    .slice(-20) as ModelMessage[];
 }
 
 import { buildCorsHeaders } from "./cors";

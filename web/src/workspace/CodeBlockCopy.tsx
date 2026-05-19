@@ -93,8 +93,29 @@ export function CodeBlockCopyContainer({
     attachCopyButtons(containerRef.current);
   }, []);
 
+  // Attach copy buttons + image error fallback
   useEffect(() => {
     attachButtons();
+
+    // Add error handlers for markdown images so broken URLs show a helpful placeholder
+    if (!containerRef.current) return;
+    const images = containerRef.current.querySelectorAll("img");
+    const handlers: Array<() => void> = [];
+    images.forEach((img) => {
+      const onError = () => {
+        img.style.display = "none";
+        // Insert a fallback chip after the broken image
+        if (!img.nextElementSibling?.classList.contains("img-error-chip")) {
+          const chip = document.createElement("div");
+          chip.className = "img-error-chip";
+          chip.textContent = img.alt || "Image unavailable";
+          img.parentElement?.insertBefore(chip, img.nextSibling);
+        }
+      };
+      img.addEventListener("error", onError);
+      handlers.push(() => img.removeEventListener("error", onError));
+    });
+    return () => handlers.forEach((fn) => fn());
   }, [html, attachButtons]);
 
   return (
