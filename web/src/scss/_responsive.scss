@@ -1,0 +1,622 @@
+@use "variables" as *;
+
+// ─── Breakpoint tokens ───────────────────────────────
+// Surface Pro:     1368×912
+// Surface Go:      1280×800
+// iPad Pro 12.9:   1024×1366
+// iPad Pro 11:     834×1194
+// iPad Air/Mini:   768×1024
+// Mobile L:        425px
+// Mobile M:        375px
+// Mobile S:        320px
+
+// ─── Surface / Large Tablet (1024-1440) ──────────────
+
+@media (max-width: 1440px) {
+  .landing-hero {
+    gap: 36px;
+    padding: 56px 24px 56px;
+  }
+
+  .router-heading {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .dark-demo {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .feature-grid,
+  .how-grid,
+  .service-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .template-library-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .router-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .landing-hero {
+    grid-template-columns: 1fr;
+
+    h1 {
+      font-size: clamp(36px, 5vw, 56px);
+    }
+  }
+
+  .code-mockup {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .template-library-heading {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ─── Tablet (768-1024) ───────────────────────────────
+
+@media (max-width: 1024px) {
+  .workspace-shell {
+    grid-template-columns: 1fr !important;
+    position: relative;
+  }
+
+  .workspace-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+
+  .sidebar-open .workspace-sidebar {
+    transform: translateX(0);
+    box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+
+  .sidebar-open .sidebar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-header {
+    display: flex !important;
+  }
+
+  .builder-workspace {
+    padding: 16px 20px 0;
+  }
+
+  .landing-nav nav {
+    display: none;
+  }
+
+  .landing-nav .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .settings-modal-body {
+    flex-direction: column;
+  }
+
+  .settings-tabs {
+    flex: 0 0 auto;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    padding: 12px;
+  }
+
+  .settings-modal {
+    width: 95vw;
+    max-height: 90vh;
+  }
+}
+
+// ─── Small Tablet / Large Phone (600-768) ────────────
+
+@media (max-width: 768px) {
+  .feature-grid,
+  .how-grid,
+  .service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .template-library-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-section {
+    padding: 48px 16px;
+  }
+
+  .section-heading h2,
+  .router-heading h2,
+  .dark-demo h2,
+  .landing-auth-card h2 {
+    font-size: clamp(28px, 6vw, 42px);
+  }
+
+  .landing-hero h1 {
+    font-size: clamp(28px, 6vw, 42px);
+    line-height: 1.08;
+  }
+
+  .landing-metrics {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .dark-demo > div:last-child {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-auth-card {
+    padding: 28px 20px;
+  }
+
+  .workspace-action-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    button {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+  }
+
+  .welcome-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .welcome-title {
+    font-size: 28px;
+  }
+
+  .welcome-subtitle {
+    font-size: 13px;
+  }
+
+  .install-app-section {
+    flex-direction: column;
+    gap: 24px;
+
+    .install-qr-wrap {
+      order: 2;
+    }
+  }
+
+  .install-devices {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+// ─── Phone (max-width: 480px) ────────────────────────
+
+@media (max-width: 480px) {
+  .landing-nav {
+    padding: 12px 16px;
+
+    .landing-brand {
+      gap: 8px;
+
+      > img {
+        width: 32px;
+        height: 32px;
+      }
+
+      small {
+        display: none;
+      }
+    }
+  }
+
+  .landing-hero {
+    padding: 32px 16px;
+  }
+
+  .landing-actions {
+    flex-direction: column;
+    width: 100%;
+
+    button,
+    a {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+    }
+  }
+
+  .code-mockup {
+    border-radius: 16px;
+
+    .mockup-grid {
+      grid-template-columns: 1fr;
+
+      pre {
+        min-height: 200px;
+        font-size: 10px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+
+  .welcome-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-card {
+    flex-direction: row;
+    align-items: center;
+
+    .welcome-card-icon {
+      width: 36px;
+      height: 36px;
+    }
+
+    h3 {
+      margin: 0;
+    }
+
+    p {
+      display: none;
+    }
+  }
+
+  .builder-workspace {
+    padding: 12px 12px 0;
+  }
+
+  .chat-scroll {
+    gap: 12px;
+  }
+
+  .composer-box {
+    border-radius: 16px !important;
+    margin: 0 4px 8px;
+  }
+
+  .workspace-action-bar button {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .install-app-card {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+}
+
+// ─── Mobile Hamburger Header ─────────────────────────
+
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: $dark-800;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.mobile-menu-btn {
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $text-light;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+// ─── Mobile Nav Drawer ───────────────────────────────
+
+.mobile-nav-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease;
+
+  nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px;
+    background: $dark-800;
+    max-height: 70vh;
+    overflow-y: auto;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: $radius-sm;
+    color: $text-light;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  .mobile-nav-close {
+    margin-top: auto;
+    padding: 16px;
+    text-align: center;
+  }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+// ─── Install App Section ─────────────────────────────
+
+.install-app-section {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  background: linear-gradient(135deg, $dark-800, #0c1425);
+  color: $white;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.install-app-card {
+  flex: 1;
+  max-width: 540px;
+}
+
+.install-app-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: $teal-400;
+  margin-bottom: 14px;
+}
+
+.install-app-title {
+  font-family: $font-serif;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.08;
+  margin: 0 0 14px;
+  color: $white;
+}
+
+.install-app-desc {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.65;
+  margin: 0 0 28px;
+}
+
+.install-devices {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.install-device-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: $text-light;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: $purple-400;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+}
+
+.install-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.install-qr-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: $white;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: scale(1.03);
+  }
+}
+
+.install-qr-label {
+  font-size: 12px;
+  color: $text-muted-alt;
+  font-weight: 600;
+  text-align: center;
+}
+
+.install-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &.install-btn-primary {
+    background: linear-gradient(135deg, $purple-500, $indigo-500);
+    color: $white;
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+
+    &:hover {
+      box-shadow: 0 6px 24px rgba(139, 92, 246, 0.45);
+      transform: translateY(-2px);
+    }
+  }
+
+  &.install-btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: $text-light;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+  }
+}
+
+.install-ios-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #fbbf24;
+  line-height: 1.5;
+}
+
+// ─── Scroll-to-bottom button ─────────────────────────
+
+.scroll-to-bottom {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  color: $text-light;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  animation: fadeInUp 0.2s ease;
+
+  &:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.3);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

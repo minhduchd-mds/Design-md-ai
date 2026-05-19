@@ -1,0 +1,341 @@
+@use "variables" as *;
+
+// ─── Shared Animations ───────────────────────────────
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.12); }
+}
+
+// ─── Loading Skeleton ────────────────────────────────
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.06) 25%,
+    rgba(148, 163, 184, 0.12) 50%,
+    rgba(148, 163, 184, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: $radius-sm;
+}
+
+.skeleton-text {
+  height: 14px;
+  width: 80%;
+  margin-bottom: 8px;
+
+  &:last-child { width: 55%; }
+}
+
+.skeleton-heading {
+  height: 20px;
+  width: 60%;
+  margin-bottom: 12px;
+}
+
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-block {
+  height: 120px;
+  width: 100%;
+  border-radius: 12px;
+}
+
+// ─── Message Entry Animation ─────────────────────────
+
+.message-row {
+  animation: slideInUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-row .message-content {
+  animation: slideInRight 0.2s ease;
+}
+
+.assistant-row .message-content {
+  animation: slideInLeft 0.2s ease;
+}
+
+// ─── Enhanced Thinking Indicator ─────────────────────
+
+.thinking-row {
+  animation: fadeInScale 0.3s ease;
+}
+
+.thinking-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $purple-400;
+  animation: thinkingBounce 1.4s ease-in-out infinite;
+
+  &:nth-child(2) { animation-delay: 0.16s; }
+  &:nth-child(3) { animation-delay: 0.32s; }
+}
+
+@keyframes thinkingBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+// ─── Micro-interactions ──────────────────────────────
+
+// Hover lift for cards
+.feature-grid article,
+.how-grid article,
+.service-grid article,
+.gallery-grid article,
+.welcome-card,
+.install-device-chip,
+.ext-card {
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.22s ease;
+}
+
+// Smooth tab switching
+.workspace-tab {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+
+  &.active::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: $purple-400;
+    border-radius: 2px;
+    animation: scaleX 0.2s ease;
+  }
+}
+
+@keyframes scaleX {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+// Button press effect
+.primary-action,
+.primary-small,
+.send-button,
+.install-btn {
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.15s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+// Nav link hover underline
+.landing-nav nav a {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: $teal-700;
+    border-radius: 1px;
+    transition: width 0.22s ease;
+  }
+
+  &:hover::after {
+    width: 100%;
+  }
+}
+
+// Sidebar nav active indicator
+.side-nav a.active,
+.sidebar-history a.active {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    background: $purple-500;
+    border-radius: 0 2px 2px 0;
+    animation: slideInLeft 0.2s ease;
+  }
+}
+
+// Toast entrance/exit
+.toast-item {
+  animation: toastSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes toastSlideUp {
+  from {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+// Brand logo rotation on hover
+.sidebar-brand-logo:hover .brand-mark,
+.landing-brand:hover > img {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-brand-logo:hover .brand-mark {
+  transform: rotate(12deg) scale(1.05);
+}
+
+.landing-brand:hover > img {
+  transform: rotate(-5deg) scale(1.05);
+}
+
+// Send button glow when active
+.send-button {
+  position: relative;
+
+  &:not(:disabled) {
+    animation: breathe 2.5s ease-in-out infinite;
+  }
+}
+
+// Chat composer focus glow
+.composer-box {
+  transition: border-color 0.2s ease, box-shadow 0.3s ease;
+
+  &:focus-within {
+    border-color: rgba(139, 92, 246, 0.4) !important;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08), 0 18px 54px rgba(0, 0, 0, 0.35) !important;
+  }
+}
+
+// Settings modal entrance
+.settings-overlay {
+  animation: fadeIn 0.18s ease;
+}
+
+.settings-modal {
+  animation: fadeInScale 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ─── Stagger Children Animation ──────────────────────
+
+.stagger-children > * {
+  opacity: 0;
+  animation: slideInUp 0.3s ease forwards;
+}
+
+@for $i from 1 through 12 {
+  .stagger-children > *:nth-child(#{$i}) {
+    animation-delay: #{$i * 0.05}s;
+  }
+}
+
+// ─── Empty State ─────────────────────────────────────
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  animation: fadeInScale 0.3s ease;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.08);
+  color: $purple-400;
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: $text-bright;
+  margin: 0 0 8px;
+}
+
+.empty-state-desc {
+  font-size: 13px;
+  color: $text-muted-alt;
+  max-width: 360px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+// ─── Smooth Scroll Behavior ──────────────────────────
+
+.chat-scroll {
+  scroll-behavior: smooth;
+}
+
+html {
+  scroll-behavior: smooth;
+}

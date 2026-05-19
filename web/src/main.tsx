@@ -9,6 +9,8 @@ import { useToast } from "./hooks/useToast";
 import { useAuth } from "./hooks/useAuth";
 import { useChatState } from "./hooks/useChatState";
 import { useWorkspace } from "./hooks/useWorkspace";
+import { usePWAInstall } from "./hooks/usePWAInstall";
+import { generateQRCodeSVG } from "./lib/qrCode";
 import { buildContext, parseFileSources } from "./design/contextBuilder";
 import { BA_TEMPLATE_CONTENT } from "./design/constants";
 import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "./design/designParser";
@@ -697,6 +699,26 @@ function App() {
   const analyzeImageInputRef = useRef<HTMLInputElement | null>(null);
   const baDocInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Mobile sidebar / nav drawer
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  // PWA Install
+  const pwa = usePWAInstall();
+
+  // Scroll-to-bottom detector
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollBottom(distFromBottom > 200);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [view]);
+
   const outputRequest = generatedRequest ?? request;
   const openDesignPresets = useMemo(
     () => ({ ...OPEN_DESIGN_PRESETS_META, ...loadedTemplatePresets }),
@@ -1383,7 +1405,19 @@ function App() {
   if (view === "workspace" && user) {
     return (
       <>
-      <main className={`workspace-shell${sidebarCollapsed ? " sidebar-is-collapsed" : ""}`}>
+      <main className={`workspace-shell${sidebarCollapsed ? " sidebar-is-collapsed" : ""}${mobileSidebarOpen ? " sidebar-open" : ""}`}>
+        {/* Mobile header — visible on tablet/phone only */}
+        <div className="mobile-header">
+          <button type="button" className="mobile-menu-btn" style={{ display: "flex" }} onClick={() => setMobileSidebarOpen(true)} aria-label="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <span className="sidebar-brand-name" style={{ fontSize: 14 }}>{PRODUCT_NAME}</span>
+          <button type="button" className="mobile-menu-btn" style={{ display: "flex" }} onClick={() => startNewChat()} aria-label="New chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        {/* Sidebar overlay — click to close on mobile */}
+        <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />
         <aside className="workspace-sidebar">
           <div className="sidebar-brand-header">
             <div className="sidebar-brand-logo">
@@ -2495,7 +2529,7 @@ function App() {
 
             {isGenerating && workspaceTab === "code" && (
               <div className="thinking-row">
-                <span /><span /><span />
+                <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
                 <p>Generating…</p>
               </div>
             )}
@@ -2538,6 +2572,20 @@ function App() {
               />
             )}
           </div>
+
+          {/* Scroll to bottom FAB */}
+          {showScrollBottom && (
+            <button
+              type="button"
+              className="scroll-to-bottom"
+              aria-label="Scroll to bottom"
+              onClick={() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" })}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          )}
 
           <ChatComposer
             isGenerating={isGenerating}
@@ -2586,11 +2634,31 @@ function App() {
           <a href="#templates">Templates</a>
           <a href="#router-layout">Handoff</a>
           <a href="#ai-gallery">Gallery</a>
+          <a href="#install-app">Install</a>
         </nav>
         <div>
+          <button className="mobile-menu-btn" type="button" onClick={() => setMobileNavOpen(true)} aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
           <button className="primary-small" type="button" onClick={() => openLandingAuth("register")}>Get started</button>
         </div>
       </header>
+
+      {/* Mobile nav drawer */}
+      {mobileNavOpen && (
+        <div className="mobile-nav-drawer" onClick={() => setMobileNavOpen(false)}>
+          <nav onClick={(e) => e.stopPropagation()}>
+            <a href="#features" onClick={() => setMobileNavOpen(false)}>Features</a>
+            <a href="#how-it-works" onClick={() => setMobileNavOpen(false)}>How it works</a>
+            <a href="#templates" onClick={() => setMobileNavOpen(false)}>Templates</a>
+            <a href="#router-layout" onClick={() => setMobileNavOpen(false)}>Handoff</a>
+            <a href="#ai-gallery" onClick={() => setMobileNavOpen(false)}>Gallery</a>
+            <a href="#install-app" onClick={() => setMobileNavOpen(false)}>Install app</a>
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", margin: "8px 0" }} />
+            <a href="#login" onClick={() => { setMobileNavOpen(false); openLandingAuth("register"); }}>Get started</a>
+          </nav>
+        </div>
+      )}
 
       <section id="top" className="landing-hero">
         <div className="landing-hero-copy">
@@ -2813,6 +2881,59 @@ function App() {
               <p>Ready for handoff with clear product and design-system context.</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      {/* ── Install App Section (PWA + QR) ──────────────── */}
+      <section id="install-app" className="landing-section install-app-section">
+        <div className="install-app-card">
+          <span className="install-app-eyebrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Install app
+          </span>
+          <h2 className="install-app-title">Use Desygn AI anywhere.</h2>
+          <p className="install-app-desc">
+            Install as a standalone app on your phone, tablet, or desktop. Works offline with full workspace access — no app store needed.
+          </p>
+          <div className="install-devices">
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+              Android
+            </span>
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+              iOS
+            </span>
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Desktop
+            </span>
+            <span className="install-device-chip">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+              Surface
+            </span>
+          </div>
+          <div className="install-btn-row">
+            {pwa.canInstall && (
+              <button type="button" className="install-btn install-btn-primary" onClick={() => void pwa.promptInstall()}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Install now
+              </button>
+            )}
+            <button type="button" className="install-btn install-btn-outline" onClick={() => openLandingAuth("register")}>
+              Open in browser
+            </button>
+          </div>
+          {pwa.platform === "ios" && (
+            <div className="install-ios-hint">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              On iOS: tap the Share button, then "Add to Home Screen" to install.
+            </div>
+          )}
+        </div>
+        <div className="install-qr-wrap">
+          <div className="install-qr-card" dangerouslySetInnerHTML={{ __html: generateQRCodeSVG("https://design-md-ai-yd6r.vercel.app", 5, 3) }} />
+          <span className="install-qr-label">Scan to open on your device</span>
         </div>
       </section>
 

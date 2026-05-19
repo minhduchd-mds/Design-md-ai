@@ -1,0 +1,35 @@
+{
+  "name": "Desygn AI - Design.md Workspace",
+  "short_name": "Desygn AI",
+  "description": "Turn Figma design systems into AI-ready Design.md handoff files for coding agents.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0f17",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "categories": ["developer", "design", "productivity"],
+  "icons": [
+    { "src": "/src/Img/logo.webp", "sizes": "192x192", "type": "image/webp", "purpose": "any" },
+    { "src": "/src/Img/logo.webp", "sizes": "512x512", "type": "image/webp", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "/src/Img/logo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Desygn AI workspace"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "Chat",
+      "description": "Start a new Design.md conversation",
+      "url": "/?action=new-chat",
+      "icons": [{ "src": "/src/Img/logo.webp", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

@@ -16,6 +16,13 @@
 
     <link rel="icon" href="/src/Img/logo.png" type="image/png" sizes="48x48"/>
     <link rel="apple-touch-icon" sizes="180x180" href="/src/Img/logo.png"/>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Desygn AI" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#0f172a" />
+    <meta name="msapplication-navbutton-color" content="#0f172a" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://design-md-ai-yd6r.vercel.app/" />
@@ -24,6 +31,14 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Service Worker registration for PWA -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js").catch(function () {});
+        });
+      }
+    </script>
     <!-- Google Identity Services — loaded only when VITE_GOOGLE_CLIENT_ID is set -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </body>
