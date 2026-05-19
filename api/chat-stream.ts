@@ -82,24 +82,50 @@ async function handler(req: Request): Promise<Response> {
     // Fire-and-forget: pump textStream → writable, catch errors as visible text
     void (async () => {
       const writer = writable.getWriter();
+      let hasOutput = false;
       try {
         for await (const chunk of result.textStream) {
+          hasOutput = true;
           await writer.write(encoder.encode(chunk));
         }
-        // Append token usage metadata (hidden HTML comment — stripped by client)
-        try {
-          const usage = await result.usage;
-          if (usage) {
-            const meta = JSON.stringify({
-              p: usage.inputTokens ?? 0,
-              c: usage.outputTokens ?? 0,
-              m: modelDef.id,
-            });
-            await writer.write(encoder.encode(`\n<!--USAGE:${meta}-->`));
+
+        // The AI SDK v6 catches provider errors (AI_RetryError) internally
+        // and closes the textStream silently — no error is thrown to us.
+        // Detect this by checking if 0 chunks were emitted.
+        if (!hasOutput) {
+          let errorDetail = "API key không hợp lệ hoặc đã hết quota. Kiểm tra Environment Variables trên Vercel Dashboard.";
+          try {
+            // finishReason / text may throw the actual provider error
+            const fullText = await result.text;
+            if (!fullText) {
+              try { await result.response; } catch (respErr) {
+                errorDetail = respErr instanceof Error ? respErr.message : String(respErr);
+              }
+            }
+          } catch (textErr) {
+            const raw = textErr instanceof Error ? textErr.message : String(textErr);
+            errorDetail = raw
+              .replace(/Failed after \d+ attempt[s]?\.\s*Last error:\s*/i, "")
+              .slice(0, 300);
           }
-        } catch { /* usage unavailable — skip */ }
+          console.error("[chat-stream] Silent provider failure:", errorDetail);
+          await writer.write(encoder.encode(`⚠️ **AI Error**: ${errorDetail}`));
+        } else {
+          // Append token usage metadata (hidden HTML comment — stripped by client)
+          try {
+            const usage = await result.usage;
+            if (usage) {
+              const meta = JSON.stringify({
+                p: usage.inputTokens ?? 0,
+                c: usage.outputTokens ?? 0,
+                m: modelDef.id,
+              });
+              await writer.write(encoder.encode(`\n<!--USAGE:${meta}-->`));
+            }
+          } catch { /* usage unavailable — skip */ }
+        }
       } catch (err) {
-        // AI SDK wraps provider errors in AI_RetryError — dig out the root cause
+        // Thrown errors (some providers do throw instead of closing silently)
         const lastErr = (err as { lastError?: unknown }).lastError;
         const rootMsg = lastErr instanceof Error ? lastErr.message : undefined;
         const topMsg = err instanceof Error ? err.message : String(err);
