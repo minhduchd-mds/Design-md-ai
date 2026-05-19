@@ -10,13 +10,32 @@ Cảm ơn bạn đã quan tâm đến Desygn AI! Hướng dẫn này giúp bạn
 
 ## Bắt đầu
 
+### Option A: GitHub Codespaces (nhanh nhất)
+Click **"Code" > "Codespaces" > "Create codespace"** trên GitHub — tự cài tất cả.
+
+### Option B: Local setup
+
 ```bash
-git clone https://github.com/designready-ai/designready-ai.git
-cd designready-ai
+git clone https://github.com/minhduchd-mds/Design-md-ai.git
+cd Design-md-ai
 npm install
 npm run dev        # Watch mode (UI + plugin)
 npm run dev:web    # Web workspace dev server
 ```
+
+### Option C: Full stack (with Supabase)
+
+```bash
+git clone https://github.com/minhduchd-mds/Design-md-ai.git
+cd Design-md-ai
+npm install
+chmod +x scripts/setup-local-db.sh
+./scripts/setup-local-db.sh    # Docker + Supabase + migrations + seed data
+npm run dev:web
+```
+
+### First contribution?
+Browse issues tagged [`good-first-issue`](https://github.com/minhduchd-mds/Design-md-ai/labels/good-first-issue) or check `docs/good-first-issues/` for detailed specs.
 
 ## Cấu trúc dự án
 
@@ -52,7 +71,7 @@ web/src/
 | `npm run dev` | Watch mode (UI + plugin) |
 | `npm run dev:web` | Web workspace dev server |
 | `npm run build` | Production build → dist/ |
-| `npm test` | Chạy 1192 tests (Vitest) |
+| `npm test` | Chạy 1313 tests (Vitest) |
 | `npm run lint` | ESLint 9 |
 
 ## Quy ước đặt tên nhánh
