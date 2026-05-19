@@ -88,7 +88,7 @@ function clearAuthAttempt(emailHash: string) {
 async function deriveKey(password: string, salt: Uint8Array, usages: KeyUsage[]) {
   const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: toArrayBuffer(salt), iterations: 310000, hash: "SHA-256" },
+    { name: "PBKDF2", salt: toArrayBuffer(salt), iterations: 600000, hash: "SHA-256" },
     material,
     { name: "AES-GCM", length: 256 },
     false,
@@ -99,7 +99,7 @@ async function deriveKey(password: string, salt: Uint8Array, usages: KeyUsage[])
 async function hashPassword(password: string, salt: Uint8Array): Promise<string> {
   const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt: toArrayBuffer(salt), iterations: 310000, hash: "SHA-256" },
+    { name: "PBKDF2", salt: toArrayBuffer(salt), iterations: 600000, hash: "SHA-256" },
     material,
     256,
   );

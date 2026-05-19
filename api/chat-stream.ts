@@ -11,7 +11,7 @@ import {
   parseBody,
   resolveModelDef,
 } from "./lib/chat-shared";
-import { checkRateLimit, getClientIp } from "./lib/rateLimit";
+import { rateLimit, getClientIdentifier } from "./lib/rate-limit";
 
 export const config = { runtime: "edge", maxDuration: 30 };
 
@@ -21,13 +21,14 @@ async function handler(req: Request): Promise<Response> {
 
   const cors = buildCorsHeaders(req);
 
-  // Rate limiting
-  const ip = getClientIp(Object.fromEntries(req.headers.entries()));
-  const rl = checkRateLimit(`chat-stream:${ip}`);
-  if (!rl.allowed) {
+  // Rate limiting (Upstash Redis — graceful degradation when env vars missing)
+  const ip = getClientIdentifier(Object.fromEntries(req.headers.entries()));
+  const rl = await rateLimit(`chat-stream:${ip}`);
+  if (!rl.success) {
+    const retryAfter = Math.max(0, rl.reset - Math.floor(Date.now() / 1000));
     return new Response(JSON.stringify({ error: "Too many requests. Try again later." }), {
       status: 429,
-      headers: { ...cors, "Content-Type": "application/json", "Retry-After": String(Math.ceil(rl.resetMs / 1000)) },
+      headers: { ...cors, "Content-Type": "application/json", "Retry-After": String(retryAfter) },
     });
   }
 
@@ -92,7 +93,7 @@ async function handler(req: Request): Promise<Response> {
         // and closes the textStream silently — no error is thrown to us.
         // Detect this by checking if 0 chunks were emitted.
         if (!hasOutput) {
-          let errorDetail = "API key không hợp lệ hoặc đã hết quota. Kiểm tra Environment Variables trên Vercel Dashboard.";
+          let errorDetail = "Invalid API key or quota exceeded. Check Environment Variables on the Vercel Dashboard.";
           try {
             // finishReason / text may throw the actual provider error
             const fullText = await result.text;
@@ -135,7 +136,7 @@ async function handler(req: Request): Promise<Response> {
         console.error("[chat-stream] AI provider error:", short);
         try {
           await writer.write(
-            encoder.encode(`\n\n⚠️ **AI Error**: ${short || "Model không phản hồi — thử lại nhé."}`),
+            encoder.encode(`\n\n⚠️ **AI Error**: ${short || "Model did not respond — please try again."}`),
           );
         } catch { /* writer may already be closed */ }
       } finally {

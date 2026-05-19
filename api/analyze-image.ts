@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { checkRateLimit, getClientIp } from "./lib/rateLimit";
+import { rateLimit, getClientIdentifier } from "./lib/rate-limit";
 
 export const config = { api: { bodyParser: true } };
 
@@ -107,10 +107,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
   if (request.method === "OPTIONS") { response.status(200).end(); return; }
   if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
 
-  // Rate limiting
-  const ip = getClientIp(request.headers ?? {});
-  const rl = checkRateLimit(`analyze-image:${ip}`);
-  if (!rl.allowed) { response.setHeader("Retry-After", String(Math.ceil(rl.resetMs / 1000))); response.status(429).json({ error: "Too many requests. Try again later." }); return; }
+  // Rate limiting (Upstash Redis — graceful degradation when env vars missing)
+  const ip = getClientIdentifier(request.headers ?? {});
+  const rl = await rateLimit(`analyze-image:${ip}`);
+  if (!rl.success) { const retryAfter = Math.max(0, rl.reset - Math.floor(Date.now() / 1000)); response.setHeader("Retry-After", String(retryAfter)); response.status(429).json({ error: "Too many requests. Try again later." }); return; }
 
   const { base64Image, mimeType, contextSummary = "", templateMeta = [] } = request.body ?? {};
   if (!base64Image || !isMimeType(mimeType) || templateMeta.length === 0) {
@@ -124,7 +124,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   try {
     const groq = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
     const completion = await groq.chat.completions.create({
-      // Llama 4 Scout — vision model trên Groq
+      // Llama 4 Scout — vision model on Groq
       model: "meta-llama/llama-4-scout-17b-16e-instruct",
       max_tokens: 500,
       response_format: { type: "json_object" },

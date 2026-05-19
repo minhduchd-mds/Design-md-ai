@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { sanitizeLong } from "./lib/sanitize";
 import { GROQ_MODEL, SCREEN_GEN_MAX_TOKENS } from "../shared/constants";
-import { checkRateLimit, getClientIp } from "./lib/rateLimit";
+import { rateLimit, getClientIdentifier } from "./lib/rate-limit";
 
 export const config = { api: { bodyParser: true } };
 
@@ -117,10 +117,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
   if (request.method === "OPTIONS") { response.status(200).end(); return; }
   if (request.method !== "POST") { response.status(405).json({ error: "Method not allowed." }); return; }
 
-  // Rate limiting
-  const ip = getClientIp(request.headers ?? {});
-  const rl = checkRateLimit(`generate-screens:${ip}`);
-  if (!rl.allowed) { response.setHeader("Retry-After", String(Math.ceil(rl.resetMs / 1000))); response.status(429).json({ error: "Too many requests. Try again later." }); return; }
+  // Rate limiting (Upstash Redis — graceful degradation when env vars missing)
+  const ip = getClientIdentifier(request.headers ?? {});
+  const rl = await rateLimit(`generate-screens:${ip}`);
+  if (!rl.success) { const retryAfter = Math.max(0, rl.reset - Math.floor(Date.now() / 1000)); response.setHeader("Retry-After", String(retryAfter)); response.status(429).json({ error: "Too many requests. Try again later." }); return; }
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) { response.status(500).json({ error: "GROQ_API_KEY is not configured." }); return; }

@@ -18,7 +18,7 @@ import {
   errorResponse,
   handlePreflight,
 } from "../lib/chat-shared";
-import { checkRateLimit, getClientIp } from "../lib/rateLimit";
+import { rateLimit, getClientIdentifier } from "../lib/rate-limit";
 
 export const config = { runtime: "edge", maxDuration: 60 };
 
@@ -93,13 +93,14 @@ export default async function handler(req: Request): Promise<Response> {
 
   const cors = buildCorsHeaders(req);
 
-  // Rate limiting — uses shared sliding-window limiter (20 req/60s per IP)
-  const ip = getClientIp(Object.fromEntries(req.headers.entries()));
-  const rl = checkRateLimit(`agents:${ip}`);
-  if (!rl.allowed) {
+  // Rate limiting (Upstash Redis — graceful degradation when env vars missing)
+  const ip = getClientIdentifier(Object.fromEntries(req.headers.entries()));
+  const rl = await rateLimit(`agents:${ip}`);
+  if (!rl.success) {
+    const retryAfter = Math.max(0, rl.reset - Math.floor(Date.now() / 1000));
     return new Response(JSON.stringify({ ok: false, error: "Too many agent requests. Try again later." }), {
       status: 429,
-      headers: { ...cors, "Content-Type": "application/json", "Retry-After": String(Math.ceil(rl.resetMs / 1000)) },
+      headers: { ...cors, "Content-Type": "application/json", "Retry-After": String(retryAfter) },
     });
   }
 

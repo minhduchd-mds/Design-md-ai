@@ -1,6 +1,7 @@
 ﻿import { useCallback, useRef, useState } from "react";
 import { useMemo } from "react";
 import { DESIGN_MD_TEMPLATES } from "../design/templateRegistry";
+import { stripExif } from "../lib/stripExif";
 import type { ChatAttachment, OpenDesignDefinition, OpenDesignPreset, ProjectRequest, SetProjectRequest } from "../app/types";
 
 type ComposerDropdown = "tools" | "category" | "design" | "model" | null;
@@ -26,16 +27,19 @@ const AI_MODELS: AIModelOption[] = [
   { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Lite", desc: "Fastest", provider: "google" },
 ];
 
-/** Convert a File to a ChatAttachment with data URL. */
+/** Convert a File to a ChatAttachment with data URL (EXIF metadata stripped). */
 function fileToAttachment(file: File): Promise<ChatAttachment> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
+      const rawUrl = reader.result as string;
+      // Strip EXIF / GPS metadata from images before sending to AI
+      const cleanUrl = await stripExif(rawUrl, file.type);
       resolve({
         id: `att-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
         type: file.type,
         name: file.name,
-        url: reader.result as string,
+        url: cleanUrl,
         size: file.size,
       });
     };
