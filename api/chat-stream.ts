@@ -91,8 +91,8 @@ async function handler(req: Request): Promise<Response> {
           const usage = await result.usage;
           if (usage) {
             const meta = JSON.stringify({
-              p: usage.promptTokens ?? 0,
-              c: usage.completionTokens ?? 0,
+              p: usage.inputTokens ?? 0,
+              c: usage.outputTokens ?? 0,
               m: modelDef.id,
             });
             await writer.write(encoder.encode(`\n<!--USAGE:${meta}-->`));
