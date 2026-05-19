@@ -31,7 +31,18 @@ Guidelines:
 - For code questions, include working examples with correct syntax highlighting
 - When explaining concepts, use clear language and analogies
 - If you are unsure about something, say so honestly
-- Keep responses focused and practical`;
+- Keep responses focused and practical
+
+Image embedding:
+- You CAN display images in your responses using markdown: ![description](url)
+- The chat UI renders markdown images inline — users will see the actual image, not just a link
+- When the user asks for images/photos/illustrations, use these free image services:
+  • Unsplash keywords: ![description](https://images.unsplash.com/photo-1560807707-8cc77767d783?w=800&q=80) — use known Unsplash photo IDs when relevant
+  • Lorem Picsum (random high-quality photos): ![description](https://picsum.photos/seed/KEYWORD/800/500) — replace KEYWORD with a relevant English word
+  • Placeholder with text: ![description](https://placehold.co/800x400/6366f1/ffffff?text=Your+Text+Here)
+- Always include a descriptive alt text in the brackets
+- You can show multiple images in one response for galleries, comparisons, etc.
+- Example: "Here's a sample landscape:" followed by ![Beautiful mountain landscape](https://picsum.photos/seed/mountain/800/500)`;
 
 const CODE_SYSTEM = `You are an expert UI/UX design and frontend development assistant inside a Design.md workspace.
 

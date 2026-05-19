@@ -82,6 +82,33 @@
   line-height: 1.7;
   word-wrap: break-word;
 
+  // Inline images from markdown ![alt](url)
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: $radius-sm;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    margin: 8px 0;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: filter 0.15s, box-shadow 0.15s;
+
+    &:hover {
+      filter: brightness(1.06);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    &[alt]::after {
+      content: attr(alt);
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: $text-muted-alt;
+    }
+  }
+
   p {
     margin: 0 0 12px;
 

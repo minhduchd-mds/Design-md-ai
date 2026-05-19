@@ -506,7 +506,11 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
 
   const renderedHtml = useMemo(() => {
     if (message.role !== "assistant" || !message.content) return "";
-    return DOMPurify.sanitize(chatMarked.parse(message.content, { async: false }) as string);
+    return DOMPurify.sanitize(chatMarked.parse(message.content, { async: false }) as string, {
+      ADD_TAGS: ["img", "iframe"],
+      ADD_ATTR: ["src", "alt", "loading", "width", "height", "referrerpolicy"],
+      ALLOW_DATA_ATTR: false,
+    });
   }, [message.content, message.role]);
 
   return (
