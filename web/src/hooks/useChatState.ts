@@ -96,9 +96,10 @@ export interface UseChatStateReturn {
       attachments?: ChatAttachment[];
     },
   ) => Promise<void>;
-  startNewChat: (workspaceTab: "chat" | "code" | "checklist") => void;
+  startNewChat: (workspaceTab: "chat" | "code" | "checklist", projectId?: string | null) => void;
   switchSession: (sessionId: string, tab: "chat" | "code") => void;
   deleteSession: (sessionId: string, tab: "chat" | "code") => void;
+  getSessionsForProject: (projectId: string, tab: "chat" | "code") => ChatSession[];
   copyMessageContent: (msg: ChatMessage) => Promise<void>;
 }
 
@@ -393,7 +394,7 @@ export function useChatState(
 
   // ── Start new chat (preserves current session) ──────────────
   const startNewChat = useCallback(
-    (tab: "chat" | "code" | "checklist") => {
+    (tab: "chat" | "code" | "checklist", projectId?: string | null) => {
       if (!user) return;
 
       const isCode = tab === "code";
@@ -405,7 +406,7 @@ export function useChatState(
         void saveSessionMessages(user.emailHash, currentSessionId, currentMsgs);
       }
 
-      // Create new session
+      // Create new session linked to project
       const newId = generateSessionId();
       const newSession: ChatSession = {
         id: newId,
@@ -414,6 +415,7 @@ export function useChatState(
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messageCount: 0,
+        projectId: projectId ?? null,
       };
 
       if (isCode) {
@@ -428,6 +430,15 @@ export function useChatState(
       setIsGenerating(false);
     },
     [user, messages, codeMessages, activeChatSessionId, activeCodeSessionId],
+  );
+
+  // ── Get sessions for a specific project ─────────────────────
+  const getSessionsForProject = useCallback(
+    (projectId: string, tab: "chat" | "code"): ChatSession[] => {
+      const sessions = tab === "code" ? codeSessions : chatSessions;
+      return sessions.filter((s) => s.projectId === projectId);
+    },
+    [chatSessions, codeSessions],
   );
 
   // ── Switch to an existing session ───────────────────────────
@@ -541,6 +552,7 @@ export function useChatState(
     startNewChat,
     switchSession,
     deleteSession,
+    getSessionsForProject,
     copyMessageContent,
   };
 }

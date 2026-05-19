@@ -74,6 +74,28 @@ export interface ChatSession {
   createdAt: number;
   updatedAt: number;
   messageCount: number;
+  /** Links this session to a project (null = global/unlinked) */
+  projectId?: string | null;
+}
+
+/** Full project with scoped context (persisted). */
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Design template preset key */
+  template?: OpenDesignPreset;
+  /** Project category (SaaS, E-commerce, etc.) */
+  category?: string;
+  /** Build target (React + Vite, Next.js, etc.) */
+  target?: string;
+  /** Custom design tokens JSON string */
+  designTokens?: string;
+  /** Saved Design.md content */
+  designMd?: string;
+  /** Color for sidebar indicator */
+  color?: string;
 }
 
 export interface OpenDesignDefinition {

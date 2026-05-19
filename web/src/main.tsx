@@ -1,7 +1,8 @@
 import React, { StrictMode, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { createEmptyContext, type DesignContext, type ValidationReport } from "../../shared/designContext";
-import type { AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest } from "./app/types";
+import type { AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, Project, ProjectHistoryItem, ProjectRequest } from "./app/types";
+import { exportProjectAsZip } from "./lib/projectExport";
 import {
   saveProjectHistory, createMessage,
 } from "./app/auth";
@@ -625,7 +626,7 @@ function App() {
     setMessages, setCodeMessages, setIsGenerating, activeMessages, setActiveMessages,
     startNewChat: startNewChatBase, copyMessageContent,
     chatSessions, codeSessions, activeChatSessionId, activeCodeSessionId,
-    switchSession, deleteSession,
+    switchSession, deleteSession, getSessionsForProject,
   } = chat;
 
   // Detail Modal
@@ -687,39 +688,95 @@ function App() {
   // Derived from workspace hook
   const userDisplayName = displayName || user?.displayEmail?.split("@")[0] || "User";
 
-  // Projects store
-  interface ProjectItem { id: string; name: string; createdAt: string; }
-  const [projects, setProjects] = useState<ProjectItem[]>(() => {
+  // Projects store — full Project type with scoped context
+  const [projects, setProjects] = useState<Project[]>(() => {
     try {
-      const saved = localStorage.getItem("designready.projects-v1");
-      return saved ? JSON.parse(saved) as ProjectItem[] : [];
+      const saved = localStorage.getItem("designready.projects-v2");
+      if (saved) return JSON.parse(saved) as Project[];
+      // Migrate from v1 (old ProjectItem format)
+      const v1 = localStorage.getItem("designready.projects-v1");
+      if (v1) {
+        const old = JSON.parse(v1) as Array<{ id: string; name: string; createdAt: string }>;
+        return old.map((p) => ({ ...p, updatedAt: p.createdAt }));
+      }
+      return [];
     } catch { return []; }
   });
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingProjectName, setEditingProjectName] = useState("");
 
-  function saveProjects(next: ProjectItem[]) {
+  const _activeProject = useMemo(() => projects.find((p) => p.id === activeProjectId) ?? null, [projects, activeProjectId]);
+
+  function saveProjects(next: Project[]) {
     setProjects(next);
-    localStorage.setItem("designready.projects-v1", JSON.stringify(next));
+    localStorage.setItem("designready.projects-v2", JSON.stringify(next));
   }
 
   function addProject() {
     const id = `proj-${Date.now()}`;
-    const newProject: ProjectItem = { id, name: `Project ${projects.length + 1}`, createdAt: new Date().toISOString() };
+    const now = new Date().toISOString();
+    const newProject: Project = {
+      id,
+      name: `Project ${projects.length + 1}`,
+      createdAt: now,
+      updatedAt: now,
+      template: request.openDesign,
+      category: request.category,
+      target: request.target ?? "React + Vite",
+    };
     saveProjects([newProject, ...projects]);
     setActiveProjectId(id);
-    startNewChat();
+    startNewChat(id);
   }
 
   function renameProject(id: string, name: string) {
-    saveProjects(projects.map(p => p.id === id ? { ...p, name } : p));
+    saveProjects(projects.map((p) => p.id === id ? { ...p, name, updatedAt: new Date().toISOString() } : p));
     setEditingProjectId(null);
   }
 
+  function updateProjectContext(id: string, updates: Partial<Project>) {
+    saveProjects(projects.map((p) => p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+  }
+
   function deleteProject(id: string) {
-    saveProjects(projects.filter(p => p.id !== id));
+    saveProjects(projects.filter((p) => p.id !== id));
     if (activeProjectId === id) setActiveProjectId(null);
+  }
+
+  async function handleExportProject(proj: Project) {
+    // Collect all sessions for this project
+    const projChatSessions = getSessionsForProject(proj.id, "chat");
+    const projCodeSessions = getSessionsForProject(proj.id, "code");
+    const allProjSessions = [...projChatSessions, ...projCodeSessions];
+
+    // Load messages for each session
+    const sessionsWithMessages = await Promise.all(
+      allProjSessions.map(async (s) => {
+        const msgs = await import("./app/auth").then((auth) =>
+          auth.loadSessionMessages(user!.emailHash, s.id),
+        );
+        return { title: s.title, tab: s.tab, messages: msgs };
+      }),
+    );
+
+    // Also include current active messages if they belong to this project
+    const activeSid = workspaceTab === "code" ? activeCodeSessionId : activeChatSessionId;
+    const activeSess = allProjSessions.find((s) => s.id === activeSid);
+    if (!activeSess && activeProjectId === proj.id && activeMessages.length > 0) {
+      sessionsWithMessages.push({
+        title: "Active session",
+        tab: workspaceTab === "code" ? "code" : "chat",
+        messages: activeMessages,
+      });
+    }
+
+    exportProjectAsZip({
+      project: proj,
+      designMd: proj.designMd ?? (activeProjectId === proj.id ? designMd : null),
+      chatSessions: sessionsWithMessages,
+    });
+    showToast(`Exported ${proj.name} as ZIP`, "success");
   }
 
   // Remaining local state (design editor, context, screens, refs)
@@ -971,6 +1028,17 @@ function App() {
       setGeneratedScreens(screens);
       setHasGenerated(true);
       setPreviewMode(screens.length > 0 ? "split" : "prompt");
+
+      // Persist project-scoped context + generated Design.md
+      if (activeProjectId) {
+        const genMd = buildDesignMd(matchedRequest, user?.plan ?? "free", openDesignPresets, COMPETITOR_BENCHMARKS);
+        updateProjectContext(activeProjectId, {
+          template: templateId,
+          category: matchedRequest.category,
+          target: matchedRequest.target ?? "React + Vite",
+          designMd: genMd,
+        });
+      }
       setCodeMessages((current) => [
         ...current,
         createMessage(
@@ -1113,6 +1181,14 @@ function App() {
       saveGeneratedProject(nextRequest);
       setHasGenerated(true);
       setPreviewMode("split");
+      // Persist project-scoped context on screen generation
+      if (activeProjectId) {
+        updateProjectContext(activeProjectId, {
+          template: templateId,
+          category: nextRequest.category,
+          target: nextRequest.target ?? "React + Vite",
+        });
+      }
       setCodeMessages((current) => [
         ...current,
         createMessage("assistant", `Generated ${screens.length} screens and opened Split View.`, "Generate 5 screens"),
@@ -1159,6 +1235,10 @@ function App() {
     localStorage.setItem(designMdEditKey, editDraft);
     setSavedDesignMd(editDraft);
     setEditSavedAt(new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
+    // Persist Design.md into the active project
+    if (activeProjectId) {
+      updateProjectContext(activeProjectId, { designMd: editDraft });
+    }
     setCodeMessages((current) => [
       ...current,
       createMessage("assistant", "Saved the edited Design.md for this project in local storage.", "Design.md saved"),
@@ -1230,8 +1310,8 @@ function App() {
     }
   }
 
-  function startNewChat() {
-    startNewChatBase(workspaceTab);
+  function startNewChat(projectId?: string | null) {
+    startNewChatBase(workspaceTab, projectId);
     setRequest((current) => ({ ...current, prompt: "" }));
     setHasGenerated(false);
   }
@@ -1413,6 +1493,14 @@ function App() {
       saveGeneratedProject(nextRequest);
       setHasGenerated(true);
       setPreviewMode(screens.length > 0 ? "split" : "prompt");
+      // Persist project-scoped context on image analysis generation
+      if (activeProjectId) {
+        updateProjectContext(activeProjectId, {
+          template: imageTemplateId,
+          category: nextRequest.category,
+          target: nextRequest.target ?? "React + Vite",
+        });
+      }
       setCodeMessages((current) => [
         ...current,
         createMessage(
@@ -1553,12 +1641,15 @@ function App() {
                       autoFocus
                     />
                   ) : (
-                    <a href="#" onClick={(e) => { e.preventDefault(); setActiveProjectId(proj.id); startNewChat(); }}>
+                    <a href="#" onClick={(e) => { e.preventDefault(); setActiveProjectId(proj.id); startNewChat(proj.id); }}>
                       <svg className="nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h4l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
                       <span>{proj.name}</span>
                     </a>
                   )}
                   <div className="project-actions">
+                    <button type="button" title="Export ZIP" onClick={() => handleExportProject(proj)}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
                     <button type="button" title="Rename" onClick={() => { setEditingProjectId(proj.id); setEditingProjectName(proj.name); }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
