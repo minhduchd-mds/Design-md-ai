@@ -6,6 +6,38 @@ Tất cả thay đổi quan trọng của Desygn AI được ghi nhận tại đ
 
 ## [Unreleased]
 
+## [5.1.1] — 2026-05-19
+
+Tier 2–3 LLM integration, React wiring layer, security patches, and Chat/Code tab independence.
+
+### Them moi
+
+- **LLMProvider (Tier 2)** — Unified LLM abstraction for Agent Fleet v6:
+  - `StubLLMProvider` — Deterministic fallback (0 cost, 0 latency)
+  - `GroqLLMProvider` — Llama 3.3 70B via `/api/chat` and `/api/chat-stream`
+  - `createLLMProvider()` factory with auto-detection
+  - Cost estimation: $0.59/M input, $0.79/M output
+- **useAgentRunner (Tier 3)** — React hook bridging UI to Agent Fleet v6:
+  - `runAgent()` / `runFleet()` / `listAgents()` / `cancel()` / `reset()`
+  - `AgentRunState` with status, runId, results Map, cost, latency tracking
+  - AbortController-based cancellation
+- **Agent API endpoint** (`api/agents/run.ts`) — Vercel Edge Runtime:
+  - 22-agent registry, fleet validation, rate limiting
+  - Supports: listAgents, fleet runs, single-agent runs
+- **Chat/Code tab independence** — Separate message arrays per workspace tab
+- **ChatEngine fix** — Corrected `sendClaudeChat` 4-arg signature with context object
+- **20 new tests** — LLMProvider (10), useAgentRunner (5), agents-run API (12), ChatEngine (16)
+
+### Thay doi
+
+- Version bump 5.0.0 → 5.1.1
+- Total test count: 1529 → 1577 (106 files)
+- `index.ts` barrel: added LLMProvider + useAgentRunner exports
+
+### Bao mat
+
+- `npm audit fix` — 0 vulnerabilities (patched brace-expansion, ws)
+
 ## [5.1.0] — 2026-05-19
 
 Agent Fleet v6 — 22-agent autonomous self-improving system with worktree isolation, cost gating, and safety guards.

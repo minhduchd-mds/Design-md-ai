@@ -4,7 +4,7 @@
 ```bash
 npm run dev       # Watch mode (UI + plugin)
 npm run build     # Production → dist/
-npm test          # Vitest (1529 tests)
+npm test          # Vitest (1577 tests)
 npm run lint      # ESLint 9
 ```
 

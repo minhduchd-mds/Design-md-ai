@@ -55,3 +55,11 @@ export * from "./safety";
 
 // Audit fleet
 export * from "./audit";
+
+// LLM Provider (Tier 2)
+export { StubLLMProvider, GroqLLMProvider, createLLMProvider, defaultLLMProvider } from "./LLMProvider";
+export type { LLMProvider, LLMRequest, LLMResponse, LLMStreamCallbacks } from "./LLMProvider";
+
+// React integration (Tier 3)
+export { useAgentRunner } from "./useAgentRunner";
+export type { AgentRunState, AgentRunStatus, UseAgentRunnerReturn, AgentRegistryEntry } from "./useAgentRunner";
