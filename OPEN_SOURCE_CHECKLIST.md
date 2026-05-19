@@ -3,8 +3,8 @@
 ## Pháp lý
 
 - [x] LICENSE file (MIT)
-- [ ] CLA (Contributor License Agreement)
-- [ ] Hướng dẫn thương hiệu (trademark guidelines)
+- [x] CLA (Contributor License Agreement) — `CLA.md`
+- [x] Hướng dẫn thương hiệu (trademark guidelines) — `TRADEMARK.md`
 - [x] Kiểm tra license bên thứ ba (SBOM) — `THIRD_PARTY_LICENSES.md`
 
 ## Code
@@ -24,7 +24,7 @@
 - [x] CODE_OF_CONDUCT.md — Tiêu chuẩn cộng đồng
 - [x] OPEN_SOURCE_GUIDE.md — Hướng dẫn tổng quan
 - [x] CHANGELOG.md — Lịch sử phiên bản (v1.0.0 → v5.0.0)
-- [ ] API documentation (Plugin SDK)
+- [x] API documentation (Plugin SDK) — `docs/API.md`
 - [x] Architecture Decision Records — DEV_GUIDE.md
 
 ## Cộng đồng
@@ -33,7 +33,7 @@
 - [x] Pull request template — `.github/PULL_REQUEST_TEMPLATE.md`
 - [ ] GitHub Discussions bật (cần bật trên GitHub UI)
 - [ ] Labels `good-first-issue` gắn (cần tạo trên GitHub UI)
-- [ ] SLA phản hồi maintainer
+- [x] SLA phản hồi maintainer — `docs/MAINTAINER_SLA.md`
 
 ## Hạ tầng
 
@@ -67,8 +67,13 @@ Hoàn thành (session này):
 - [x] README song ngữ (Vietnamese + English)
 - [x] 1313 tests / 75 files — tất cả PASS
 
+Hoàn thành (documentation session):
+- [x] CLA.md — Contributor License Agreement
+- [x] TRADEMARK.md — Trademark guidelines
+- [x] docs/API.md — Plugin SDK API documentation (8 sections)
+- [x] docs/SELF_HOSTING.md — Self-hosting guide (Docker, Nginx, Supabase)
+- [x] docs/MAINTAINER_SLA.md — Response SLA + labels
+
 Còn lại (cần thao tác manual trên GitHub):
 1. Bật GitHub Discussions
-2. Tạo labels `good-first-issue`
-3. Viết API documentation cho Plugin SDK
-4. CLA + Trademark guidelines (tùy quy mô project)
+2. Tạo labels `good-first-issue`, `help-wanted`, `priority:*`
