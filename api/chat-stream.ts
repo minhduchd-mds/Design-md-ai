@@ -85,6 +85,18 @@ async function handler(req: Request): Promise<Response> {
           for await (const chunk of result.textStream) {
             controller.enqueue(encoder.encode(chunk));
           }
+          // Append token usage metadata (hidden HTML comment — stripped by client)
+          try {
+            const usage = await result.usage;
+            if (usage) {
+              const meta = JSON.stringify({
+                p: usage.promptTokens ?? 0,
+                c: usage.completionTokens ?? 0,
+                m: modelDef.id,
+              });
+              controller.enqueue(encoder.encode(`\n<!--USAGE:${meta}-->`));
+            }
+          } catch { /* usage unavailable — skip */ }
         } catch (err) {
           // AI SDK wraps provider errors in AI_RetryError — dig out the root cause
           const lastErr = (err as { lastError?: unknown }).lastError;

@@ -1,0 +1,223 @@
+@use "variables" as *;
+
+// ─── Usage Meter (Claude-Code-style token burn bar) ──────
+
+.usage-meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  font-size: 11.5px;
+  font-family: $font-mono-system;
+  color: $text-muted;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  user-select: none;
+  flex-shrink: 0;
+
+  &-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    padding: 2px 0;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+
+    &:hover {
+      opacity: 1;
+      color: $text-light;
+    }
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  &-sep {
+    width: 1px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+
+  &-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+
+    strong {
+      color: $text-light;
+      font-weight: 600;
+    }
+  }
+
+  &-cost {
+    strong {
+      color: $teal-400;
+    }
+  }
+
+  &-reqs {
+    strong {
+      color: $purple-400;
+    }
+  }
+}
+
+// ─── Expanded Usage Panel ────────────────────────────────
+
+.usage-panel {
+  padding: 10px 14px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba($dark-800, 0.6);
+  animation: usage-slide-in 0.15s ease-out;
+}
+
+@keyframes usage-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.usage-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.usage-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $text-muted;
+}
+
+.usage-panel-close {
+  background: none;
+  border: none;
+  color: $text-dim;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+
+  &:hover { color: $text-light; }
+}
+
+// Per-model row
+.usage-model-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+}
+
+.usage-model-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: $text-secondary;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-model-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: $radius-pill;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: $font-mono-system;
+}
+
+.badge-google {
+  background: rgba(66, 133, 244, 0.15);
+  color: #93bbfc;
+}
+
+.badge-groq {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fdba74;
+}
+
+// Progress bar for daily limit
+.usage-limit-bar {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+
+  &-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    background: $indigo-500;
+
+    &.warn  { background: $warn; }
+    &.over  { background: $error; }
+  }
+}
+
+.usage-limit-text {
+  font-family: $font-mono-system;
+  font-size: 11px;
+  color: $text-dim;
+  text-align: right;
+  min-width: 56px;
+}
+
+// ─── Hourly Stats Row ────────────────────────────────────
+
+.usage-hourly-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0 2px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11.5px;
+  font-family: $font-mono-system;
+}
+
+.usage-hourly-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: $text-muted;
+
+  strong {
+    font-weight: 600;
+  }
+
+  &.tokens strong { color: $purple-300; }
+  &.cost strong   { color: $teal-300; }
+  &.total strong  { color: $text-light; }
+}
+
+// ─── Empty State ─────────────────────────────────────────
+
+.usage-empty {
+  font-size: 12px;
+  color: $text-dim;
+  text-align: center;
+  padding: 8px 0;
+}

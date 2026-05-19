@@ -22,6 +22,7 @@ import {
   deleteSessionStorage,
 } from "../app/auth";
 import { sendClaudeChat } from "../workspace/claudeChat";
+import { recordUsage } from "../lib/usageTracker";
 
 // ── Legacy placeholders to strip from persisted history ───────
 const LEGACY_PLACEHOLDERS = [
@@ -362,18 +363,40 @@ export function useChatState(
             : Promise.resolve(null),
         ]);
 
-        // Guard: if the stream completed but produced no tokens (provider error
-        // mid-stream, empty response, etc.), apply the returned fullText so the
-        // user sees feedback instead of an invisible empty bubble.
+        // Extract usage metadata (hidden HTML comment appended by server)
+        // and record it for the token burn meter.  Strip the marker from
+        // the message content so it doesn't persist in history.
         updateMessages((current) => {
           const msg = current.find((m) => m.id === streamingId);
-          if (msg && !msg.content.trim()) {
+          if (!msg) return current;
+
+          const usageRe = /\n<!--USAGE:(.*?)-->/;
+          const usageMatch = msg.content.match(usageRe);
+          if (usageMatch && user) {
+            try {
+              const u = JSON.parse(usageMatch[1]) as { p: number; c: number; m: string };
+              recordUsage(user.emailHash, u.m, u.p, u.c);
+            } catch { /* malformed — ignore */ }
+          }
+
+          const cleaned = msg.content.replace(usageRe, "");
+
+          // If stream produced no visible tokens, use fullText as fallback
+          if (!cleaned.trim()) {
             return current.map((m) =>
               m.id === streamingId
-                ? { ...m, content: fullText || "⚠️ Không nhận được phản hồi. Vui lòng thử lại." }
+                ? { ...m, content: fullText?.replace(usageRe, "") || "⚠️ Không nhận được phản hồi. Vui lòng thử lại." }
                 : m,
             );
           }
+
+          // Strip usage marker if present
+          if (usageMatch) {
+            return current.map((m) =>
+              m.id === streamingId ? { ...m, content: cleaned } : m,
+            );
+          }
+
           return current;
         });
 

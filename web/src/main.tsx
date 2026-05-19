@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createEmptyContext, type DesignContext, type ValidationReport } from "../../shared/designContext";
 import type { AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, Project, ProjectHistoryItem, ProjectRequest } from "./app/types";
 import { exportProjectAsZip } from "./lib/projectExport";
+import { getUsageSnapshot, formatTokens, formatCost, MODEL_PRICING } from "./lib/usageTracker";
 import {
   saveProjectHistory, createMessage,
 } from "./app/auth";
@@ -496,6 +497,109 @@ interface ChatMessageItemProps {
   onRegenerate: (index: number) => void;
   onPreview: (html: string, title: string) => void;
   promptSlice: string;
+}
+
+// ── Usage Meter Component (Claude-Code-style token burn) ──
+
+function UsageMeter({ emailHash, isGenerating }: { emailHash: string; isGenerating: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  // Periodic refresh every 30s (setInterval callback — not synchronous)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Snapshot recomputes when generation toggles, emailHash changes, or timer ticks
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const snapshot = useMemo(() => getUsageSnapshot(emailHash), [emailHash, isGenerating, tick]);
+
+  if (!snapshot) return null;
+
+  const { hourlyTokens, hourlyCost, todayRequests, todayCost, models } = snapshot;
+
+  return (
+    <>
+      {/* Collapsed bar */}
+      <div className="usage-meter">
+        <button type="button" className="usage-meter-toggle" onClick={() => setExpanded(!expanded)}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          {expanded ? "Thu" : "Usage"}
+        </button>
+        <span className="usage-meter-sep" />
+        <span className="usage-meter-stat">
+          <strong>{formatTokens(hourlyTokens)}</strong> tok/hr
+        </span>
+        <span className="usage-meter-sep" />
+        <span className="usage-meter-stat usage-meter-cost">
+          <strong>{formatCost(hourlyCost)}</strong>/hr
+        </span>
+        <span className="usage-meter-sep" />
+        <span className="usage-meter-stat usage-meter-reqs">
+          <strong>{todayRequests}</strong> req
+        </span>
+        <span className="usage-meter-sep" />
+        <span className="usage-meter-stat usage-meter-cost">
+          <strong>{formatCost(todayCost)}</strong> today
+        </span>
+      </div>
+
+      {/* Expanded panel */}
+      {expanded && (
+        <div className="usage-panel">
+          <div className="usage-panel-header">
+            <span className="usage-panel-title">Usage today by model</span>
+            <button type="button" className="usage-panel-close" onClick={() => setExpanded(false)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          {models.length === 0 ? (
+            <div className="usage-empty">No usage recorded today</div>
+          ) : (
+            models.map((m) => {
+              const pct = Math.min((m.count / m.limit) * 100, 100);
+              const fillClass = pct >= 90 ? "over" : pct >= 70 ? "warn" : "";
+              const pricing = MODEL_PRICING[m.model];
+              const isGoogle = pricing ? m.model.startsWith("gemini") : false;
+
+              return (
+                <div key={m.model} className="usage-model-row">
+                  <span className="usage-model-name">
+                    <span className={`usage-model-badge ${isGoogle ? "badge-google" : "badge-groq"}`}>
+                      {isGoogle ? "G" : "Q"}
+                    </span>
+                    {m.label}
+                  </span>
+                  <span className="usage-limit-bar">
+                    <span className={`usage-limit-bar-fill ${fillClass}`} style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="usage-limit-text">
+                    {m.count}/{m.limit} &middot; {formatCost(m.cost)}
+                  </span>
+                </div>
+              );
+            })
+          )}
+
+          <div className="usage-hourly-row">
+            <span className="usage-hourly-stat tokens">
+              <strong>{formatTokens(hourlyTokens)}</strong> tokens/hr
+            </span>
+            <span className="usage-hourly-stat cost">
+              <strong>{formatCost(hourlyCost)}</strong>/hr
+            </span>
+            <span className="usage-hourly-stat total">
+              <strong>{formatCost(todayCost)}</strong> total today
+            </span>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 const ChatMessageItem = React.memo(function ChatMessageItem({
@@ -2779,6 +2883,8 @@ function App() {
               </svg>
             </button>
           )}
+
+          {user && <UsageMeter emailHash={user.emailHash} isGenerating={isGenerating} />}
 
           <ChatComposer
             isGenerating={isGenerating}
