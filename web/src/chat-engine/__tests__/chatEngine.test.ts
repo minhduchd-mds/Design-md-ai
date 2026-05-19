@@ -242,10 +242,9 @@ describe("ChatEngine", () => {
     expect(localStorage.getItem("chat:user-hash:project-1")).toBe("encrypted-payload");
   });
 
-  it("loadHistory returns default message when no history", async () => {
+  it("loadHistory returns empty array when no history", async () => {
     const engine = ChatEngine.create();
     const messages = await engine.loadHistory("user-hash", "project-1");
-    expect(messages).toHaveLength(1);
-    expect(messages[0].role).toBe("assistant");
+    expect(messages).toHaveLength(0);
   });
 });

@@ -99,8 +99,7 @@ const TEMPLATE_CATEGORY_FILTERS: TemplateCategoryFilter[] = [
   "Automotive",
   "Media",
 ];
-const INITIAL_ASSISTANT_MESSAGE = "Paste a product request, upload Design.md files, or import screenshots to create AI-ready Design.md context for coding agents.";
-const INITIAL_CODE_MESSAGE = "Describe a design task, generate Design.md, or upload screenshots to produce AI-ready handoff context and code scaffolds.";
+// Initial messages removed — chat starts empty like ChatGPT/Claude (welcome hero shown instead)
 const DEFAULT_PROJECT: ProjectRequest = {
   projectName: "Design-md-ai Project",
   category: "SaaS",
@@ -108,8 +107,7 @@ const DEFAULT_PROJECT: ProjectRequest = {
   openDesign: "desygnAI",
   layout: "Design.md handoff workspace",
   target: "Codex + React",
-  prompt:
-    "Create a Design.md handoff for a Figma-backed SaaS dashboard with components, tokens, responsive rules, and implementation guidance.",
+  prompt: "",
 };
 
 const BASE_OPEN_DESIGN_PRESETS: Record<OpenDesignPreset, OpenDesignDefinition> = {
@@ -755,12 +753,8 @@ function App() {
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const analyzeImageInputRef = useRef<HTMLInputElement | null>(null);
   const baDocInputRef = useRef<HTMLInputElement | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
-  ]);
-  const [codeMessages, setCodeMessages] = useState<ChatMessage[]>([
-    createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME),
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [codeMessages, setCodeMessages] = useState<ChatMessage[]>([]);
 
   // Tab-specific message routing — Chat and Code tabs maintain independent histories
   const activeMessages = workspaceTab === "code" ? codeMessages : messages;
@@ -1059,6 +1053,13 @@ function App() {
     updateMessages([...chatMessages, streamingMsg]);
     setRequest((current) => ({ ...current, prompt: "" }));
     setIsGenerating(true);
+
+    // Auto-save to history on first user message (title derived from prompt, like ChatGPT/Claude)
+    const isFirstUserMessage = currentMessages.filter((m) => m.role === "user").length === 0;
+    if (isFirstUserMessage) {
+      const autoTitle = prompt.length > 60 ? prompt.slice(0, 57) + "..." : prompt;
+      saveGeneratedProject({ ...request, projectName: autoTitle, prompt });
+    }
 
     const isWebIntent = detectWebIntent(prompt);
 
@@ -1382,12 +1383,8 @@ function App() {
     setValidationReport(null);
     setDesignContext(null);
     setPendingUploadedFiles([]);
-    setMessages([
-      createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
-    ]);
-    setCodeMessages([
-      createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME),
-    ]);
+    setMessages([]);
+    setCodeMessages([]);
     setChatHistoryReady(false);
     setActiveHistoryPrompt("");
   }
@@ -1412,7 +1409,6 @@ function App() {
     setDesignContext(null);
     setActiveHistoryPrompt(item.prompt);
     setCodeMessages([
-      createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME),
       createMessage("user", item.prompt),
       createMessage("assistant", `Restored ${item.name}. You can continue the session or review the generated Design.md/Preview below.`),
     ]);
@@ -1433,12 +1429,13 @@ function App() {
 
   function startNewChat() {
     if (workspaceTab === "code") {
-      setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
+      setCodeMessages([]);
     } else {
-      setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+      setMessages([]);
     }
     setRequest((current) => ({ ...current, prompt: "" }));
     setIsGenerating(false);
+    setHasGenerated(false);
   }
 
   async function copyMessageContent(msg: ChatMessage) {
@@ -1481,8 +1478,8 @@ function App() {
     setDesignContext(null);
     setPendingUploadedFiles([]);
     setActiveHistoryPrompt("");
-    setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
-    setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
+    setMessages([]);
+    setCodeMessages([]);
   }
 
   function handleGoogleLogin(credentialResponse: { credential?: string }) {
@@ -1922,8 +1919,8 @@ function App() {
           shareLinksEnabled={shareLinksEnabled}
           onShareLinksChange={setShareLinksEnabled}
           onClearHistory={() => {
-            setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
-            setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
+            setMessages([]);
+            setCodeMessages([]);
             setProjectHistory([]);
             saveProjectHistory([]);
             setActiveHistoryPrompt("");
@@ -1931,8 +1928,8 @@ function App() {
           }}
           onShowToast={showToast}
           onResetMessages={() => {
-            setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
-            setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
+            setMessages([]);
+            setCodeMessages([]);
           }}
         />
 
@@ -2708,7 +2705,7 @@ function App() {
           </div>
           )}
           <div className="chat-scroll" ref={chatScrollRef}>
-            {activeMessages.length <= 1 && !isGenerating && !hasGenerated && (
+            {activeMessages.filter((m) => m.role === "user").length === 0 && !isGenerating && !hasGenerated && (
               <div className="welcome-hero">
                 <div className="welcome-brand-icon">
                   <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
@@ -2759,8 +2756,8 @@ function App() {
             )}
 
             {activeMessages.map((message, msgIndex) => {
-              // Hide initial assistant message when welcome hero is visible
-              if (activeMessages.length <= 1 && !isGenerating && !hasGenerated && msgIndex === 0 && message.role === "assistant") return null;
+              // Hide empty initial assistant messages
+              if (message.role === "assistant" && !message.content && msgIndex === 0) return null;
               return (
                 <ChatMessageItem
                   key={message.id}

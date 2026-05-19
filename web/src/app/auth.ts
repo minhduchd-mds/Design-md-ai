@@ -192,10 +192,15 @@ export function getSessionUser(): SessionUser | null {
     const session = JSON.parse(localStorage.getItem(SESSION_STORE_KEY) ?? "null") as (SessionUser & { email?: string }) | null;
     if (!session?.emailHash) return null;
     if (!session.expiresAt || session.expiresAt <= Date.now()) { clearSessionUser(); return null; }
+    // Enrich from user record if available (local auth); for Google/OAuth sessions
+    // the user record may not exist — return session data directly.
     const record = getUsers().find((user) => user.emailHash === session.emailHash);
-    return record
-      ? { emailHash: record.emailHash ?? session.emailHash, displayEmail: session.displayEmail || "Encrypted account", plan: record.plan, expiresAt: session.expiresAt }
-      : null;
+    return {
+      emailHash: record?.emailHash ?? session.emailHash,
+      displayEmail: session.displayEmail || record?.emailHash || "User",
+      plan: record?.plan ?? session.plan ?? "free",
+      expiresAt: session.expiresAt,
+    };
   } catch { return null; }
 }
 

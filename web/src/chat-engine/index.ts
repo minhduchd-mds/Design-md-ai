@@ -142,7 +142,7 @@ export class ChatEngine {
   async loadHistory(userId: string, projectId: string): Promise<ChatMessage[]> {
     const key = getChatHistoryKey(userId, projectId);
     const encrypted = localStorage.getItem(key);
-    if (!encrypted) return [createMessage("assistant", "Start a conversation or upload Design.md files.", "Desygn AI")];
+    if (!encrypted) return [];
 
     try {
       return await decryptChatMessages(encrypted, userId);
