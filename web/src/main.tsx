@@ -1,28 +1,30 @@
 import React, { StrictMode, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { createEmptyContext, type DesignContext, type ValidationReport } from "../../shared/designContext";
-import type { AppView, AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest, SessionUser } from "./app/types";
+import type { AuthMode, ChatMessage, OpenDesignDefinition, OpenDesignPreset, ProjectHistoryItem, ProjectRequest } from "./app/types";
 import {
-  register, login, updatePlan, getSessionUser, saveSessionUser, clearSessionUser,
-  getProjectHistory, saveProjectHistory, getChatHistoryKey, encryptChatMessages,
-  decryptChatMessages, createMessage, SESSION_TTL_MS,
+  saveProjectHistory, createMessage,
 } from "./app/auth";
+import { useToast } from "./hooks/useToast";
+import { useAuth } from "./hooks/useAuth";
+import { useChatState } from "./hooks/useChatState";
+import { useWorkspace } from "./hooks/useWorkspace";
 import { buildContext, parseFileSources } from "./design/contextBuilder";
 import { BA_TEMPLATE_CONTENT } from "./design/constants";
 import { buildDesignMd, buildPreviewText, inferProjectName, parseDesignMd } from "./design/designParser";
 import { computeValidationReport } from "./design/layoutValidator";
 import { generateScreens, type Screen } from "./design/screenGenerator";
 import { matchTemplates } from "./design/templateMatcher";
-import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, loadDesignMdTemplate, type DesignMdTemplateCategory } from "./design/templateRegistry";
+import { DESIGN_MD_TEMPLATES, hasDesignMdTemplate, type DesignMdTemplateCategory } from "./design/templateRegistry";
 import { ChatComposer } from "./workspace/ChatComposer";
 import { buildMarkdownPrompt, readMarkdownFiles } from "./workspace/fileImport";
 import { analyzeImage } from "./workspace/imageAnalyzer";
-import { sendClaudeChat } from "./workspace/claudeChat";
+// sendClaudeChat now used only inside useChatState hook
 import { fileToDataUrl, generateCodeFromScreenshot, getScreenshotToCodeWsUrl } from "./workspace/screenshotToCode";
-import { DEFAULT_CHECKLIST_ROWS, DESIGN_SOURCES, CHECKLIST_CATEGORIES, type ChecklistRow, type ChecklistStatus, type DesignSource } from "./workspace/checklistData";
+import { DESIGN_SOURCES, CHECKLIST_CATEGORIES, type ChecklistRow, type ChecklistStatus, type DesignSource } from "./workspace/checklistData";
 import { ComparePanel, type BugMarker } from "./workspace/ComparePanel";
 import type { HtmlPreviewState } from "./workspace/HtmlPreviewModal";
-import { SettingsModal, type IntegrationItem } from "./workspace/SettingsModal";
+import { SettingsModal } from "./workspace/SettingsModal";
 import { PanelErrorBoundary } from "./workspace/PanelErrorBoundary";
 import { WorkspaceResult } from "./workspace/WorkspaceResult";
 import { CodeBlockCopyContainer } from "./workspace/CodeBlockCopy";
@@ -78,8 +80,7 @@ const chatMarked = new Marked(
   }),
 );
 
-type PreviewMode = "prompt" | "preview" | "edit" | "split";
-type PreviewTheme = "light" | "dark";
+// PreviewMode and PreviewTheme types moved to useWorkspace hook
 type TemplatePriorityFilter = "All" | "Product" | "Technical";
 type TemplateCategoryFilter = "All" | DesignMdTemplateCategory;
 
@@ -555,65 +556,39 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
 });
 
 function App() {
-  const [user, setUser] = useState<SessionUser | null>(() => {
-    const session = getSessionUser();
-    // Refresh TTL on app load so active users stay logged in
-    if (session) saveSessionUser(session);
-    return session;
-  });
-  const [view, setView] = useState<AppView>(() => (getSessionUser() ? "workspace" : "landing"));
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [authError, setAuthError] = useState("");
-  const [landingTemplateQuery, setLandingTemplateQuery] = useState("");
-  const [landingTemplatePriority, setLandingTemplatePriority] = useState<TemplatePriorityFilter>("All");
-  const [landingTemplateCategory, setLandingTemplateCategory] = useState<TemplateCategoryFilter>("All");
-  const [request, setRequest] = useState<ProjectRequest>(DEFAULT_PROJECT);
-  const [generatedRequest, setGeneratedRequest] = useState<ProjectRequest | null>(null);
-  const [projectHistory, setProjectHistory] = useState<ProjectHistoryItem[]>(() => getProjectHistory());
-  const [activeHistoryPrompt, setActiveHistoryPrompt] = useState(() => getProjectHistory()[0]?.prompt ?? "");
-  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("prompt");
-  const [hasGenerated, setHasGenerated] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [chatHistoryReady, setChatHistoryReady] = useState(false);
-  const [copiedOutput, setCopiedOutput] = useState(false);
-  const [loadedTemplatePresets, setLoadedTemplatePresets] = useState<Record<string, OpenDesignDefinition>>({});
-  const [workspaceTab, setWorkspaceTab] = useState<"chat" | "code" | "checklist">("chat");
-  const [groqModel, setGroqModel] = useState<string>(() => localStorage.getItem("designready.model") ?? "llama-3.3-70b-versatile");
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [templatePopupOpen, setTemplatePopupOpen] = useState(false);
-  const [setupModalOpen, setSetupModalOpen] = useState(false);
-  const [setupModalTab, setSetupModalTab] = useState(0);
-  const [checklistItems, setChecklistItems] = useState<ChecklistRow[]>(() => {
-    try {
-      const saved = localStorage.getItem("designready.checklist-v3");
-      return saved ? JSON.parse(saved) as ChecklistRow[] : DEFAULT_CHECKLIST_ROWS;
-    } catch { return DEFAULT_CHECKLIST_ROWS; }
-  });
-  const [checklistSearch, setChecklistSearch] = useState("");
-  const [checklistFilter, setChecklistFilter] = useState<"all" | "ui" | "ux" | "pass" | "fail" | "warn" | "untested">("all");
-  const [checklistSourceFilter, _setChecklistSourceFilter] = useState<"all" | DesignSource>("all");
-  const [checklistCatFilter, setChecklistCatFilter] = useState("All");
-  const [checklistPage, setChecklistPage] = useState(1);
-  const [checklistPerPage, setChecklistPerPage] = useState(10);
-  const [setupDatasource, setSetupDatasource] = useState<{ type: string; url: string; sheet: string; headerRow: number }>(() => {
-    try {
-      const s = localStorage.getItem("designready.setup-datasource");
-      return s ? JSON.parse(s) as { type: string; url: string; sheet: string; headerRow: number } : { type: "excel", url: "", sheet: "", headerRow: 1 };
-    } catch { return { type: "excel", url: "", sheet: "", headerRow: 1 }; }
-  });
-  const [figmaToken, setFigmaToken] = useState("");
-  const [figmaFileUrl, setFigmaFileUrl] = useState("");
-  const [figmaStatus, setFigmaStatus] = useState<"pending" | "checking" | "ok" | "error">("pending");
-  const [pwUrl, setPwUrl] = useState("");
-  const [pwWidth, setPwWidth] = useState(1440);
-  const [pwHeight, setPwHeight] = useState(900);
-  const [pwStatus, setPwStatus] = useState<"pending" | "checking" | "ok" | "error">("pending");
+  // ── Extracted hooks (Sprint 5 — component split) ────────────
+  const auth = useAuth();
+  const { user, setUser, view, setView, authMode, setAuthMode, email, setEmail,
+    password, setPassword, showPassword, setShowPassword, authError, setAuthError,
+    handleGoogleLogin, upgradeToPro } = auth;
+  const ws = useWorkspace(BASE_OPEN_DESIGN_PRESETS);
+  const {
+    workspaceTab, setWorkspaceTab, request, setRequest, generatedRequest, setGeneratedRequest,
+    projectHistory, setProjectHistory, activeHistoryPrompt, setActiveHistoryPrompt,
+    isHistoryOpen, setIsHistoryOpen, saveGeneratedProject, sidebarCollapsed, setSidebarCollapsed,
+    previewMode, setPreviewMode, previewTheme, setPreviewTheme, hasGenerated, setHasGenerated,
+    copiedOutput, setCopiedOutput, groqModel, setGroqModel, loadedTemplatePresets,
+    landingTemplateQuery, setLandingTemplateQuery, landingTemplatePriority, setLandingTemplatePriority,
+    landingTemplateCategory, setLandingTemplateCategory, settingsOpen, setSettingsOpen,
+    templatePopupOpen, setTemplatePopupOpen, setupModalOpen, setSetupModalOpen,
+    setupModalTab, setSetupModalTab, brandMenuOpen, setBrandMenuOpen, brandHelpOpen, setBrandHelpOpen,
+    settingsTab, setSettingsTab, shareLinksEnabled, setShareLinksEnabled, displayName, setDisplayName,
+    chatTheme, setChatTheme, integrations, setIntegrations, saveIntegrations,
+    figmaMcpEndpoint, setFigmaMcpEndpoint, chatMappingEnabled, setChatMappingEnabled,
+    checklistItems, setChecklistItems, checklistSearch, setChecklistSearch,
+    checklistFilter, setChecklistFilter, checklistSourceFilter, checklistCatFilter, setChecklistCatFilter,
+    checklistPage, setChecklistPage, checklistPerPage, setChecklistPerPage,
+    setupDatasource, setSetupDatasource, figmaToken, setFigmaToken, figmaFileUrl, setFigmaFileUrl,
+    figmaStatus, setFigmaStatus, pwUrl, setPwUrl, pwWidth, setPwWidth, pwHeight, setPwHeight,
+    pwStatus, setPwStatus,
+  } = ws;
+
+  const chat = useChatState(user, workspaceTab);
+  const {
+    isGenerating, copiedMessageId,
+    setMessages, setCodeMessages, setIsGenerating, activeMessages, setActiveMessages,
+    startNewChat: startNewChatBase, copyMessageContent,
+  } = chat;
 
   // Detail Modal
   const [detailRow, setDetailRow] = useState<ChecklistRow | null>(null);
@@ -627,14 +602,8 @@ function App() {
   const [compareDesignUrl, _setCompareDesignUrl] = useState<string | null>(null);
   const [compareWebUrl, _setCompareWebUrl] = useState<string | null>(null);
 
-  // Toast notification system
-  const [toasts, setToasts] = useState<Array<{ id: number; msg: string; type: "success" | "error" | "warn" | "info" }>>([]);
-  const toastIdRef = useRef(0);
-  const showToast = useCallback((msg: string, type: "success" | "error" | "warn" | "info" = "success") => {
-    const id = ++toastIdRef.current;
-    setToasts(prev => [...prev.slice(-4), { id, msg, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
-  }, []);
+  // Toast notification system (extracted hook)
+  const { toasts, showToast } = useToast();
 
   // ── Keyboard shortcuts (Ctrl+Z / Ctrl+Y) ─────────────────────
   useCommandShortcuts();
@@ -675,32 +644,10 @@ function App() {
     });
 
     return () => { offToast(); offExpired(); offFigmaConnected(); offFigmaDisconnected(); offFlushed(); offError(); };
-  }, [showToast]);
+  }, [showToast, setIntegrations, setUser, setView]);
 
-  // Brand menu dropdown
-  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
-  const [brandHelpOpen, setBrandHelpOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"profile" | "appearance" | "behavior" | "notifications" | "extensions" | "document" | "other">("profile");
-  const [shareLinksEnabled, setShareLinksEnabled] = useState(() => localStorage.getItem("designready.share-links") === "true");
-  const [displayName, setDisplayName] = useState(() => localStorage.getItem("designready.display-name") ?? "");
+  // Derived from workspace hook
   const userDisplayName = displayName || user?.displayEmail?.split("@")[0] || "User";
-
-  // Extensions / Integrations state
-  const [integrations, setIntegrations] = useState<IntegrationItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("designready.integrations");
-      return saved ? JSON.parse(saved) as IntegrationItem[] : [
-        { id: "figma-mcp", name: "Figma MCP", icon: "figma", status: "disconnected" },
-        { id: "github", name: "GitHub", icon: "github", status: "soon" },
-        { id: "vercel", name: "Vercel Deploy", icon: "vercel", status: "soon" },
-        { id: "notion", name: "Notion", icon: "notion", status: "soon" },
-        { id: "linear", name: "Linear", icon: "linear", status: "soon" },
-      ];
-    } catch { return []; }
-  });
-  const saveIntegrations = useCallback((next: IntegrationItem[]) => { setIntegrations(next); localStorage.setItem("designready.integrations", JSON.stringify(next)); }, []);
-  const [figmaMcpEndpoint, setFigmaMcpEndpoint] = useState(() => localStorage.getItem("designready.figma-mcp-endpoint") ?? "");
-  const [chatMappingEnabled, setChatMappingEnabled] = useState(() => localStorage.getItem("designready.chat-mapping") === "true");
 
   // Projects store
   interface ProjectItem { id: string; name: string; createdAt: string; }
@@ -737,11 +684,7 @@ function App() {
     if (activeProjectId === id) setActiveProjectId(null);
   }
 
-  const [chatTheme, setChatTheme] = useState<"dark" | "light">(() => {
-    const saved = localStorage.getItem("designready.theme");
-    return saved === "light" ? "light" : "dark";
-  });
-  const [previewTheme, setPreviewTheme] = useState<PreviewTheme>("light");
+  // Remaining local state (design editor, context, screens, refs)
   const [savedDesignMd, setSavedDesignMd] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editSavedAt, setEditSavedAt] = useState<string | null>(null);
@@ -753,12 +696,6 @@ function App() {
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const analyzeImageInputRef = useRef<HTMLInputElement | null>(null);
   const baDocInputRef = useRef<HTMLInputElement | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [codeMessages, setCodeMessages] = useState<ChatMessage[]>([]);
-
-  // Tab-specific message routing — Chat and Code tabs maintain independent histories
-  const activeMessages = workspaceTab === "code" ? codeMessages : messages;
-  const setActiveMessages = workspaceTab === "code" ? setCodeMessages : setMessages;
 
   const outputRequest = generatedRequest ?? request;
   const openDesignPresets = useMemo(
@@ -860,87 +797,9 @@ function App() {
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [detailRow, reportModalOpen, setupModalOpen, templatePopupOpen, htmlPreview, settingsOpen]);
+  }, [detailRow, reportModalOpen, setupModalOpen, templatePopupOpen, htmlPreview, settingsOpen, setSettingsOpen, setSetupModalOpen, setTemplatePopupOpen]);
 
-  useEffect(() => {
-    if (!user) return;
-    saveSessionUser(user);
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      setChatHistoryReady(false);
-      return;
-    }
-
-    let cancelled = false;
-    setChatHistoryReady(false);
-
-    // Strip legacy placeholder messages from persisted history
-    const LEGACY_PLACEHOLDERS = [
-      "Paste a product request",
-      "Start a conversation or upload",
-      "Describe a design task, generate Design.md",
-    ];
-    const stripPlaceholders = (msgs: ChatMessage[]) =>
-      msgs.filter((m) => !(m.role === "assistant" && LEGACY_PLACEHOLDERS.some((p) => m.content.startsWith(p))));
-
-    // Load Chat tab history
-    const chatKey = getChatHistoryKey(user.emailHash);
-    const encrypted = localStorage.getItem(chatKey);
-    const chatPromise = encrypted
-      ? decryptChatMessages(user.emailHash, encrypted)
-          .then((storedMessages) => {
-            const cleaned = stripPlaceholders(storedMessages);
-            if (!cancelled && cleaned.length > 0) setMessages(cleaned);
-          })
-          .catch(() => localStorage.removeItem(chatKey))
-      : Promise.resolve();
-
-    // Load Code tab history
-    const codeKey = getChatHistoryKey(user.emailHash + ":code");
-    const codeEncrypted = localStorage.getItem(codeKey);
-    const codePromise = codeEncrypted
-      ? decryptChatMessages(user.emailHash, codeEncrypted)
-          .then((storedMessages) => {
-            const cleaned = stripPlaceholders(storedMessages);
-            if (!cancelled && cleaned.length > 0) setCodeMessages(cleaned);
-          })
-          .catch(() => localStorage.removeItem(codeKey))
-      : Promise.resolve();
-
-    Promise.all([chatPromise, codePromise]).finally(() => {
-      if (!cancelled) setChatHistoryReady(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  // Persist Chat tab history
-  useEffect(() => {
-    if (!user || !chatHistoryReady) return;
-    encryptChatMessages(user.emailHash, messages)
-      .then((payload) => {
-        localStorage.setItem(getChatHistoryKey(user.emailHash), payload);
-      })
-      .catch(() => {
-        // Chat persistence is non-critical; keep UI responsive if encryption fails.
-      });
-  }, [chatHistoryReady, messages, user]);
-
-  // Persist Code tab history
-  useEffect(() => {
-    if (!user || !chatHistoryReady) return;
-    encryptChatMessages(user.emailHash, codeMessages)
-      .then((payload) => {
-        localStorage.setItem(getChatHistoryKey(user.emailHash + ":code"), payload);
-      })
-      .catch(() => {
-        // Code tab persistence is non-critical.
-      });
-  }, [chatHistoryReady, codeMessages, user]);
+  // Chat history load/persist is now handled by useChatState hook
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
@@ -953,84 +812,8 @@ function App() {
     setEditSavedAt(null);
   }, [designMdEditKey, generatedDesignMd]);
 
-  useEffect(() => {
-    const ids = [request.openDesign, outputRequest.openDesign].filter(hasDesignMdTemplate);
-    if (ids.length === 0) return;
-
-    let cancelled = false;
-    ids.forEach((id) => {
-      if (loadedTemplatePresets[id]) return;
-      loadDesignMdTemplate(id)
-        .then((template) => {
-          if (!template || cancelled) return;
-          const fallback = BASE_OPEN_DESIGN_PRESETS[template.id] ?? BASE_OPEN_DESIGN_PRESETS.figma;
-          const parsed = parseDesignMd(template.markdown, fallback);
-          setLoadedTemplatePresets((current) => ({
-            ...current,
-            [id]: {
-              ...fallback,
-              ...(parsed ?? {}),
-              label: template.label,
-              tokens: fallback.tokens,
-              donts: parsed?.donts ?? fallback.donts,
-            },
-          }));
-        })
-        .catch(() => {
-          // Template loading is non-critical; keep the lightweight fallback preset.
-        });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loadedTemplatePresets, outputRequest.openDesign, request.openDesign]);
-
-  async function handleAuthSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setAuthError("");
-    try {
-      const session = authMode === "login" ? await login(email, password) : await register(email, password);
-      saveSessionUser(session);
-      setUser(session);
-      setPassword("");
-      // Start fresh — show welcome screen (new chat) like ChatGPT/Claude
-      startNewChat();
-      setView("workspace");
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  function upgradeToPro() {
-    if (!user) return;
-    updatePlan(user.emailHash, "pro");
-    const nextUser = { ...user, plan: "pro" as const };
-    saveSessionUser(nextUser);
-    setUser(nextUser);
-  }
-
-  function saveGeneratedProject(requestToSave: ProjectRequest) {
-    const historyItem: ProjectHistoryItem = {
-      name: requestToSave.projectName,
-      date: new Date().toLocaleString("vi-VN"),
-      prompt: requestToSave.prompt,
-      category: requestToSave.category,
-      openDesign: requestToSave.openDesign,
-      target: requestToSave.target,
-    };
-    setActiveHistoryPrompt(historyItem.prompt);
-    setProjectHistory((current) => {
-      const nextHistory = [historyItem, ...current.filter((item) => item.prompt !== historyItem.prompt)].slice(0, 12);
-      saveProjectHistory(nextHistory);
-      return nextHistory;
-    });
-  }
-
-  function detectWebIntent(prompt: string): boolean {
-    const p = prompt.toLowerCase();
-    return /tạo\s*(web|website|trang|app|giao diện)|create\s*(web|website|page|app|landing|ui)|build\s*(web|website|page|app|landing)|make\s*(web|website|page|app)|html|landing page|homepage|web app|single.?page|portfolio site/.test(p);
-  }
+  // Template loading effect is now handled by useWorkspace hook
+  // Auth submit, upgradeToPro, saveGeneratedProject — handled by hooks
 
   async function generateHtmlFromPrompt(prompt: string): Promise<string | null> {
     try {
@@ -1047,77 +830,30 @@ function App() {
     }
   }
 
+  // sendChatMessage — delegates to useChatState hook with context
   async function sendChatMessage() {
     const prompt = request.prompt.trim();
     if (!prompt) return;
-
-    // Route to the correct message array based on active tab
-    const isCodeTab = workspaceTab === "code";
-    const currentMessages = isCodeTab ? codeMessages : messages;
-    const updateMessages = isCodeTab ? setCodeMessages : setMessages;
-
-    const userMessage = createMessage("user", prompt);
-    const chatMessages = [...currentMessages, userMessage];
-    const streamingMsg = createMessage("assistant", "", "Trợ lý ảo");
-    const streamingId = streamingMsg.id;
-
-    updateMessages([...chatMessages, streamingMsg]);
     setRequest((current) => ({ ...current, prompt: "" }));
-    setIsGenerating(true);
-
-    // Auto-save to history on first user message (title derived from prompt, like ChatGPT/Claude)
-    const isFirstUserMessage = currentMessages.filter((m) => m.role === "user").length === 0;
-    if (isFirstUserMessage) {
-      const autoTitle = prompt.length > 60 ? prompt.slice(0, 57) + "..." : prompt;
-      saveGeneratedProject({ ...request, projectName: autoTitle, prompt });
-    }
-
-    const isWebIntent = detectWebIntent(prompt);
-
-    try {
-      const [, htmlCode] = await Promise.all([
-        sendClaudeChat(
-          chatMessages,
-          {
-            projectName: outputRequest.projectName,
-            category: request.category,
-            selectedTemplate: selectedPreset.label,
-            readinessScore: validationReport?.readinessScore ?? null,
-            activeDesignMd: hasGenerated,
-            workspaceTab,
-            model: groqModel,
-          },
-          (token) => {
-            updateMessages((current) =>
-              current.map((m) => (m.id === streamingId ? { ...m, content: m.content + token } : m)),
-            );
-          },
-        ),
-        isWebIntent ? generateHtmlFromPrompt(prompt) : Promise.resolve(null),
-      ]);
-      if (htmlCode) {
-        updateMessages((current) =>
-          current.map((m) => (m.id === streamingId ? { ...m, htmlCode } : m)),
-        );
-      }
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const isApiUnavailable = /unavailable|404|500|fetch|network/i.test(errMsg);
-      updateMessages((current) =>
-        current.map((m) =>
-          m.id === streamingId
-            ? {
-                ...m,
-                content: isApiUnavailable
-                  ? `⚠️ **API không khả dụng**\n\nKhông thể kết nối tới Groq AI. Vui lòng kiểm tra:\n- Biến môi trường \`GROQ_API_KEY\` đã được cấu hình\n- Server đang chạy qua \`vercel dev\` (cho API routes)\n\n_Lỗi: ${errMsg}_`
-                  : errMsg || "Trợ lý ảo đang bận — thử lại nhé!",
-              }
-            : m,
-        ),
-      );
-    } finally {
-      setIsGenerating(false);
-    }
+    await chat.sendChatMessage(
+      prompt,
+      {
+        projectName: outputRequest.projectName,
+        category: request.category,
+        selectedTemplate: selectedPreset.label,
+        readinessScore: validationReport?.readinessScore ?? null,
+        activeDesignMd: hasGenerated,
+        workspaceTab,
+        model: groqModel,
+      },
+      {
+        onFirstUserMessage: (p) => {
+          const autoTitle = p.length > 60 ? p.slice(0, 57) + "..." : p;
+          saveGeneratedProject({ ...request, projectName: autoTitle, prompt: p });
+        },
+        generateHtml: generateHtmlFromPrompt,
+      },
+    );
   }
 
   async function generateProject() {
@@ -1385,9 +1121,7 @@ function App() {
   }
 
   function logout() {
-    clearSessionUser();
-    setUser(null);
-    setView("landing");
+    auth.logout();
     setHasGenerated(false);
     setGeneratedRequest(null);
     setGeneratedScreens([]);
@@ -1396,7 +1130,6 @@ function App() {
     setPendingUploadedFiles([]);
     setMessages([]);
     setCodeMessages([]);
-    setChatHistoryReady(false);
     setActiveHistoryPrompt("");
   }
 
@@ -1439,20 +1172,14 @@ function App() {
   }
 
   function startNewChat() {
-    if (workspaceTab === "code") {
-      setCodeMessages([]);
-    } else {
-      setMessages([]);
-    }
+    startNewChatBase(workspaceTab);
     setRequest((current) => ({ ...current, prompt: "" }));
-    setIsGenerating(false);
     setHasGenerated(false);
   }
 
-  async function copyMessageContent(msg: ChatMessage) {
-    await navigator.clipboard.writeText(msg.content);
-    setCopiedMessageId(msg.id);
-    window.setTimeout(() => setCopiedMessageId(null), 1400);
+  // Auth submit — delegates to useAuth hook, triggers startNewChat on success
+  async function handleAuthSubmit(event: React.FormEvent) {
+    await auth.handleAuthSubmit(event, () => startNewChat());
   }
 
   async function regenerateMessage(msgIndex: number) {
@@ -1493,26 +1220,7 @@ function App() {
     setCodeMessages([]);
   }
 
-  function handleGoogleLogin(credentialResponse: { credential?: string }) {
-    const token = credentialResponse.credential;
-    if (!token) { setAuthError("Google login failed — no credential received."); return; }
-    try {
-      const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-      const payload = JSON.parse(atob(base64)) as { sub?: string; email?: string };
-      if (!payload.sub || !payload.email) throw new Error("Missing fields");
-      const session: SessionUser = {
-        emailHash: stableHash(payload.sub),
-        displayEmail: payload.email,
-        plan: "free",
-        expiresAt: Date.now() + SESSION_TTL_MS,
-      };
-      saveSessionUser(session);
-      setUser(session);
-      setView("workspace");
-    } catch {
-      setAuthError("Could not read Google account info. Try email login.");
-    }
-  }
+  // handleGoogleLogin — now provided by useAuth hook
 
   function openLandingAuth(mode: AuthMode) {
     setAuthMode(mode);

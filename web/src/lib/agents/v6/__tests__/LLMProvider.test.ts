@@ -99,8 +99,10 @@ describe("createLLMProvider", () => {
 });
 
 describe("defaultLLMProvider", () => {
-  it("is a StubLLMProvider singleton", () => {
-    expect(defaultLLMProvider.name).toBe("stub");
+  it("uses the best available provider (Groq when fetch exists)", () => {
+    // In Node/Vitest environments, fetch is available → GroqLLMProvider
+    // In environments without fetch → StubLLMProvider
+    expect(["stub", "groq"]).toContain(defaultLLMProvider.name);
     expect(defaultLLMProvider.isAvailable).toBe(true);
   });
 });

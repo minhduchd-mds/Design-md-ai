@@ -11,6 +11,7 @@
  */
 
 import type { AgentRole } from "../../shannonEngine";
+import type { LLMProvider } from "./LLMProvider";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Core types
@@ -33,6 +34,8 @@ export interface AgentContextV6 {
   signal?: AbortSignal;
   /** Logger */
   logger: AgentLogger;
+  /** LLM provider for agents that need AI inference (Tier 2) */
+  llm?: LLMProvider;
 }
 
 export interface AgentLogger {

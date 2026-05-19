@@ -63,7 +63,7 @@ export class RefactorAgent extends BaseAgentV6<RefactorInput, RefactorOutput> {
   protected async run(
     input: RefactorInput,
     ctx: AgentContextV6,
-  ): Promise<{ output: RefactorOutput; evidence?: string[] }> {
+  ): Promise<{ output: RefactorOutput; costUsd?: number; evidence?: string[] }> {
     const kinds = new Set<RefactorKind>(
       input.kinds ?? ["any-to-unknown", "remove-unused-disable", "extract-large-function"],
     );
@@ -146,9 +146,52 @@ export class RefactorAgent extends BaseAgentV6<RefactorInput, RefactorOutput> {
       });
     }
 
+    // Tier 2: If LLM is available, enhance proposals with smarter rationale
+    let costUsd = 0;
+    if (ctx.llm && proposals.length > 0) {
+      try {
+        const summary = proposals
+          .slice(0, 5)
+          .map((p) => `${p.kind} at L${p.line}: ${p.before.trim().slice(0, 60)}`)
+          .join("\n");
+
+        const response = await ctx.llm.complete({
+          system:
+            "You are a TypeScript refactoring expert. Given a list of proposed refactors, " +
+            "provide a brief risk assessment and better rationale for each. " +
+            "Respond as JSON array: [{\"id\": \"...\", \"rationale\": \"...\", \"risk\": \"low|medium|high\"}]",
+          prompt: `File: ${input.file}\nProposals:\n${summary}`,
+          maxTokens: 512,
+          temperature: 0.2,
+          signal: ctx.signal,
+        });
+
+        costUsd = response.costUsd;
+        try {
+          const enhancements = JSON.parse(response.text) as Array<{
+            id: string;
+            rationale: string;
+            risk: "low" | "medium" | "high";
+          }>;
+          for (const e of enhancements) {
+            const match = proposals.find((p) => p.id === e.id);
+            if (match) {
+              match.rationale = e.rationale || match.rationale;
+              match.risk = e.risk || match.risk;
+            }
+          }
+        } catch {
+          // LLM response wasn't valid JSON — keep deterministic rationale
+        }
+      } catch {
+        // LLM call failed — fall back to deterministic proposals (non-blocking)
+      }
+    }
+
     ctx.logger.info(`[refactor] ${input.file}: ${proposals.length} proposals`);
     return {
       output: { proposals },
+      costUsd,
       evidence: [`file=${input.file}`, `proposals=${proposals.length}`],
     };
   }

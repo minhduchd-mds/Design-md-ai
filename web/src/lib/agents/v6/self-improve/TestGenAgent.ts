@@ -74,10 +74,44 @@ export class TestGenAgent extends BaseAgentV6<TestGenInput, TestGenOutput> {
     const relTarget = relative(this.repoRoot, join(this.repoRoot, targetFile)).replace(/\\/g, "/");
 
     const importPath = computeRelativeImport(targetFile, input.sourceFile);
-    const content = buildTestScaffold(sourceName, importPath, Array.from(exports));
+    const exportList = Array.from(exports);
+
+    // Tier 2: Use LLM to generate meaningful test bodies (not just scaffolds)
+    let content: string;
+    let costUsd = 0;
+    if (ctx.llm && exportList.length > 0) {
+      try {
+        const sourcePreview = source.slice(0, 3000); // first ~3k chars for context
+        const response = await ctx.llm.complete({
+          system:
+            "You are a test generation expert for TypeScript projects using Vitest. " +
+            "Given a source file, generate comprehensive tests that cover edge cases, " +
+            "error conditions, and happy paths. Use describe/it/expect from vitest. " +
+            "Output ONLY valid TypeScript test code — no explanation.",
+          prompt: `Generate tests for: ${input.sourceFile}\nExports: ${exportList.join(", ")}\nImport path: ${importPath}\n\nSource code:\n${sourcePreview}`,
+          maxTokens: 2048,
+          temperature: 0.3,
+          signal: ctx.signal,
+        });
+        costUsd = response.costUsd;
+        const llmContent = response.text.trim();
+        // Validate: must contain at least one describe/it block
+        if (llmContent.includes("describe(") && llmContent.includes("it(")) {
+          content = llmContent;
+        } else {
+          // LLM output doesn't look like valid tests — fall back to scaffold
+          content = buildTestScaffold(sourceName, importPath, exportList);
+        }
+      } catch {
+        // LLM call failed — fall back to deterministic scaffold
+        content = buildTestScaffold(sourceName, importPath, exportList);
+      }
+    } else {
+      content = buildTestScaffold(sourceName, importPath, exportList);
+    }
 
     ctx.logger.info(
-      `[test-gen] generated scaffold for ${input.sourceFile} → ${relTarget}`,
+      `[test-gen] generated ${ctx.llm ? "LLM-enhanced" : "scaffold"} for ${input.sourceFile} → ${relTarget}`,
       { exports: exports.size },
     );
 
@@ -85,8 +119,9 @@ export class TestGenAgent extends BaseAgentV6<TestGenInput, TestGenOutput> {
       output: {
         content,
         testFile: relTarget,
-        exports: Array.from(exports),
+        exports: exportList,
       },
+      costUsd,
       filesModified: [relTarget],
     };
   }

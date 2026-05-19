@@ -95,11 +95,58 @@ export class HumanCommandAgent extends BaseAgentV6<HumanCommandInput, HumanComma
   protected async run(
     input: HumanCommandInput,
     ctx: AgentContextV6,
-  ): Promise<{ output: HumanCommandOutput }> {
+  ): Promise<{ output: HumanCommandOutput; costUsd?: number }> {
     const cmd = input.command.trim().toLowerCase();
     const tokens = cmd.split(/\s+/);
 
-    const parsed = parseCommand(tokens, cmd, input.context);
+    let parsed = parseCommand(tokens, cmd, input.context);
+    let costUsd = 0;
+
+    // Tier 2: If deterministic parsing has low confidence, try LLM classification
+    if (ctx.llm && parsed.confidence < 0.6) {
+      try {
+        const response = await ctx.llm.complete({
+          system:
+            "You are a command classifier for a design-to-code AI agent system. " +
+            "Given a user command, classify it into one of these types: " +
+            "audit, fix, test, lint, map-repo, trace-component, scan-design, benchmark, self-audit, dependency-check. " +
+            "Also extract scope (file paths, component names). " +
+            'Respond as JSON: {"type": "...", "scope": ["..."], "confidence": 0.9}',
+          prompt: `Command: "${input.command}"${input.context?.currentFile ? `\nCurrent file: ${input.context.currentFile}` : ""}`,
+          maxTokens: 256,
+          temperature: 0.1,
+          signal: ctx.signal,
+        });
+
+        costUsd = response.costUsd;
+        try {
+          const llmResult = JSON.parse(response.text) as {
+            type: string;
+            scope?: string[];
+            confidence?: number;
+          };
+          const validTypes: MissionType[] = [
+            "audit", "fix", "test", "lint", "map-repo", "trace-component",
+            "scan-design", "benchmark", "self-audit", "dependency-check",
+          ];
+          if (validTypes.includes(llmResult.type as MissionType)) {
+            const matchedPattern = COMMAND_PATTERNS.find(
+              (p) => p.type === llmResult.type,
+            );
+            parsed = {
+              type: llmResult.type as MissionType,
+              fleets: matchedPattern?.fleets ?? ["audit"],
+              scope: llmResult.scope ?? parsed.scope,
+              confidence: Math.max(parsed.confidence, llmResult.confidence ?? 0.8),
+            };
+          }
+        } catch {
+          // LLM response wasn't valid JSON — keep deterministic result
+        }
+      } catch {
+        // LLM call failed — keep deterministic parsing
+      }
+    }
 
     const mission: Mission = {
       id: `mission-${ctx.runId}-${Date.now()}-${this._seq++}`,
@@ -123,6 +170,7 @@ export class HumanCommandAgent extends BaseAgentV6<HumanCommandInput, HumanComma
 
     return {
       output: { mission, summary, suggestions },
+      costUsd,
     };
   }
 }

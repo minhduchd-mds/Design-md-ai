@@ -222,4 +222,5 @@ export function createLLMProvider(apiBase = ""): LLMProvider {
 
 // ── Singleton ───────────────────────────────────────────────────────
 
-export const defaultLLMProvider: LLMProvider = new StubLLMProvider();
+/** Default provider: Groq in browser (fetch available), Stub in Node */
+export const defaultLLMProvider: LLMProvider = createLLMProvider();
