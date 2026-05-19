@@ -100,6 +100,7 @@ const TEMPLATE_CATEGORY_FILTERS: TemplateCategoryFilter[] = [
   "Media",
 ];
 const INITIAL_ASSISTANT_MESSAGE = "Paste a product request, upload Design.md files, or import screenshots to create AI-ready Design.md context for coding agents.";
+const INITIAL_CODE_MESSAGE = "Describe a design task, generate Design.md, or upload screenshots to produce AI-ready handoff context and code scaffolds.";
 const DEFAULT_PROJECT: ProjectRequest = {
   projectName: "Design-md-ai Project",
   category: "SaaS",
@@ -757,6 +758,13 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
   ]);
+  const [codeMessages, setCodeMessages] = useState<ChatMessage[]>([
+    createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME),
+  ]);
+
+  // Tab-specific message routing — Chat and Code tabs maintain independent histories
+  const activeMessages = workspaceTab === "code" ? codeMessages : messages;
+  const setActiveMessages = workspaceTab === "code" ? setCodeMessages : setMessages;
 
   const outputRequest = generatedRequest ?? request;
   const openDesignPresets = useMemo(
@@ -873,30 +881,39 @@ function App() {
 
     let cancelled = false;
     setChatHistoryReady(false);
-    const encrypted = localStorage.getItem(getChatHistoryKey(user.emailHash));
-    if (!encrypted) {
-      setChatHistoryReady(true);
-      return;
-    }
 
-    decryptChatMessages(user.emailHash, encrypted)
-      .then((storedMessages) => {
-        if (!cancelled && storedMessages.length > 0) {
-          setMessages(storedMessages);
-        }
-      })
-      .catch(() => {
-        localStorage.removeItem(getChatHistoryKey(user.emailHash));
-      })
-      .finally(() => {
-        if (!cancelled) setChatHistoryReady(true);
-      });
+    // Load Chat tab history
+    const chatKey = getChatHistoryKey(user.emailHash);
+    const encrypted = localStorage.getItem(chatKey);
+    const chatPromise = encrypted
+      ? decryptChatMessages(user.emailHash, encrypted)
+          .then((storedMessages) => {
+            if (!cancelled && storedMessages.length > 0) setMessages(storedMessages);
+          })
+          .catch(() => localStorage.removeItem(chatKey))
+      : Promise.resolve();
+
+    // Load Code tab history
+    const codeKey = getChatHistoryKey(user.emailHash + ":code");
+    const codeEncrypted = localStorage.getItem(codeKey);
+    const codePromise = codeEncrypted
+      ? decryptChatMessages(user.emailHash, codeEncrypted)
+          .then((storedMessages) => {
+            if (!cancelled && storedMessages.length > 0) setCodeMessages(storedMessages);
+          })
+          .catch(() => localStorage.removeItem(codeKey))
+      : Promise.resolve();
+
+    Promise.all([chatPromise, codePromise]).finally(() => {
+      if (!cancelled) setChatHistoryReady(true);
+    });
 
     return () => {
       cancelled = true;
     };
   }, [user]);
 
+  // Persist Chat tab history
   useEffect(() => {
     if (!user || !chatHistoryReady) return;
     encryptChatMessages(user.emailHash, messages)
@@ -908,9 +925,21 @@ function App() {
       });
   }, [chatHistoryReady, messages, user]);
 
+  // Persist Code tab history
+  useEffect(() => {
+    if (!user || !chatHistoryReady) return;
+    encryptChatMessages(user.emailHash, codeMessages)
+      .then((payload) => {
+        localStorage.setItem(getChatHistoryKey(user.emailHash + ":code"), payload);
+      })
+      .catch(() => {
+        // Code tab persistence is non-critical.
+      });
+  }, [chatHistoryReady, codeMessages, user]);
+
   useEffect(() => {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [hasGenerated, isGenerating, messages]);
+  }, [hasGenerated, isGenerating, activeMessages]);
 
   useEffect(() => {
     const saved = localStorage.getItem(designMdEditKey);
@@ -1017,12 +1046,17 @@ function App() {
     const prompt = request.prompt.trim();
     if (!prompt) return;
 
+    // Route to the correct message array based on active tab
+    const isCodeTab = workspaceTab === "code";
+    const currentMessages = isCodeTab ? codeMessages : messages;
+    const updateMessages = isCodeTab ? setCodeMessages : setMessages;
+
     const userMessage = createMessage("user", prompt);
-    const chatMessages = [...messages, userMessage];
+    const chatMessages = [...currentMessages, userMessage];
     const streamingMsg = createMessage("assistant", "", "Trợ lý ảo");
     const streamingId = streamingMsg.id;
 
-    setMessages([...chatMessages, streamingMsg]);
+    updateMessages([...chatMessages, streamingMsg]);
     setRequest((current) => ({ ...current, prompt: "" }));
     setIsGenerating(true);
 
@@ -1042,7 +1076,7 @@ function App() {
             model: groqModel,
           },
           (token) => {
-            setMessages((current) =>
+            updateMessages((current) =>
               current.map((m) => (m.id === streamingId ? { ...m, content: m.content + token } : m)),
             );
           },
@@ -1050,14 +1084,14 @@ function App() {
         isWebIntent ? generateHtmlFromPrompt(prompt) : Promise.resolve(null),
       ]);
       if (htmlCode) {
-        setMessages((current) =>
+        updateMessages((current) =>
           current.map((m) => (m.id === streamingId ? { ...m, htmlCode } : m)),
         );
       }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       const isApiUnavailable = /unavailable|404|500|fetch|network/i.test(errMsg);
-      setMessages((current) =>
+      updateMessages((current) =>
         current.map((m) =>
           m.id === streamingId
             ? {
@@ -1084,7 +1118,7 @@ function App() {
       style: `${getOpenDesignPreset(request.openDesign, loadedTemplatePresets).label} / ${request.category}`,
       prompt,
     };
-    setMessages((current) => [
+    setCodeMessages((current) => [
       ...current,
       createMessage("user", prompt),
     ]);
@@ -1130,7 +1164,7 @@ function App() {
       setGeneratedScreens(screens);
       setHasGenerated(true);
       setPreviewMode(screens.length > 0 ? "split" : "prompt");
-      setMessages((current) => [
+      setCodeMessages((current) => [
         ...current,
         createMessage(
           "assistant",
@@ -1142,7 +1176,7 @@ function App() {
       ]);
     } catch (error) {
       setHasGenerated(false);
-      setMessages((current) => [
+      setCodeMessages((current) => [
         ...current,
         createMessage(
           "assistant",
@@ -1174,12 +1208,12 @@ function App() {
   async function analyzeWorkspaceImage(files: FileList) {
     const image = Array.from(files).find((file) => /^image\//.test(file.type));
     if (!image) {
-      setMessages((current) => [...current, createMessage("assistant", "Choose a PNG, JPG, or WEBP image file.", "Analyze image")]);
+      setActiveMessages((current) => [...current, createMessage("assistant", "Choose a PNG, JPG, or WEBP image file.", "Analyze image")]);
       return;
     }
 
     setIsGenerating(true);
-    setMessages((current) => [
+    setActiveMessages((current) => [
       ...current,
       createMessage("user", `Analyze image: ${image.name}`),
       createMessage("assistant", "Analyzing layout pattern and matching templates...", "Analyze image"),
@@ -1199,7 +1233,7 @@ function App() {
       setDesignContext(enrichedContext);
       setValidationReport(report);
       setRequest((current) => ({ ...current, openDesign: templateId }));
-      setMessages((current) => [
+      setActiveMessages((current) => [
         ...current,
         createMessage(
           "assistant",
@@ -1208,7 +1242,7 @@ function App() {
         ),
       ]);
     } catch (error) {
-      setMessages((current) => [
+      setActiveMessages((current) => [
         ...current,
         createMessage("assistant", error instanceof Error ? error.message : "Could not analyze the image.", "Analyze image"),
       ]);
@@ -1221,7 +1255,7 @@ function App() {
     const uploadedFiles = Array.from(files);
     const docs = await parseFileSources(uploadedFiles);
     if (docs.length === 0) {
-      setMessages((current) => [...current, createMessage("assistant", "Add a .md or .txt BA document.", "Add BA doc")]);
+      setActiveMessages((current) => [...current, createMessage("assistant", "Add a .md or .txt BA document.", "Add BA doc")]);
       return;
     }
 
@@ -1236,7 +1270,7 @@ function App() {
     updatedContext.selectedTemplateId = updatedContext.selectedTemplateId ?? updatedContext.templateMatches[0]?.templateId ?? request.openDesign;
 
     setDesignContext(updatedContext);
-    setMessages((current) => [
+    setActiveMessages((current) => [
       ...current,
       createMessage("assistant", `Document added: ${docs.map((doc) => doc.filename).join(", ")}`, "Add BA doc"),
     ]);
@@ -1244,7 +1278,7 @@ function App() {
 
   async function generateFiveScreensFromContext() {
     setIsGenerating(true);
-    setMessages((current) => [
+    setCodeMessages((current) => [
       ...current,
       createMessage("assistant", "Generating 5 screens...", "Generate 5 screens"),
     ]);
@@ -1272,12 +1306,12 @@ function App() {
       saveGeneratedProject(nextRequest);
       setHasGenerated(true);
       setPreviewMode("split");
-      setMessages((current) => [
+      setCodeMessages((current) => [
         ...current,
         createMessage("assistant", `Generated ${screens.length} screens and opened Split View.`, "Generate 5 screens"),
       ]);
     } catch (error) {
-      setMessages((current) => [
+      setCodeMessages((current) => [
         ...current,
         createMessage("assistant", error instanceof Error ? error.message : "Could not generate screens.", "Generate 5 screens"),
       ]);
@@ -1318,7 +1352,7 @@ function App() {
     localStorage.setItem(designMdEditKey, editDraft);
     setSavedDesignMd(editDraft);
     setEditSavedAt(new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
-    setMessages((current) => [
+    setCodeMessages((current) => [
       ...current,
       createMessage("assistant", "Saved the edited Design.md for this project in local storage.", "Design.md saved"),
     ]);
@@ -1332,7 +1366,7 @@ function App() {
   }
 
   function _showComingSoon(label: string) {
-    setMessages((current) => [
+    setActiveMessages((current) => [
       ...current,
       createMessage("assistant", `${label} is on the roadmap. The current public demo focuses on Design.md generation, prompt handoff, upload, preview, and history.`, "Coming soon"),
     ]);
@@ -1350,6 +1384,9 @@ function App() {
     setPendingUploadedFiles([]);
     setMessages([
       createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
+    ]);
+    setCodeMessages([
+      createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME),
     ]);
     setChatHistoryReady(false);
     setActiveHistoryPrompt("");
@@ -1374,8 +1411,8 @@ function App() {
     setValidationReport(null);
     setDesignContext(null);
     setActiveHistoryPrompt(item.prompt);
-    setMessages([
-      createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME),
+    setCodeMessages([
+      createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME),
       createMessage("user", item.prompt),
       createMessage("assistant", `Restored ${item.name}. You can continue the session or review the generated Design.md/Preview below.`),
     ]);
@@ -1395,7 +1432,11 @@ function App() {
   }
 
   function startNewChat() {
-    setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+    if (workspaceTab === "code") {
+      setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
+    } else {
+      setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+    }
     setRequest((current) => ({ ...current, prompt: "" }));
     setIsGenerating(false);
   }
@@ -1407,16 +1448,16 @@ function App() {
   }
 
   async function regenerateMessage(msgIndex: number) {
-    // Find the last user message before this index
+    // Find the last user message before this index in the active tab's messages
     let lastUserIdx = -1;
     for (let i = msgIndex; i >= 0; i--) {
-      if (messages[i].role === "user") { lastUserIdx = i; break; }
+      if (activeMessages[i].role === "user") { lastUserIdx = i; break; }
     }
     if (lastUserIdx < 0) return;
-    const userMsg = messages[lastUserIdx];
+    const userMsg = activeMessages[lastUserIdx];
     // Remove messages from lastUserIdx onward, then resend
-    const trimmed = messages.slice(0, lastUserIdx);
-    setMessages(trimmed);
+    const trimmed = activeMessages.slice(0, lastUserIdx);
+    setActiveMessages(trimmed);
     setRequest((current) => ({ ...current, prompt: userMsg.content }));
     // Trigger send on next tick
     window.setTimeout(() => {
@@ -1441,6 +1482,7 @@ function App() {
     setPendingUploadedFiles([]);
     setActiveHistoryPrompt("");
     setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+    setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
   }
 
   function handleGoogleLogin(credentialResponse: { credential?: string }) {
@@ -1499,7 +1541,7 @@ function App() {
     const { markdownFiles, zipCount } = await readMarkdownFiles(files);
 
     if (markdownFiles.length === 0) {
-      setMessages((current) => [
+      setActiveMessages((current) => [
         ...current,
         createMessage(
           "assistant",
@@ -1517,7 +1559,7 @@ function App() {
     setHasGenerated(false);
     setGeneratedScreens([]);
     setValidationReport(null);
-    setMessages((current) => [
+    setActiveMessages((current) => [
       ...current,
       createMessage("assistant", `Loaded ${markdownFiles.length} markdown file${markdownFiles.length > 1 ? "s" : ""}${zipCount ? ` from ${zipCount} ZIP file${zipCount > 1 ? "s" : ""}` : ""} into the prompt and staged ${docSources.length} BA source${docSources.length > 1 ? "s" : ""} for workflow generation.`, "Upload Design.md"),
     ]);
@@ -1525,7 +1567,7 @@ function App() {
 
   function createImageFromPrompt() {
     const backendUrl = getScreenshotToCodeWsUrl();
-    setMessages((current) => [
+    setActiveMessages((current) => [
       ...current,
       createMessage("user", "Create image"),
       createMessage(
@@ -1541,13 +1583,13 @@ function App() {
   async function uploadScreenshot(files: FileList) {
     const image = Array.from(files).find((file) => /^image\//.test(file.type));
     if (!image) {
-      setMessages((current) => [...current, createMessage("assistant", "Choose a PNG, JPG, or WEBP image file.", "Screenshot-to-code")]);
+      setCodeMessages((current) => [...current, createMessage("assistant", "Choose a PNG, JPG, or WEBP image file.", "Screenshot-to-code")]);
       return;
     }
 
     setHasGenerated(false);
     setIsGenerating(true);
-    setMessages((current) => [
+    setCodeMessages((current) => [
       ...current,
       createMessage("user", `Generate UI code from screenshot: ${image.name}`),
       createMessage("assistant", "Analyzing the image and generating UI code...", "Screenshot-to-code"),
@@ -1596,7 +1638,7 @@ function App() {
       saveGeneratedProject(nextRequest);
       setHasGenerated(true);
       setPreviewMode(screens.length > 0 ? "split" : "prompt");
-      setMessages((current) => [
+      setCodeMessages((current) => [
         ...current,
         createMessage(
           "assistant",
@@ -1607,7 +1649,7 @@ function App() {
         ),
       ]);
     } catch (error) {
-      setMessages((current) => [
+      setCodeMessages((current) => [
         ...current,
         createMessage(
           "assistant",
@@ -1881,13 +1923,17 @@ function App() {
           onShareLinksChange={setShareLinksEnabled}
           onClearHistory={() => {
             setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+            setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
             setProjectHistory([]);
             saveProjectHistory([]);
             setActiveHistoryPrompt("");
             showToast("Đã xóa toàn bộ lịch sử", "success");
           }}
           onShowToast={showToast}
-          onResetMessages={() => setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)])}
+          onResetMessages={() => {
+            setMessages([createMessage("assistant", INITIAL_ASSISTANT_MESSAGE, PRODUCT_NAME)]);
+            setCodeMessages([createMessage("assistant", INITIAL_CODE_MESSAGE, PRODUCT_NAME)]);
+          }}
         />
 
         {templatePopupOpen && (
@@ -2662,7 +2708,7 @@ function App() {
           </div>
           )}
           <div className="chat-scroll" ref={chatScrollRef}>
-            {messages.length <= 1 && !isGenerating && !hasGenerated && (
+            {activeMessages.length <= 1 && !isGenerating && !hasGenerated && (
               <div className="welcome-hero">
                 <div className="welcome-brand-icon">
                   <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
@@ -2712,15 +2758,15 @@ function App() {
               </div>
             )}
 
-            {messages.map((message, msgIndex) => {
+            {activeMessages.map((message, msgIndex) => {
               // Hide initial assistant message when welcome hero is visible
-              if (messages.length <= 1 && !isGenerating && !hasGenerated && msgIndex === 0 && message.role === "assistant") return null;
+              if (activeMessages.length <= 1 && !isGenerating && !hasGenerated && msgIndex === 0 && message.role === "assistant") return null;
               return (
                 <ChatMessageItem
                   key={message.id}
                   message={message}
                   msgIndex={msgIndex}
-                  isLast={msgIndex === messages.length - 1}
+                  isLast={msgIndex === activeMessages.length - 1}
                   isGenerating={isGenerating}
                   copiedMessageId={copiedMessageId}
                   onCopy={copyMessageContent}

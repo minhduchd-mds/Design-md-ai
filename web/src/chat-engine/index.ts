@@ -73,21 +73,41 @@ export class ChatEngine {
   async send(
     messages: ChatMessage[],
     callbacks: StreamCallbacks,
+    context?: {
+      projectName?: string;
+      category?: string;
+      selectedTemplate?: string;
+      workspaceTab?: "chat" | "code" | "checklist";
+    },
   ): Promise<void> {
     this.abortController = new AbortController();
 
     try {
+      let fullResponse = "";
       const response = await sendClaudeChat(
-        messages.map(m => ({ role: m.role, content: m.content })),
-        this.config.model,
+        messages,
+        {
+          projectName: context?.projectName ?? "",
+          category: context?.category ?? "SaaS",
+          selectedTemplate: context?.selectedTemplate ?? "",
+          readinessScore: 0,
+          activeDesignMd: false,
+          workspaceTab: context?.workspaceTab ?? "chat",
+          model: this.config.model,
+        },
+        (token) => {
+          fullResponse += token;
+          callbacks.onToken(token);
+        },
+        this.abortController.signal,
       );
 
-      if (!response) {
+      if (!response && !fullResponse) {
         callbacks.onError(new Error("Empty response from provider"));
         return;
       }
 
-      callbacks.onComplete(response);
+      callbacks.onComplete(response || fullResponse);
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       callbacks.onError(error as Error);

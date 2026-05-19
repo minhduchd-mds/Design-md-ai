@@ -26,7 +26,7 @@ export async function sendClaudeChat(
     projectName: string;
     category: string;
     selectedTemplate: string;
-    readinessScore: number;
+    readinessScore: number | null;
     activeDesignMd: boolean;
     workspaceTab: "chat" | "code" | "checklist";
     model: string;
