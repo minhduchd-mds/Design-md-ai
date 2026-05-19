@@ -16,7 +16,7 @@ import type { AgentRole } from "../../shannonEngine";
 // Core types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type FleetName = "audit" | "fix" | "self-improve" | "verify";
+export type FleetName = "audit" | "command" | "fix" | "map" | "safety" | "self-improve" | "verify";
 
 export interface AgentContextV6 {
   /** Audit / improvement run ID */

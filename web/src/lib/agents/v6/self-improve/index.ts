@@ -22,3 +22,20 @@ export type {
   VulnerabilityInfo,
   OutdatedInfo,
 } from "./DependencyAuditAgent";
+
+export { SelfAuditAgent } from "./SelfAuditAgent";
+export type {
+  SelfAuditInput,
+  SelfAuditOutput,
+  AgentRunRecord,
+  AgentHealthReport,
+} from "./SelfAuditAgent";
+
+export { BenchmarkAgent } from "./BenchmarkAgent";
+export type {
+  BenchmarkInput,
+  BenchmarkOutput,
+  MetricSnapshot,
+  MetricDelta,
+  ComputedRates,
+} from "./BenchmarkAgent";

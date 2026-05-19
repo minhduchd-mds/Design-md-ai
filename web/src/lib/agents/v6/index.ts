@@ -43,3 +43,12 @@ export * from "./self-improve";
 
 // Fix application fleet
 export * from "./fix";
+
+// Command fleet
+export * from "./command";
+
+// Map fleet
+export * from "./map";
+
+// Safety fleet
+export * from "./safety";
