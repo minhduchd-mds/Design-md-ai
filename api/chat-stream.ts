@@ -73,19 +73,41 @@ async function handler(req: Request): Promise<Response> {
       temperature: 0.7,
     });
 
-    // Consume the full stream into a Response, catching async errors
-    const response = result.toTextStreamResponse({ headers: cors });
+    // Manually consume textStream with error handling.
+    // toTextStreamResponse() sends 200 before the provider responds, so if
+    // the provider fails (AI_RetryError, quota, bad key) the error is swallowed
+    // and the client sees an empty stream.  Instead, iterate textStream ourselves
+    // and emit the error as visible text so the user gets feedback.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of result.textStream) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+        } catch (err) {
+          // AI SDK wraps provider errors in AI_RetryError — dig out the root cause
+          const lastErr = (err as { lastError?: unknown }).lastError;
+          const rootMsg = lastErr instanceof Error ? lastErr.message : undefined;
+          const topMsg = err instanceof Error ? err.message : String(err);
+          const raw = rootMsg || topMsg;
+          // Strip verbose retry boilerplate — keep actionable detail
+          const short = raw
+            .replace(/Failed after \d+ attempt[s]?\.\s*Last error:\s*/i, "")
+            .slice(0, 300);
+          console.error("[chat-stream] AI provider error:", short);
+          controller.enqueue(
+            encoder.encode(`\n\n⚠️ **AI Error**: ${short || "Model không phản hồi — thử lại nhé."}`),
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    });
 
-    // Pipe through an error-catching transform so client gets a clear error
-    // instead of a silently-closed stream if the provider fails mid-stream
-    const originalBody = response.body;
-    if (!originalBody) {
-      return errorResponse("No response body from model.", 500, req);
-    }
-
-    return new Response(originalBody, {
-      status: response.status,
-      headers: response.headers,
+    return new Response(stream, {
+      status: 200,
+      headers: { ...cors, "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : "Stream failed.", 500, req);

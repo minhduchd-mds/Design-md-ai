@@ -335,7 +335,7 @@ export function useChatState(
       const isWebIntent = detectWebIntent(prompt);
 
       try {
-        const [, htmlCode] = await Promise.all([
+        const [fullText, htmlCode] = await Promise.all([
           sendClaudeChat(
             chatMessages,
             {
@@ -361,6 +361,21 @@ export function useChatState(
             ? opts.generateHtml(prompt)
             : Promise.resolve(null),
         ]);
+
+        // Guard: if the stream completed but produced no tokens (provider error
+        // mid-stream, empty response, etc.), apply the returned fullText so the
+        // user sees feedback instead of an invisible empty bubble.
+        updateMessages((current) => {
+          const msg = current.find((m) => m.id === streamingId);
+          if (msg && !msg.content.trim()) {
+            return current.map((m) =>
+              m.id === streamingId
+                ? { ...m, content: fullText || "⚠️ Không nhận được phản hồi. Vui lòng thử lại." }
+                : m,
+            );
+          }
+          return current;
+        });
 
         if (htmlCode) {
           updateMessages((current) =>
