@@ -6,6 +6,38 @@ Tất cả thay đổi quan trọng của Desygn AI được ghi nhận tại đ
 
 ## [Unreleased]
 
+### Them moi
+
+- **Desygn A11y Move 1 — Week 0 scaffolding** (Accessibility-as-a-Service):
+  - `packages/audit-engine` — WCAG rule engine with 7 rules (contrast,
+    touch-target, aria, keyboard, heading, motion, semantic), severity-weighted
+    scoring, parallel execution with per-rule timeout + error isolation
+  - `packages/report-generator` — Markdown / SARIF v2.1.0 / CSV exporters +
+    HMAC-SHA256 report signing with constant-time verification
+  - `packages/figma-rest-adapter` — server-side Figma REST client, LRU cache,
+    document-tree → AuditNode transformer, URL parser
+  - `packages/ui` — shared design system: OKLCH tokens (light + dark),
+    spacing/radius/motion scales, prefers-reduced-motion support
+  - `apps/a11y-dashboard` + `apps/marketing` — Vite + React 19 app skeletons
+  - Supabase migrations 005-008 (files only): subscriptions, a11y extensions,
+    audit queue, API keys
+  - `docs/architecture-v6/` — full 12-week implementation spec + SCOPE_SUMMARY
+  - **97 new unit tests** for the audit pipeline core
+- **MCP server** (`packages/mcp-server`) — Model Context Protocol stdio server
+  exposing design-system context to AI coding agents (5 tools, 39 tests)
+
+### Thay doi
+
+- Package slug renamed `design-md-ai` → `desygn-ai` (P1 deferred), repo URLs
+  updated across docs + code (GitHub repo renamed to `desygn-ai`)
+- npm workspaces: added 7 new entries (5 packages + 2 apps)
+- Total test count: 1577 → 1750 (122 files)
+
+### Bao mat
+
+- Upstash Redis rate limiting (replaces in-memory limiter), EXIF stripping on
+  image upload, PBKDF2 iterations bumped to 600k (OWASP 2023)
+
 ## [5.1.1] — 2026-05-19
 
 Tier 2–3 LLM integration, React wiring layer, security patches, and Chat/Code tab independence.
