@@ -11,6 +11,7 @@ export default defineConfig({
       "plugin/**/__tests__/**/*.test.ts",
       "api/**/__tests__/**/*.test.ts",
       "sdk/**/__tests__/**/*.test.ts",
+      "packages/**/__tests__/**/*.test.ts",
     ],
     coverage: {
       provider: "v8",

@@ -36,7 +36,8 @@
   "type": "module",
   "workspaces": [
     "shared",
-    "sdk"
+    "sdk",
+    "packages/mcp-server"
   ],
   "scripts": {
     "dev": "concurrently -n ui,plugin -c blue,yellow \"npm run dev:ui\" \"npm run dev:plugin\"",
