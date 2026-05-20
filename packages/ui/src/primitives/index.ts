@@ -10,6 +10,8 @@ export { Spinner, type SpinnerProps } from "./Spinner.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox.js";
 export { Switch, type SwitchProps } from "./Switch.js";
 export { Avatar, type AvatarProps } from "./Avatar.js";
+export { Select, type SelectProps, type SelectOption } from "./Select.js";
+export { Dialog, type DialogProps } from "./Dialog.js";
 
 export {
   buttonClass,
@@ -20,6 +22,8 @@ export {
   checkboxClass,
   switchClass,
   avatarClass,
+  selectClass,
+  dialogClass,
   initials,
   severityToTone,
   type ButtonVariant,
@@ -29,4 +33,8 @@ export {
   type BadgeTone,
   type SpinnerSize,
   type AvatarSize,
+  type SelectState,
+  type DialogSize,
 } from "./variants.js";
+
+export { FOCUSABLE_SELECTOR, nextFocusIndex, isCloseKey } from "./focus-trap.js";

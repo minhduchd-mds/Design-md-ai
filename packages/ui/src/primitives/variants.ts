@@ -67,6 +67,18 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+export type SelectState = "default" | "error";
+
+export function selectClass(state: SelectState = "default", extra?: string): string {
+  return cn("dsg-select", state === "error" && "dsg-select--error", extra);
+}
+
+export type DialogSize = "sm" | "md" | "lg";
+
+export function dialogClass(size: DialogSize = "md", extra?: string): string {
+  return cn("dsg-dialog", `dsg-dialog--${size}`, extra);
+}
+
 /** Map audit severity → badge tone, for reuse across the dashboard. */
 export function severityToTone(severity: "critical" | "serious" | "moderate" | "minor"): BadgeTone {
   switch (severity) {

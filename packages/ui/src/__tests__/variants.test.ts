@@ -15,6 +15,8 @@ import {
   checkboxClass,
   switchClass,
   avatarClass,
+  selectClass,
+  dialogClass,
   initials,
   severityToTone,
 } from "../primitives/variants.js";
@@ -113,6 +115,24 @@ describe("initials", () => {
   });
   it("falls back to ? for empty input", () => {
     expect(initials("   ")).toBe("?");
+  });
+});
+
+describe("selectClass", () => {
+  it("defaults to base class", () => {
+    expect(selectClass()).toBe("dsg-select");
+  });
+  it("adds error modifier", () => {
+    expect(selectClass("error")).toBe("dsg-select dsg-select--error");
+  });
+});
+
+describe("dialogClass", () => {
+  it("defaults to md", () => {
+    expect(dialogClass()).toBe("dsg-dialog dsg-dialog--md");
+  });
+  it("applies size", () => {
+    expect(dialogClass("lg")).toBe("dsg-dialog dsg-dialog--lg");
   });
 });
 
