@@ -83,6 +83,36 @@ describe("contrastRule", () => {
     ]));
     expect((r.issues[0] as { severity: string }).severity).toBe("critical");
   });
+
+  it("applies the lower large-text threshold (3:1 AA) for big fonts", async () => {
+    // 3.5:1 fails normal (4.5) but passes large (3.0)
+    const r = await run(contrastRule, input([
+      { id: "t1", name: "Heading", type: "TEXT", text: "Big", contrastRatio: 3.5, fontSize: 32, fontWeight: 400 },
+    ]));
+    expect(r.issues).toHaveLength(0);
+  });
+
+  it("treats 14pt+ bold as large text", async () => {
+    // 19px bold → large → 3.0 threshold → 3.5 passes
+    const r = await run(contrastRule, input([
+      { id: "t1", name: "Bold", type: "TEXT", text: "Hi", contrastRatio: 3.5, fontSize: 19, fontWeight: 700 },
+    ]));
+    expect(r.issues).toHaveLength(0);
+  });
+
+  it("still flags large text below the large threshold", async () => {
+    const r = await run(contrastRule, input([
+      { id: "t1", name: "Heading", type: "TEXT", text: "Big", contrastRatio: 2.5, fontSize: 32 },
+    ]));
+    expect(r.issues).toHaveLength(1);
+  });
+
+  it("reports 1.4.6 criterion under AAA", async () => {
+    const r = await run(contrastRule, input([
+      { id: "t1", name: "Body", type: "TEXT", text: "x", contrastRatio: 5.0 },
+    ], "AAA"));
+    expect((r.issues[0] as { wcagCriterion: string }).wcagCriterion).toBe("1.4.6");
+  });
 });
 
 describe("touchTargetRule", () => {

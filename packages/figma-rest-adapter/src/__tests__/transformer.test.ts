@@ -85,6 +85,71 @@ describe("transformFigmaToAuditNodes", () => {
     expect(transformFigmaToAuditNodes(null)).toEqual([]);
   });
 
+  it("computes contrast ratio for text against an ancestor background", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            {
+              id: "frame", name: "Card", type: "FRAME",
+              // white background
+              fills: [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }],
+              children: [
+                {
+                  id: "txt", name: "Label", type: "TEXT", characters: "Hi",
+                  // black text
+                  fills: [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const nodes = transformFigmaToAuditNodes(tree);
+    const txt = nodes.find((n) => n.id === "txt");
+    // black on white ≈ 21:1
+    expect(txt?.contrastRatio).toBeGreaterThan(20);
+  });
+
+  it("leaves contrastRatio undefined when no background is known", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            { id: "txt", name: "Label", type: "TEXT", characters: "Hi",
+              fills: [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }] },
+          ],
+        },
+      ],
+    };
+    const nodes = transformFigmaToAuditNodes(tree);
+    expect(nodes.find((n) => n.id === "txt")?.contrastRatio).toBeUndefined();
+  });
+
+  it("captures fontSize and fontWeight for large-text classification", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            { id: "txt", name: "H1", type: "TEXT", characters: "Title",
+              style: { fontSize: 42, fontWeight: 700 } },
+          ],
+        },
+      ],
+    };
+    const nodes = transformFigmaToAuditNodes(tree);
+    const txt = nodes.find((n) => n.id === "txt");
+    expect(txt?.fontSize).toBe(42);
+    expect(txt?.fontWeight).toBe(700);
+  });
+
   it("respects maxDepth", () => {
     const deep = {
       type: "DOCUMENT",

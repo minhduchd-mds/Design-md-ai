@@ -21,6 +21,7 @@ import type {
 
 export * from "./types.js";
 export { calculateScore, summarize } from "./scoring.js";
+export * from "./color.js";
 
 export class AuditEngine {
   private readonly config: Required<AuditConfig>;

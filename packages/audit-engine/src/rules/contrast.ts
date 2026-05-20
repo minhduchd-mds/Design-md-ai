@@ -10,11 +10,7 @@
  */
 
 import type { A11yRule, AuditIssue, AuditInput } from "../types.js";
-
-const THRESHOLDS = {
-  AA: { normal: 4.5, large: 3.0 },
-  AAA: { normal: 7.0, large: 4.5 },
-} as const;
+import { isLargeText, requiredContrast } from "../color.js";
 
 export const contrastRule: A11yRule = {
   id: "contrast.text",
@@ -23,28 +19,32 @@ export const contrastRule: A11yRule = {
   category: "contrast",
   description: "Text must have sufficient contrast against its background.",
   evaluate(input: AuditInput) {
-    const level = input.options.wcagLevel ?? "AA";
-    const thresholds = level === "AAA" ? THRESHOLDS.AAA : THRESHOLDS.AA;
+    const level = input.options.wcagLevel === "AAA" ? "AAA" : "AA";
     const issues: AuditIssue[] = [];
 
     for (const node of input.nodes) {
       if (typeof node.contrastRatio !== "number") continue;
       if (!node.text || node.text.trim().length === 0) continue;
 
-      // TODO Week 4: detect large text (font size / bold from node attributes)
-      const required = thresholds.normal;
+      // Large text (≥18pt or ≥14pt bold) has a lower contrast requirement.
+      const large =
+        typeof node.fontSize === "number"
+          ? isLargeText(node.fontSize, node.fontWeight ?? 400)
+          : false;
+      const required = requiredContrast(level, large);
+
       if (node.contrastRatio < required) {
         issues.push({
           id: `contrast-${node.id}`,
           ruleId: "contrast.text",
-          wcagCriterion: "1.4.3",
+          wcagCriterion: level === "AAA" ? "1.4.6" : "1.4.3",
           category: "contrast",
           severity: node.contrastRatio < required - 1 ? "critical" : "serious",
           nodeId: node.id,
           nodeName: node.name,
           nodeType: node.type,
           pageName: node.pageName,
-          message: `Text contrast ${node.contrastRatio.toFixed(2)}:1 fails WCAG ${level} (requires ${required}:1)`,
+          message: `Text contrast ${node.contrastRatio.toFixed(2)}:1 fails WCAG ${level} ${large ? "(large text)" : "(normal text)"} — requires ${required}:1`,
           expected: `≥ ${required}:1`,
           observed: `${node.contrastRatio.toFixed(2)}:1`,
           fixSuggestion: {

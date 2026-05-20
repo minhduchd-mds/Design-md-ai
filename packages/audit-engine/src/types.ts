@@ -31,6 +31,10 @@ export interface AuditNode {
   headingLevel?: number;
   /** Text content for screen-reader checks. */
   text?: string;
+  /** Font size in CSS pixels (for large-text contrast thresholds). */
+  fontSize?: number;
+  /** Font weight (400 normal, 700 bold) — affects large-text classification. */
+  fontWeight?: number;
   /** Whether motion/animation is detected (must respect prefers-reduced-motion). */
   hasMotion?: boolean;
   /** Responsive behavior hints from auto-layout. */

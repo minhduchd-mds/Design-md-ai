@@ -11,6 +11,14 @@
  */
 
 import type { AuditNode } from "@desygn/audit-engine";
+import { contrastRatio, figmaChannelToByte, type Rgb } from "@desygn/audit-engine";
+
+interface FigmaColor {
+  r: number;
+  g: number;
+  b: number;
+  a?: number;
+}
 
 interface FigmaNode {
   id: string;
@@ -21,14 +29,17 @@ interface FigmaNode {
   absoluteBoundingBox?: { width: number; height: number };
   characters?: string;
   style?: { fontSize?: number; fontWeight?: number };
-  fills?: Array<{ color?: { r: number; g: number; b: number; a?: number } }>;
-  backgrounds?: Array<{ color?: { r: number; g: number; b: number; a?: number } }>;
+  fills?: Array<{ type?: string; visible?: boolean; opacity?: number; color?: FigmaColor }>;
+  backgrounds?: Array<{ type?: string; visible?: boolean; color?: FigmaColor }>;
+  backgroundColor?: FigmaColor;
   componentId?: string;
   componentSetId?: string;
 }
 
 interface TransformContext {
   pageName: string;
+  /** Nearest ancestor solid background color (for contrast computation). */
+  backgroundRgb?: Rgb;
 }
 
 export function transformFigmaToAuditNodes(
@@ -64,12 +75,19 @@ function walkNode(
   if (depth > maxDepth) return;
   if (node.visible === false) return;
 
+  // Track the nearest solid background as we descend, so text contrast
+  // can be computed against the effective background behind it.
+  const ownBackground = extractSolidBackground(node);
+  const childCtx: TransformContext = ownBackground
+    ? { ...ctx, backgroundRgb: ownBackground }
+    : ctx;
+
   const auditNode = toAuditNode(node, ctx);
   if (auditNode) out.push(auditNode);
 
   if (node.children) {
     for (const child of node.children) {
-      walkNode(child, ctx, out, depth + 1, maxDepth);
+      walkNode(child, childCtx, out, depth + 1, maxDepth);
     }
   }
 }
@@ -89,13 +107,53 @@ function toAuditNode(node: FigmaNode, ctx: TransformContext): AuditNode | null {
     width,
     height,
     text: node.characters,
+    fontSize: node.style?.fontSize,
+    fontWeight: node.style?.fontWeight,
     hasInteractions,
     inferredRole: inferRole(node, hasInteractions),
     touchTargetCompliant:
       width !== undefined && height !== undefined ? Math.min(width, height) >= 24 : undefined,
     headingLevel: inferHeadingLevel(node),
-    contrastRatio: undefined, // TODO Week 4: compute from fills/backgrounds
-    hasMotion: false,         // TODO Week 4: detect via reactions
+    contrastRatio: computeContrast(node, ctx.backgroundRgb),
+    hasMotion: false, // TODO: detect via reactions/transitions
+  };
+}
+
+/** Extract a node's first visible solid fill/background as an RGB color. */
+function extractSolidBackground(node: FigmaNode): Rgb | undefined {
+  // Page-level backgroundColor
+  if (node.backgroundColor) {
+    return figmaColorToRgb(node.backgroundColor);
+  }
+  // Frame backgrounds[] or fills[] (first visible SOLID)
+  const sources = [...(node.backgrounds ?? []), ...(node.fills ?? [])];
+  for (const paint of sources) {
+    if (paint.visible === false) continue;
+    if (paint.type && paint.type !== "SOLID") continue;
+    if (paint.color) return figmaColorToRgb(paint.color);
+  }
+  return undefined;
+}
+
+/** Compute contrast ratio for a TEXT node against the effective background. */
+function computeContrast(node: FigmaNode, backgroundRgb?: Rgb): number | undefined {
+  if (node.type !== "TEXT") return undefined;
+  if (!backgroundRgb) return undefined;
+
+  const textFill = (node.fills ?? []).find(
+    (f) => f.visible !== false && (!f.type || f.type === "SOLID") && f.color,
+  );
+  if (!textFill?.color) return undefined;
+
+  const textRgb = figmaColorToRgb(textFill.color);
+  return Math.round(contrastRatio(textRgb, backgroundRgb) * 100) / 100;
+}
+
+function figmaColorToRgb(color: FigmaColor): Rgb {
+  return {
+    r: figmaChannelToByte(color.r),
+    g: figmaChannelToByte(color.g),
+    b: figmaChannelToByte(color.b),
   };
 }
 
