@@ -1,0 +1,19 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.main {
+  flex: 1 1 auto;
+  padding: var(--space-8);
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}

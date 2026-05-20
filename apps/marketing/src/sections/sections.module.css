@@ -1,0 +1,276 @@
+/* Shared layout primitives for marketing landing-page sections. */
+
+/* Centered max-width container with generous block padding. */
+.container {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding-inline: var(--space-6);
+}
+
+.section {
+  padding-block: var(--space-16);
+  border-top: 1px solid var(--surface-border);
+}
+
+/* Section heading block (centered eyebrow + title + lead). */
+.sectionHead {
+  max-width: 680px;
+  margin-inline: auto;
+  margin-bottom: var(--space-12);
+  text-align: center;
+}
+
+.sectionHeading {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.sectionLead {
+  margin-top: var(--space-3);
+  font-size: 1.125rem;
+  color: var(--color-slate-600);
+}
+
+/* ─── Hero ─────────────────────────────────────────────────────── */
+.hero {
+  padding-block: clamp(3rem, 8vw, 6rem);
+  text-align: center;
+}
+
+.heroInner {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary-700);
+}
+
+.heroTitle {
+  margin-top: var(--space-4);
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.heroSubtitle {
+  margin-top: var(--space-6);
+  font-size: clamp(1.0625rem, 2.2vw, 1.25rem);
+  color: var(--color-slate-600);
+  max-width: 620px;
+  margin-inline: auto;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-8);
+}
+
+.heroTrust {
+  margin-top: var(--space-6);
+  font-size: 0.875rem;
+  color: var(--color-slate-500);
+}
+
+/* ─── Features grid ────────────────────────────────────────────── */
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-6);
+}
+
+.featureCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+}
+
+.featureTitle {
+  font-size: 1.1875rem;
+  font-weight: 700;
+}
+
+.featureBody {
+  color: var(--color-slate-600);
+  font-size: 0.9375rem;
+}
+
+/* ─── Pricing grid ─────────────────────────────────────────────── */
+.pricingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.priceCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+}
+
+.priceCardFeatured {
+  outline: 2px solid var(--surface-ring);
+  outline-offset: -1px;
+}
+
+.priceHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.priceName {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.priceAmount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.priceValue {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.pricePeriod {
+  font-size: 0.875rem;
+  color: var(--color-slate-500);
+}
+
+.priceDesc {
+  color: var(--color-slate-600);
+  font-size: 0.9375rem;
+  flex: 1 1 auto;
+  margin-block: var(--space-2);
+}
+
+/* ─── FAQ ──────────────────────────────────────────────────────── */
+.faqList {
+  max-width: 720px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.faqItem {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  padding: var(--space-2) var(--space-4);
+}
+
+.faqItem summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: var(--space-3);
+  list-style: none;
+}
+
+.faqItem summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqItem summary::after {
+  content: "+";
+  float: right;
+  font-weight: 700;
+  color: var(--color-primary-600);
+}
+
+.faqItem[open] summary::after {
+  content: "−";
+}
+
+.faqAnswer {
+  color: var(--color-slate-600);
+  font-size: 0.9375rem;
+  padding-bottom: var(--space-3);
+}
+
+/* ─── Footer ───────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--surface-border);
+  background: var(--surface-muted);
+  padding-block: var(--space-12);
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(2, 1fr);
+  gap: var(--space-8);
+}
+
+@media (max-width: 640px) {
+  .footerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.footerBrand {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.footerTagline {
+  margin-top: var(--space-2);
+  color: var(--color-slate-600);
+  font-size: 0.9375rem;
+  max-width: 32ch;
+}
+
+.footerColTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate-500);
+  margin-bottom: var(--space-3);
+}
+
+.footerNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.footerLink {
+  color: var(--color-slate-700);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  width: fit-content;
+}
+
+.footerLink:hover {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+}
+
+.footerBottom {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--surface-border);
+  color: var(--color-slate-500);
+  font-size: 0.875rem;
+}

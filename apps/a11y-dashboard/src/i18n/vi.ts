@@ -18,4 +18,52 @@ export const vi: Dictionary = {
   "lang.toggleLabel": "Ngôn ngữ",
   "lang.vi": "Tiếng Việt",
   "lang.en": "Tiếng Anh",
+
+  // Điều hướng (thanh bên)
+  "nav.dashboard": "Bảng điều khiển",
+  "nav.audits": "Lần kiểm tra",
+  "nav.settings": "Cài đặt",
+  "nav.primaryLabel": "Điều hướng chính",
+
+  // Thanh trên cùng / khung ứng dụng
+  "shell.brand": "Desygn A11y",
+  "shell.signOut": "Đăng xuất",
+  "shell.userMenuLabel": "Tài khoản",
+
+  // Xác thực — dùng chung
+  "auth.emailLabel": "Email",
+  "auth.emailPlaceholder": "ban@vidu.com",
+  "auth.passwordLabel": "Mật khẩu",
+  "auth.passwordPlaceholder": "Nhập mật khẩu của bạn",
+  "auth.backendUnconfiguredTitle": "Chưa cấu hình máy chủ",
+  "auth.backendUnconfiguredBody":
+    "Xác thực chưa khả dụng vì chưa thiết lập Supabase. Hãy đặt VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY rồi tải lại.",
+  "auth.backendUnconfiguredCta": "Đăng nhập (đã tắt)",
+  "auth.genericError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+
+  // Xác thực — đăng nhập
+  "auth.login.title": "Đăng nhập",
+  "auth.login.submit": "Đăng nhập",
+  "auth.login.submitting": "Đang đăng nhập…",
+  "auth.login.toSignupPrompt": "Chưa có tài khoản?",
+  "auth.login.toSignupLink": "Đăng ký",
+
+  // Xác thực — đăng ký
+  "auth.signup.title": "Tạo tài khoản",
+  "auth.signup.submit": "Đăng ký",
+  "auth.signup.submitting": "Đang tạo tài khoản…",
+  "auth.signup.success":
+    "Đã tạo tài khoản. Hãy kiểm tra email để xác nhận đăng nhập.",
+  "auth.signup.toLoginPrompt": "Đã có tài khoản?",
+  "auth.signup.toLoginLink": "Đăng nhập",
+
+  // Trang lần kiểm tra (tạm thời)
+  "audits.title": "Lần kiểm tra",
+  "audits.body": "Các lần kiểm tra khả năng truy cập của bạn sẽ hiển thị ở đây.",
+  "audits.cta": "Bắt đầu kiểm tra mới",
+
+  // Trang cài đặt (tạm thời)
+  "settings.title": "Cài đặt",
+  "settings.body": "Quản lý tùy chọn không gian làm việc của bạn.",
+  "settings.languageHeading": "Ngôn ngữ",
 };

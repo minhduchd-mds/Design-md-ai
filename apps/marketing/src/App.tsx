@@ -1,29 +1,95 @@
 /**
- * App — Root component for Desygn A11y marketing site.
+ * App — Root component for the Desygn A11y marketing landing page.
  *
- * Week 0 scaffold: hero placeholder. Week 11 builds full landing
- * (hero, features, pricing, FAQ) per 07 roadmap.
+ * Composes the landing sections (Hero, Features, Pricing, FAQ, Footer) inside
+ * a single semantic landmark layout:
+ *   - one <header> (sticky nav + language toggle)
+ *   - one <main> wrapping every <section> (and the page's only <h1>, in Hero)
+ *   - one <footer>
+ *
+ * All visible strings flow through useTranslation() (i18n/). Vietnamese is the
+ * default locale; English is the fallback. Every interactive element is a real
+ * <button> or <a> for full keyboard + screen-reader support (WCAG 2.1.1).
  */
 
-export function App() {
-  return (
-    <main style={{ maxWidth: 960, margin: "0 auto", padding: "4rem 2rem" }}>
-      <header style={{ marginBottom: "3rem" }}>
-        <span style={{ fontSize: "0.875rem", color: "#7c3aed", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-          Accessibility-as-a-Service
-        </span>
-        <h1 style={{ fontSize: "3rem", fontWeight: 700, lineHeight: 1.1, marginTop: "0.5rem" }}>
-          Catch WCAG violations <br />
-          <span style={{ color: "#7c3aed" }}>10× cheaper</span>, in Figma.
-        </h1>
-        <p style={{ fontSize: "1.25rem", color: "#475569", marginTop: "1rem", maxWidth: 640 }}>
-          The only accessibility platform that audits your design before you write a single line of code.
-        </p>
-      </header>
+import { Button } from "@desygn/ui";
+import { useTranslation } from "./i18n/index.js";
+import type { Locale } from "./i18n/index.js";
+import { Hero } from "./sections/Hero.js";
+import { Features } from "./sections/Features.js";
+import { Pricing } from "./sections/Pricing.js";
+import { FAQ } from "./sections/FAQ.js";
+import { Footer } from "./sections/Footer.js";
+import styles from "./App.module.css";
 
-      <p style={{ marginTop: "2rem", padding: "1rem", background: "#fef3c7", borderRadius: 8 }}>
-        🚧 Week 0 scaffold. Full landing page built in Week 11 per implementation roadmap.
-      </p>
-    </main>
+function LanguageToggle() {
+  const { t, locale, setLocale } = useTranslation();
+  const options: Locale[] = ["vi", "en"];
+
+  return (
+    <div role="group" aria-label={t("lang.toggleLabel")} className={styles.langGroup}>
+      {options.map((code) => (
+        <Button
+          key={code}
+          variant="ghost"
+          size="sm"
+          aria-pressed={locale === code}
+          onClick={() => setLocale(code)}
+        >
+          {t(code === "vi" ? "lang.vi" : "lang.en")}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function SiteHeader() {
+  const { t } = useTranslation();
+
+  return (
+    <header className={styles.header}>
+      <div className={styles.headerInner}>
+        <a className={styles.brand} href="#hero-title">
+          {t("brand.name")}
+        </a>
+
+        <nav className={styles.primaryNav} aria-label={t("brand.name")}>
+          <a className={styles.navLink} href="#features">
+            {t("nav.features")}
+          </a>
+          <a className={styles.navLink} href="#pricing">
+            {t("nav.pricing")}
+          </a>
+          <a className={styles.navLink} href="#faq">
+            {t("nav.faq")}
+          </a>
+        </nav>
+
+        <LanguageToggle />
+      </div>
+    </header>
+  );
+}
+
+export function App() {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <a className="skip-link" href="#main">
+        {t("skip.toContent")}
+      </a>
+
+      <SiteHeader />
+
+      <main id="main">
+        <Hero />
+        <Features />
+        <Pricing />
+        <FAQ />
+      </main>
+
+      <Footer />
+    </>
   );
 }

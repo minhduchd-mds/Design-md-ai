@@ -1,0 +1,67 @@
+/* Top header / nav bar styles for the marketing landing page. */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in oklch, var(--surface-bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.headerInner {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.brand {
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--surface-fg);
+}
+
+.brand:hover {
+  color: var(--color-primary-700);
+}
+
+/* Primary in-page navigation. */
+.primaryNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline: auto;
+}
+
+.navLink {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-slate-700);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.navLink:hover {
+  background: var(--surface-muted);
+  color: var(--color-primary-700);
+}
+
+/* Hide the in-page nav links on narrow screens; toggle + brand remain. */
+@media (max-width: 640px) {
+  .primaryNav {
+    display: none;
+  }
+}
+
+.langGroup {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}

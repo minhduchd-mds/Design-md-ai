@@ -1,0 +1,78 @@
+/* Import design tokens + primitive styles from @desygn/ui */
+@import "@desygn/ui/tokens.css";
+@import "@desygn/ui/primitives.css";
+
+/* ─── Base reset ──────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  background: var(--surface-bg);
+  color: var(--surface-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100%;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+/* Honor reduced-motion for any scroll/anchor behavior. */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ─── Skip-to-content link for keyboard users (WCAG 2.4.1) ─────── */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: var(--space-2);
+  background: var(--surface-fg);
+  color: var(--surface-bg);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  z-index: 100;
+  text-decoration: none;
+  transition: top var(--motion-fast) var(--easing-out);
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* ─── Visible focus styles (WCAG 2.4.7) ───────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--surface-ring);
+  outline-offset: 2px;
+}

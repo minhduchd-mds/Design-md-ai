@@ -26,7 +26,46 @@ export type TranslationKey =
   | "status.line"
   | "lang.toggleLabel"
   | "lang.vi"
-  | "lang.en";
+  | "lang.en"
+  // Navigation (sidebar)
+  | "nav.dashboard"
+  | "nav.audits"
+  | "nav.settings"
+  | "nav.primaryLabel"
+  // Top bar / shell
+  | "shell.brand"
+  | "shell.signOut"
+  | "shell.userMenuLabel"
+  // Auth — shared
+  | "auth.emailLabel"
+  | "auth.emailPlaceholder"
+  | "auth.passwordLabel"
+  | "auth.passwordPlaceholder"
+  | "auth.backendUnconfiguredTitle"
+  | "auth.backendUnconfiguredBody"
+  | "auth.backendUnconfiguredCta"
+  | "auth.genericError"
+  // Auth — login
+  | "auth.login.title"
+  | "auth.login.submit"
+  | "auth.login.submitting"
+  | "auth.login.toSignupPrompt"
+  | "auth.login.toSignupLink"
+  // Auth — signup
+  | "auth.signup.title"
+  | "auth.signup.submit"
+  | "auth.signup.submitting"
+  | "auth.signup.success"
+  | "auth.signup.toLoginPrompt"
+  | "auth.signup.toLoginLink"
+  // Audits page (placeholder)
+  | "audits.title"
+  | "audits.body"
+  | "audits.cta"
+  // Settings page (placeholder)
+  | "settings.title"
+  | "settings.body"
+  | "settings.languageHeading";
 
 /** A complete dictionary: one string per translation key. */
 export type Dictionary = Record<TranslationKey, string>;
