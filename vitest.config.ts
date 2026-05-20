@@ -12,7 +12,10 @@ export default defineConfig({
       "api/**/__tests__/**/*.test.ts",
       "sdk/**/__tests__/**/*.test.ts",
       "packages/**/__tests__/**/*.test.ts",
+      "apps/**/__tests__/**/*.test.ts",
     ],
+    // Playwright e2e specs (*.spec.ts under e2e/) are NOT run by vitest.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "lcov", "json-summary"],
