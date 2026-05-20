@@ -14,7 +14,8 @@
       "types": "./dist/tokens/index.d.ts",
       "import": "./dist/tokens/index.js"
     },
-    "./tokens.css": "./src/tokens/tokens.css"
+    "./tokens.css": "./src/tokens/tokens.css",
+    "./primitives.css": "./src/primitives/primitives.css"
   },
   "scripts": {
     "build": "tsc",

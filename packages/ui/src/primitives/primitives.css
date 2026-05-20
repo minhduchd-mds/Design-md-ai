@@ -1,0 +1,164 @@
+/**
+ * primitives.css — Styles for @desygn/ui primitives.
+ *
+ * Depends on tokens.css (CSS variables). Import once in the app:
+ *   import "@desygn/ui/tokens.css";
+ *   import "@desygn/ui/primitives.css";
+ *
+ * All interactive elements expose a visible focus ring (WCAG 2.4.7),
+ * and motion respects prefers-reduced-motion.
+ */
+
+/* ─── Button ──────────────────────────────────────────────────── */
+.dsg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-base) var(--easing-default),
+    border-color var(--motion-base) var(--easing-default),
+    color var(--motion-base) var(--easing-default);
+}
+
+.dsg-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.dsg-btn:focus-visible {
+  outline: 2px solid var(--surface-ring);
+  outline-offset: 2px;
+}
+
+/* Sizes */
+.dsg-btn--sm { height: 2rem; padding: 0 var(--space-3); font-size: 0.875rem; }
+.dsg-btn--md { height: 2.5rem; padding: 0 var(--space-4); font-size: 1rem; }
+.dsg-btn--lg { height: 3rem; padding: 0 var(--space-6); font-size: 1.125rem; }
+
+/* Variants */
+.dsg-btn--primary {
+  background: var(--color-primary-600);
+  color: #fff;
+}
+.dsg-btn--primary:hover:not(:disabled) { background: var(--color-primary-700); }
+
+.dsg-btn--secondary {
+  background: var(--color-slate-200);
+  color: var(--color-slate-900);
+}
+.dsg-btn--secondary:hover:not(:disabled) { background: var(--color-slate-300); }
+
+.dsg-btn--ghost {
+  background: transparent;
+  color: var(--surface-fg);
+}
+.dsg-btn--ghost:hover:not(:disabled) { background: var(--surface-muted); }
+
+.dsg-btn--danger {
+  background: var(--color-error);
+  color: #fff;
+}
+.dsg-btn--danger:hover:not(:disabled) { filter: brightness(0.92); }
+
+.dsg-btn__spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: dsg-spin 0.6s linear infinite;
+}
+
+/* ─── Input ───────────────────────────────────────────────────── */
+.dsg-input {
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--surface-fg);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: border-color var(--motion-base) var(--easing-default);
+}
+
+.dsg-input:focus-visible {
+  outline: 2px solid var(--surface-ring);
+  outline-offset: 1px;
+  border-color: var(--surface-ring);
+}
+
+.dsg-input--error {
+  border-color: var(--color-error);
+}
+
+.dsg-input__error {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-error);
+  font-size: 0.875rem;
+}
+
+/* ─── Card ────────────────────────────────────────────────────── */
+.dsg-card {
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+  padding: var(--space-6);
+}
+.dsg-card--default { border: 1px solid var(--surface-border); }
+.dsg-card--outlined { border: 1px solid var(--surface-border); background: transparent; }
+.dsg-card--elevated {
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+/* ─── Badge ───────────────────────────────────────────────────── */
+.dsg-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.dsg-badge--neutral { background: var(--color-slate-200); color: var(--color-slate-800); }
+.dsg-badge--success { background: var(--color-success); color: #fff; }
+.dsg-badge--warning { background: var(--color-warning); color: var(--color-slate-900); }
+.dsg-badge--error { background: var(--color-error); color: #fff; }
+.dsg-badge--info { background: var(--color-info); color: #fff; }
+
+/* ─── Spinner ─────────────────────────────────────────────────── */
+.dsg-spinner {
+  display: inline-block;
+  border: 2px solid var(--surface-border);
+  border-right-color: var(--color-primary-600);
+  border-radius: var(--radius-full);
+  animation: dsg-spin 0.6s linear infinite;
+}
+.dsg-spinner--sm { width: 1rem; height: 1rem; }
+.dsg-spinner--md { width: 1.5rem; height: 1.5rem; }
+.dsg-spinner--lg { width: 2.5rem; height: 2.5rem; border-width: 3px; }
+
+@keyframes dsg-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dsg-btn__spinner,
+  .dsg-spinner {
+    animation-duration: 1.5s;
+  }
+  .dsg-btn,
+  .dsg-input {
+    transition: none;
+  }
+}

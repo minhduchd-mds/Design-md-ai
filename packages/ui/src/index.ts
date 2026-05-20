@@ -14,3 +14,4 @@
 
 export * from "./tokens/index.js";
 export * from "./lib/cn.js";
+export * from "./primitives/index.js";
