@@ -34,7 +34,37 @@ interface FigmaNode {
   backgroundColor?: FigmaColor;
   componentId?: string;
   componentSetId?: string;
+  /** Prototype interactions (authoritative interactivity/motion signal). */
+  reactions?: FigmaReaction[];
 }
+
+interface FigmaReaction {
+  trigger?: { type?: string };
+  action?: { type?: string; transition?: { type?: string } | null };
+  actions?: Array<{ type?: string; transition?: { type?: string } | null }>;
+}
+
+/** Trigger types that indicate a user-activated (interactive) element. */
+const INTERACTIVE_TRIGGERS = new Set([
+  "ON_CLICK",
+  "ON_PRESS",
+  "ON_HOVER",
+  "MOUSE_DOWN",
+  "MOUSE_UP",
+  "ON_KEY_DOWN",
+  "ON_DRAG",
+]);
+
+/** Transition types that animate (must respect prefers-reduced-motion). */
+const MOTION_TRANSITIONS = new Set([
+  "SMART_ANIMATE",
+  "MOVE_IN",
+  "MOVE_OUT",
+  "PUSH",
+  "SLIDE_IN",
+  "SLIDE_OUT",
+  "DISSOLVE",
+]);
 
 interface TransformContext {
   pageName: string;
@@ -115,7 +145,7 @@ function toAuditNode(node: FigmaNode, ctx: TransformContext): AuditNode | null {
       width !== undefined && height !== undefined ? Math.min(width, height) >= 24 : undefined,
     headingLevel: inferHeadingLevel(node),
     contrastRatio: computeContrast(node, ctx.backgroundRgb),
-    hasMotion: false, // TODO: detect via reactions/transitions
+    hasMotion: inferMotion(node),
   };
 }
 
@@ -158,14 +188,34 @@ function figmaColorToRgb(color: FigmaColor): Rgb {
 }
 
 function inferInteractive(node: FigmaNode): boolean {
+  // 1. Authoritative signal: prototype reactions with an interactive trigger.
+  if (hasInteractiveReaction(node)) return true;
+
+  // 2. Fallback heuristic: name keywords.
   const name = node.name.toLowerCase();
   const KEYWORDS = ["button", "btn", "link", "input", "checkbox", "radio", "switch", "tab", "menu"];
-  if (KEYWORDS.some((k) => name.includes(k))) return true;
-  // COMPONENT/INSTANCE often interactive
-  if ((node.type === "COMPONENT" || node.type === "INSTANCE") && KEYWORDS.some((k) => name.includes(k))) {
-    return true;
-  }
-  return false;
+  return KEYWORDS.some((k) => name.includes(k));
+}
+
+/** True if the node has any prototype reaction with a user-activated trigger. */
+function hasInteractiveReaction(node: FigmaNode): boolean {
+  if (!Array.isArray(node.reactions)) return false;
+  return node.reactions.some((r) => {
+    const trigger = r.trigger?.type;
+    return typeof trigger === "string" && INTERACTIVE_TRIGGERS.has(trigger);
+  });
+}
+
+/** True if any reaction uses an animated transition (relevant to reduced-motion). */
+function inferMotion(node: FigmaNode): boolean {
+  if (!Array.isArray(node.reactions)) return false;
+  return node.reactions.some((r) => {
+    const actions = r.actions ?? (r.action ? [r.action] : []);
+    return actions.some((a) => {
+      const transition = a?.transition?.type;
+      return typeof transition === "string" && MOTION_TRANSITIONS.has(transition);
+    });
+  });
 }
 
 function inferRole(node: FigmaNode, isInteractive: boolean): string {

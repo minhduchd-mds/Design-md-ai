@@ -150,6 +150,94 @@ describe("transformFigmaToAuditNodes", () => {
     expect(txt?.fontWeight).toBe(700);
   });
 
+  it("detects interactivity from an ON_CLICK reaction (not just name)", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            // Generic name, but has a click reaction → should be interactive
+            { id: "r1", name: "Rectangle 5", type: "FRAME",
+              reactions: [{ trigger: { type: "ON_CLICK" }, action: { type: "NODE" } }] },
+          ],
+        },
+      ],
+    };
+    const node = transformFigmaToAuditNodes(tree).find((n) => n.id === "r1");
+    expect(node?.hasInteractions).toBe(true);
+  });
+
+  it("does not mark a non-interactive trigger (AFTER_TIMEOUT) as interactive", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            { id: "r1", name: "Banner", type: "FRAME",
+              reactions: [{ trigger: { type: "AFTER_TIMEOUT" }, action: { type: "NODE" } }] },
+          ],
+        },
+      ],
+    };
+    const node = transformFigmaToAuditNodes(tree).find((n) => n.id === "r1");
+    expect(node?.hasInteractions).toBe(false);
+  });
+
+  it("detects motion from a SMART_ANIMATE transition", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            { id: "m1", name: "Carousel", type: "FRAME",
+              reactions: [{
+                trigger: { type: "AFTER_TIMEOUT" },
+                action: { type: "NODE", transition: { type: "SMART_ANIMATE" } },
+              }] },
+          ],
+        },
+      ],
+    };
+    const node = transformFigmaToAuditNodes(tree).find((n) => n.id === "m1");
+    expect(node?.hasMotion).toBe(true);
+  });
+
+  it("supports the plural actions[] shape for motion + interactivity", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        {
+          id: "0:1", name: "Page", type: "CANVAS",
+          children: [
+            { id: "m2", name: "Slide", type: "FRAME",
+              reactions: [{
+                trigger: { type: "ON_CLICK" },
+                actions: [{ type: "NODE", transition: { type: "PUSH" } }],
+              }] },
+          ],
+        },
+      ],
+    };
+    const node = transformFigmaToAuditNodes(tree).find((n) => n.id === "m2");
+    expect(node?.hasMotion).toBe(true);
+    expect(node?.hasInteractions).toBe(true);
+  });
+
+  it("leaves hasMotion false when there are no reactions", () => {
+    const tree = {
+      type: "DOCUMENT",
+      children: [
+        { id: "0:1", name: "Page", type: "CANVAS",
+          children: [{ id: "s1", name: "Static", type: "FRAME" }] },
+      ],
+    };
+    const node = transformFigmaToAuditNodes(tree).find((n) => n.id === "s1");
+    expect(node?.hasMotion).toBe(false);
+  });
+
   it("respects maxDepth", () => {
     const deep = {
       type: "DOCUMENT",
