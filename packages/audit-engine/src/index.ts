@@ -11,6 +11,7 @@
  */
 
 import { calculateScore, summarize } from "./scoring.js";
+import { DEFAULT_RULES } from "./rules/index.js";
 import type {
   A11yRule,
   AuditConfig,
@@ -22,6 +23,7 @@ import type {
 export * from "./types.js";
 export { calculateScore, summarize } from "./scoring.js";
 export * from "./color.js";
+export { DEFAULT_RULES } from "./rules/index.js";
 
 export class AuditEngine {
   private readonly config: Required<AuditConfig>;
@@ -112,3 +114,11 @@ const noopLogger: Logger = {
   warn: () => {},
   error: () => {},
 };
+
+/**
+ * Convenience factory wiring the 7 default WCAG rules.
+ * Most callers want this rather than constructing AuditEngine manually.
+ */
+export function createDefaultEngine(config?: AuditConfig, logger?: Logger): AuditEngine {
+  return new AuditEngine(DEFAULT_RULES, config, logger);
+}
